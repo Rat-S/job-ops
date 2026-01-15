@@ -754,10 +754,10 @@ export const OrchestratorPage: React.FC = () => {
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <TabsList className="h-9 w-full lg:w-auto">
                 {tabs.map((tab) => (
-                  <TabsTrigger key={tab.id} value={tab.id} className="flex-1 lg:flex-none gap-1.5">
-                    {tab.label}
+                  <TabsTrigger key={tab.id} value={tab.id} className="flex-1 flex items-center lg:flex-none gap-1.5">
+                    <span>{tab.label}</span>
                     {counts[tab.id] > 0 && (
-                      <span className="text-[10px] tabular-nums opacity-60">{counts[tab.id]}</span>
+                      <span className="text-[10px] mt-[2px] tabular-nums opacity-60">{counts[tab.id]}</span>
                     )}
                   </TabsTrigger>
                 ))}
