@@ -39,7 +39,7 @@ import { TailoringEditor } from "./TailoringEditor";
 interface JobListProps {
   jobs: Job[];
   onApply: (id: string) => void | Promise<void>;
-  onReject: (id: string) => void | Promise<void>;
+  onSkip: (id: string) => void | Promise<void>;
   onProcess: (id: string) => void | Promise<void>;
   onUpdate: () => void | Promise<void>;
   processingJobId: string | null;
@@ -87,7 +87,7 @@ const statusRank: Record<JobStatus, number> = {
   processing: 1,
   ready: 2,
   applied: 3,
-  rejected: 4,
+  skipped: 4,
   expired: 5,
 };
 
@@ -194,7 +194,7 @@ const stripHtml = (value: string) => value.replace(/<[^>]*>/g, " ").replace(/\s+
 export const JobList: React.FC<JobListProps> = ({
   jobs,
   onApply,
-  onReject,
+  onSkip,
   onProcess,
   onUpdate,
   processingJobId,
@@ -204,7 +204,7 @@ export const JobList: React.FC<JobListProps> = ({
   const [sourceFilter, setSourceFilter] = useState<JobSource | "all">("all");
   const [sort, setSort] = useState<JobSort>(DEFAULT_SORT);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(() => new Set());
-  const [batchAction, setBatchAction] = useState<null | "process" | "reject" | "apply">(null);
+  const [batchAction, setBatchAction] = useState<null | "process" | "skip" | "apply">(null);
   const [highlightedJobId, setHighlightedJobId] = useState<string | null>(null);
   const [isHighlightVisible, setIsHighlightVisible] = useState(false);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
@@ -369,7 +369,7 @@ export const JobList: React.FC<JobListProps> = ({
 
   const selectedCount = selectedJobIds.size;
 
-  const runBatch = async (action: "process" | "reject" | "apply") => {
+  const runBatch = async (action: "process" | "skip" | "apply") => {
     if (selectedJobs.length === 0) return;
 
     const eligible = selectedJobs.filter((job) => {
@@ -389,7 +389,7 @@ export const JobList: React.FC<JobListProps> = ({
       for (const job of eligible) {
         if (action === "process") await Promise.resolve(onProcess(job.id));
         if (action === "apply") await Promise.resolve(onApply(job.id));
-        if (action === "reject") await Promise.resolve(onReject(job.id));
+        if (action === "skip") await Promise.resolve(onSkip(job.id));
       }
 
       setSelectedJobIds(new Set());
@@ -440,7 +440,7 @@ export const JobList: React.FC<JobListProps> = ({
               <JobCard
                 job={highlightedJob}
                 onApply={onApply}
-                onReject={onReject}
+                onSkip={onSkip}
                 onProcess={onProcess}
                 isProcessing={processingJobId === highlightedJob.id}
                 highlightedJobId={highlightedJobId}
@@ -713,7 +713,7 @@ export const JobList: React.FC<JobListProps> = ({
                           <Button
                             size="sm"
                             variant="destructive"
-                            onClick={() => runBatch("reject")}
+                            onClick={() => runBatch("skip")}
                             disabled={batchAction !== null}
                           >
                             Skip
@@ -746,7 +746,7 @@ export const JobList: React.FC<JobListProps> = ({
                           selectedJobIds={selectedJobIds}
                           onSelectedJobIdsChange={setSelectedJobIds}
                           onApply={onApply}
-                          onReject={onReject}
+                          onSkip={onSkip}
                           onProcess={onProcess}
                           processingJobId={processingJobId}
                           highlightedJobId={highlightedJobId}
@@ -762,7 +762,7 @@ export const JobList: React.FC<JobListProps> = ({
                         key={job.id}
                         job={job}
                         onApply={onApply}
-                        onReject={onReject}
+                        onSkip={onSkip}
                         onProcess={onProcess}
                         isProcessing={processingJobId === job.id}
                         highlightedJobId={highlightedJobId}

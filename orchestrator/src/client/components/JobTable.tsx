@@ -57,7 +57,7 @@ export interface JobTableProps {
   selectedJobIds: Set<string>;
   onSelectedJobIdsChange: (ids: Set<string>) => void;
   onApply: (id: string) => void | Promise<void>;
-  onReject: (id: string) => void | Promise<void>;
+  onSkip: (id: string) => void | Promise<void>;
   onProcess: (id: string) => void | Promise<void>;
   onEditDescription?: (id: string) => void;
   processingJobId: string | null;
@@ -145,7 +145,7 @@ export const JobTable: React.FC<JobTableProps> = ({
   selectedJobIds,
   onSelectedJobIdsChange,
   onApply,
-  onReject,
+  onSkip,
   onProcess,
   onEditDescription,
   processingJobId,
@@ -228,7 +228,7 @@ export const JobTable: React.FC<JobTableProps> = ({
 
           const canApply = job.status === "ready";
           const canProcess = ["discovered", "ready"].includes(job.status);
-          const canReject = ["discovered", "ready"].includes(job.status);
+          const canSkip = ["discovered", "ready"].includes(job.status);
           const isProcessing = processingJobId === job.id;
           const isSelected = selectedJobIds.has(job.id);
           const isHighlighted = highlightedJobId === job.id;
@@ -342,7 +342,7 @@ export const JobTable: React.FC<JobTableProps> = ({
                       </>
                     )}
 
-                    {(canProcess || canReject || canApply) && <DropdownMenuSeparator />}
+                    {(canProcess || canSkip || canApply) && <DropdownMenuSeparator />}
 
                     {canProcess && (
                       <DropdownMenuItem
@@ -358,9 +358,9 @@ export const JobTable: React.FC<JobTableProps> = ({
                       </DropdownMenuItem>
                     )}
 
-                    {canReject && (
+                    {canSkip && (
                       <DropdownMenuItem
-                        onSelect={() => onReject(job.id)}
+                        onSelect={() => onSkip(job.id)}
                       >
                         <XCircle className="mr-2 h-4 w-4" />
                         Skip

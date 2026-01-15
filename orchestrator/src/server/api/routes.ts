@@ -105,7 +105,7 @@ apiRouter.get('/jobs/:id', async (req: Request, res: Response) => {
  * PATCH /api/jobs/:id - Update a job
  */
 const updateJobSchema = z.object({
-  status: z.enum(['discovered', 'processing', 'ready', 'applied', 'rejected', 'expired']).optional(),
+  status: z.enum(['discovered', 'processing', 'ready', 'applied', 'skipped', 'expired']).optional(),
   jobDescription: z.string().optional(),
   suitabilityScore: z.number().min(0).max(100).optional(),
   suitabilityReason: z.string().optional(),
@@ -241,11 +241,11 @@ apiRouter.post('/jobs/:id/apply', async (req: Request, res: Response) => {
 });
 
 /**
- * POST /api/jobs/:id/reject - Mark a job as rejected
+ * POST /api/jobs/:id/skip - Mark a job as skipped
  */
-apiRouter.post('/jobs/:id/reject', async (req: Request, res: Response) => {
+apiRouter.post('/jobs/:id/skip', async (req: Request, res: Response) => {
   try {
-    const job = await jobsRepo.updateJob(req.params.id, { status: 'rejected' });
+    const job = await jobsRepo.updateJob(req.params.id, { status: 'skipped' });
 
     if (!job) {
       return res.status(404).json({ success: false, error: 'Job not found' });

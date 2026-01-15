@@ -65,7 +65,7 @@ const migrations = [
     degree_required TEXT,
     starting TEXT,
     job_description TEXT,
-    status TEXT NOT NULL DEFAULT 'discovered' CHECK(status IN ('discovered', 'processing', 'ready', 'applied', 'rejected', 'expired')),
+    status TEXT NOT NULL DEFAULT 'discovered' CHECK(status IN ('discovered', 'processing', 'ready', 'applied', 'skipped', 'expired')),
     suitability_score REAL,
     suitability_reason TEXT,
     tailored_summary TEXT,

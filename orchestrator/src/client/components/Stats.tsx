@@ -28,7 +28,7 @@ const statConfig: Array<{
   { key: "processing", label: "Processing", Icon: Loader2 },
   { key: "ready", label: "Ready", Icon: Sparkles },
   { key: "applied", label: "Applied", Icon: CheckCircle2 },
-  { key: "rejected", label: "Rejected", Icon: XCircle },
+  { key: "skipped", label: "Skipped", Icon: XCircle },
   { key: "expired", label: "Expired", Icon: Clock },
 ];
 

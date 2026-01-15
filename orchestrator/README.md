@@ -61,7 +61,7 @@ orchestrator/
 | PATCH | `/api/jobs/:id` | Update job |
 | POST | `/api/jobs/:id/process` | Generate resume for job |
 | POST | `/api/jobs/:id/apply` | Mark as applied + sync to Notion |
-| POST | `/api/jobs/:id/reject` | Mark as rejected |
+| POST | `/api/jobs/:id/skip` | Mark as skipped |
 
 ### Pipeline
 

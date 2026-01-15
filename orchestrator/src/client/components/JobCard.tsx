@@ -31,7 +31,7 @@ import { StatusBadge } from "./StatusBadge";
 interface JobCardProps {
   job: Job;
   onApply: (id: string) => void | Promise<void>;
-  onReject: (id: string) => void | Promise<void>;
+  onSkip: (id: string) => void | Promise<void>;
   onProcess: (id: string) => void | Promise<void>;
   onEditDescription?: (id: string) => void;
   isProcessing: boolean;
@@ -78,7 +78,7 @@ const safeFilenamePart = (value: string) => value.replace(/[^a-z0-9]/gi, "_");
 export const JobCard: React.FC<JobCardProps> = ({
   job,
   onApply,
-  onReject,
+  onSkip,
   onProcess,
   onEditDescription,
   isProcessing,
@@ -95,7 +95,7 @@ export const JobCard: React.FC<JobCardProps> = ({
   const hasPdf = !!job.pdfPath;
   const canApply = job.status === "ready";
   const canProcess = ["discovered", "ready"].includes(job.status);
-  const canReject = ["discovered", "ready"].includes(job.status);
+  const canSkip = ["discovered", "ready"].includes(job.status);
 
   const jobLink = job.applicationLink || job.jobUrl;
   const pdfHref = `/pdfs/resume_${job.id}.pdf?v=${encodeURIComponent(job.updatedAt)}`;
@@ -164,7 +164,7 @@ export const JobCard: React.FC<JobCardProps> = ({
         </div>
       </CardHeader>
 
-      {(job.suitabilityReason || canApply || canReject || canProcess || hasPdf) && (
+      {(job.suitabilityReason || canApply || canSkip || canProcess || hasPdf) && (
         <CardContent className="space-y-3">
           {job.suitabilityReason && (
             <p className="text-sm italic text-muted-foreground">
@@ -246,8 +246,8 @@ export const JobCard: React.FC<JobCardProps> = ({
           </Button>
         )}
 
-        {canReject && (
-          <Button variant="destructive" size="sm" onClick={() => onReject(job.id)}>
+        {canSkip && (
+          <Button variant="destructive" size="sm" onClick={() => onSkip(job.id)}>
             <XCircle className="mr-2 h-4 w-4" />
             Skip
           </Button>

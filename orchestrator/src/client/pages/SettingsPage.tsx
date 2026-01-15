@@ -906,7 +906,7 @@ export const SettingsPage: React.FC = () => {
                 <div className="space-y-0.5">
                   <div className="text-sm font-medium">Clear Discovered Jobs</div>
                   <div className="text-xs text-muted-foreground">
-                    Delete all jobs with the status "discovered". Ready, applied, and rejected jobs are kept.
+                    Delete all jobs with the status "discovered". Ready, applied, and skipped jobs are kept.
                   </div>
                 </div>
                 <AlertDialog>

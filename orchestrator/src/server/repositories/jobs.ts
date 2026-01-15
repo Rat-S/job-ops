@@ -165,7 +165,7 @@ export async function getJobStats(): Promise<Record<JobStatus, number>> {
     processing: 0,
     ready: 0,
     applied: 0,
-    rejected: 0,
+    skipped: 0,
     expired: 0,
   };
   

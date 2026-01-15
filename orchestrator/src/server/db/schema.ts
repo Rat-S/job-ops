@@ -54,7 +54,7 @@ export const jobs = sqliteTable('jobs', {
 
   // Orchestrator enrichments
   status: text('status', {
-    enum: ['discovered', 'processing', 'ready', 'applied', 'rejected', 'expired']
+    enum: ['discovered', 'processing', 'ready', 'applied', 'skipped', 'expired']
   }).notNull().default('discovered'),
   suitabilityScore: real('suitability_score'),
   suitabilityReason: text('suitability_reason'),

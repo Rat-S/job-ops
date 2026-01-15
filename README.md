@@ -89,7 +89,7 @@ job-ops/
 
 - `jobs`
   - from crawl: `title`, `employer`, `jobUrl`, `applicationLink`, `deadline`, `salary`, `location`, `jobDescription`, `source` (gradcracker/indeed/linkedin/ukvisajobs), etc.
-  - enrichments: `status` (`discovered` -> `processing` -> `ready` -> `applied`/`rejected`), `suitabilityScore`, `suitabilityReason`, `tailoredSummary`, `pdfPath`, `notionPageId`
+  - enrichments: `status` (`discovered` -> `processing` -> `ready` -> `applied`/`skipped`), `suitabilityScore`, `suitabilityReason`, `tailoredSummary`, `pdfPath`, `notionPageId`
 - `pipeline_runs`: audit log of runs (`running`/`completed`/`failed`, counts, error)
 
 ## Running (Docker)
@@ -148,7 +148,7 @@ Dev URLs:
 
 ## Key endpoints
 
-- Jobs: `GET /api/jobs`, `POST /api/jobs/:id/process`, `POST /api/jobs/:id/apply`, `POST /api/jobs/:id/reject`, `POST /api/jobs/process-discovered`
+- Jobs: `GET /api/jobs`, `POST /api/jobs/:id/process`, `POST /api/jobs/:id/apply`, `POST /api/jobs/:id/skip`, `POST /api/jobs/process-discovered`
 - Pipeline: `POST /api/pipeline/run`, `GET /api/pipeline/status`, `GET /api/pipeline/progress` (SSE)
 - Webhook: `POST /api/webhook/trigger` (optional auth via `WEBHOOK_SECRET`)
 - Ops: `DELETE /api/database` (wipes DB)

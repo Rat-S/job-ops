@@ -18,7 +18,7 @@ const statusLabels: Record<JobStatus, string> = {
   processing: "Processing",
   ready: "Ready",
   applied: "Applied",
-  rejected: "Rejected",
+  skipped: "Skipped",
   expired: "Expired",
 };
 
@@ -30,7 +30,7 @@ const statusStyles: Record<
   processing: { variant: "secondary" },
   ready: { variant: "default" },
   applied: { variant: "outline", className: "text-emerald-400 border-emerald-500/30" },
-  rejected: { variant: "destructive" },
+  skipped: { variant: "destructive" },
   expired: { variant: "outline", className: "text-muted-foreground" },
 };
 

@@ -7,7 +7,7 @@ export type JobStatus =
   | 'processing'      // Currently generating resume
   | 'ready'           // PDF generated, waiting for user to apply
   | 'applied'         // User marked as applied (added to Notion)
-  | 'rejected'        // User rejected this job
+  | 'skipped'         // User skipped this job
   | 'expired';        // Deadline passed
 
 export type JobSource =

@@ -89,8 +89,8 @@ export async function markAsApplied(id: string): Promise<Job> {
   });
 }
 
-export async function rejectJob(id: string): Promise<Job> {
-  return fetchApi<Job>(`/jobs/${id}/reject`, {
+export async function skipJob(id: string): Promise<Job> {
+  return fetchApi<Job>(`/jobs/${id}/skip`, {
     method: 'POST',
   });
 }

@@ -93,8 +93,8 @@ const statusTokens: Record<
     badge: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
     dot: "bg-emerald-400",
   },
-  rejected: {
-    label: "Rejected",
+  skipped: {
+    label: "Skipped",
     badge: "border-rose-500/30 bg-rose-500/10 text-rose-200",
     dot: "bg-rose-400",
   },
@@ -292,7 +292,7 @@ export const OrchestratorPage: React.FC = () => {
     processing: 0,
     ready: 0,
     applied: 0,
-    rejected: 0,
+    skipped: 0,
     expired: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
@@ -430,13 +430,13 @@ export const OrchestratorPage: React.FC = () => {
     }
   };
 
-  const handleReject = async (jobId: string) => {
+  const handleSkip = async (jobId: string) => {
     try {
-      await api.rejectJob(jobId);
+      await api.skipJob(jobId);
       toast.message("Job skipped");
       await loadJobs();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to reject job";
+      const message = error instanceof Error ? error.message : "Failed to skip job";
       toast.error(message);
     }
   };
@@ -586,7 +586,7 @@ export const OrchestratorPage: React.FC = () => {
   const selectedDiscoveredAt = selectedJob ? formatDateTime(selectedJob.discoveredAt) : null;
   const canApply = selectedJob?.status === "ready";
   const canProcess = selectedJob ? ["discovered", "ready"].includes(selectedJob.status) : false;
-  const canReject = selectedJob ? ["discovered", "ready"].includes(selectedJob.status) : false;
+  const canSkip = selectedJob ? ["discovered", "ready"].includes(selectedJob.status) : false;
   const showReadyPdf = activeTab === "ready";
   const showGeneratePdf = activeTab === "discovered";
   const isProcessingSelected =
@@ -716,7 +716,7 @@ export const OrchestratorPage: React.FC = () => {
               { label: "Processing", value: stats.processing },
               { label: "Ready", value: stats.ready },
               { label: "Applied", value: stats.applied },
-              { label: "Rejected", value: stats.rejected },
+              { label: "Skipped", value: stats.skipped },
               { label: "Expired", value: stats.expired },
             ].map((item, index) => (
               <div
@@ -1060,11 +1060,11 @@ export const OrchestratorPage: React.FC = () => {
                           </DropdownMenuItem>
                         </>
                       )}
-                      {canReject && (
+                      {canSkip && (
                         <>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
-                            onSelect={() => handleReject(selectedJob.id)}
+                            onSelect={() => handleSkip(selectedJob.id)}
                             className="text-destructive focus:text-destructive"
                           >
                             <XCircle className="mr-2 h-4 w-4" />
