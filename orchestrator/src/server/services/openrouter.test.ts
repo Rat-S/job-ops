@@ -73,6 +73,7 @@ describe('callOpenRouter', () => {
         vi.mocked(global.fetch).mockResolvedValue({
             ok: false,
             status: 500,
+            text: async () => 'Internal Server Error',
         } as Response);
 
         const result = await callOpenRouter({
