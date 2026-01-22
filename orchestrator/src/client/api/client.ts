@@ -8,7 +8,6 @@ import type {
   JobsListResponse,
   PipelineStatusResponse,
   JobSource,
-  PipelineRun,
   AppSettings,
   ResumeProjectsSettings,
   ResumeProjectCatalogItem,
@@ -21,6 +20,8 @@ import type {
   VisaSponsorStatusResponse,
   VisaSponsor,
   ResumeProfile,
+  ProfileStatusResponse,
+  ValidationResult,
 } from '../../shared/types';
 import { trackEvent } from "@/lib/analytics";
 
@@ -179,6 +180,34 @@ export async function getProfile(): Promise<ResumeProfile> {
   return fetchApi<ResumeProfile>('/profile');
 }
 
+export async function getProfileStatus(): Promise<ProfileStatusResponse> {
+  return fetchApi<ProfileStatusResponse>('/profile/status');
+}
+
+export async function uploadProfile(profile: ResumeProfile): Promise<ProfileStatusResponse> {
+  return fetchApi<ProfileStatusResponse>('/profile/upload', {
+    method: 'POST',
+    body: JSON.stringify({ profile }),
+  });
+}
+
+export async function validateOpenrouter(apiKey?: string): Promise<ValidationResult> {
+  return fetchApi<ValidationResult>('/onboarding/validate/openrouter', {
+    method: 'POST',
+    body: JSON.stringify({ apiKey }),
+  });
+}
+
+export async function validateRxresume(email?: string, password?: string): Promise<ValidationResult> {
+  return fetchApi<ValidationResult>('/onboarding/validate/rxresume', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export async function validateResumeJson(): Promise<ValidationResult> {
+  return fetchApi<ValidationResult>('/onboarding/validate/resume');
+}
 
 export async function updateSettings(update: {
   model?: string | null

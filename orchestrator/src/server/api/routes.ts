@@ -12,6 +12,7 @@ import { webhookRouter } from './routes/webhook.js';
 import { profileRouter } from './routes/profile.js';
 import { databaseRouter } from './routes/database.js';
 import { visaSponsorsRouter } from './routes/visa-sponsors.js';
+import { onboardingRouter } from './routes/onboarding.js';
 
 export const apiRouter = Router();
 
@@ -24,3 +25,4 @@ apiRouter.use('/webhook', webhookRouter);
 apiRouter.use('/profile', profileRouter);
 apiRouter.use('/database', databaseRouter);
 apiRouter.use('/visa-sponsors', visaSponsorsRouter);
+apiRouter.use('/onboarding', onboardingRouter);

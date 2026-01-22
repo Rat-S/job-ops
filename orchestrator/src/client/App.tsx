@@ -11,6 +11,7 @@ import { OrchestratorPage } from "./pages/OrchestratorPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { UkVisaJobsPage } from "./pages/UkVisaJobsPage";
 import { VisaSponsorsPage } from "./pages/VisaSponsorsPage";
+import { OnboardingGate } from "./components/OnboardingGate";
 
 export const App: React.FC = () => {
   const location = useLocation();
@@ -27,6 +28,7 @@ export const App: React.FC = () => {
 
   return (
     <>
+      <OnboardingGate />
       <SwitchTransition mode="out-in">
         <CSSTransition
           key={pageKey}

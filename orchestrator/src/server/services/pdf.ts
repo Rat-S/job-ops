@@ -52,8 +52,6 @@ export async function generatePdf(
 ): Promise<PdfResult> {
   console.log(`📄 Generating PDF for job ${jobId}...`);
 
-  const resumeJsonPath = baseResumePath || join(RESUME_GEN_DIR, 'base.json');
-
   try {
     // Ensure output directory exists
     if (!existsSync(OUTPUT_DIR)) {

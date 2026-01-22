@@ -11,7 +11,10 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   // Parallelize slow operations
   const [overrides, profile] = await Promise.all([
     settingsRepo.getAllSettings(),
-    getProfile(),
+    getProfile().catch((error) => {
+      console.warn('Failed to load base resume profile for settings:', error);
+      return {};
+    }),
   ]);
 
   const envSettings = await getEnvSettingsData(overrides);

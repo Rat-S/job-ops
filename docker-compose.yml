@@ -14,10 +14,6 @@ services:
     volumes:
       # Persist database and generated PDFs
       - ./data:/app/data
-      # Base resume JSON (read-only)
-      - ./resume-generator/base.json:/app/resume-generator/base.json:ro
-    env_file:
-      - .env
     environment:
       # Server config
       - NODE_ENV=production
