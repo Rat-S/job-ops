@@ -17,10 +17,14 @@ https://github.com/user-attachments/assets/06e5e782-47f5-42d0-8b28-b89102d7ea1b
 
 ## Quick Start
 ```bash
-# 1. Run with Docker
+# 1. Clone and move to directory
+git clone https://github.com/DaKheera47/job-ops.git
+cd job-ops
+
+# 2. Docker up (this will take a while because of Camoufox)
 docker compose up -d --build
 
-# 2. Open the dashboard
+# 3. Open the dashboard, the app will onboard your credentials
 # http://localhost:3005
 ```
 
