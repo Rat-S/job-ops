@@ -17,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { sourceLabel } from "@/lib/utils";
 import type { JobSource } from "../../../shared/types";
-import { defaultSortDirection, orderedSources, sortLabels, tabs } from "./constants";
+import { defaultSortDirection, orderedFilterSources, sortLabels, tabs } from "./constants";
 import type { FilterTab, JobSort } from "./constants";
 
 interface OrchestratorFiltersProps {
@@ -45,7 +45,6 @@ export const OrchestratorFilters: React.FC<OrchestratorFiltersProps> = ({
   sort,
   onSortChange,
 }) => {
-  const orderedFilterSources: JobSource[] = [...orderedSources, "manual"];
   const visibleSources = orderedFilterSources.filter((source) => sourcesWithJobs.includes(source));
 
   return (

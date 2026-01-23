@@ -137,11 +137,11 @@ export const OrchestratorPage: React.FC = () => {
   );
 
   useEffect(() => {
-    if (sourceFilter === "all") return;
+    if (isLoading || sourceFilter === "all") return;
     if (!sourcesWithJobs.includes(sourceFilter)) {
       setSourceFilter("all");
     }
-  }, [sourceFilter, setSourceFilter, sourcesWithJobs]);
+  }, [isLoading, sourceFilter, setSourceFilter, sourcesWithJobs]);
 
   const handleManualImported = useCallback(
     async (importedJobId: string) => {

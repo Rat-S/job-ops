@@ -1,5 +1,5 @@
 import type { AppSettings, Job, JobSource } from "../../../shared/types";
-import { orderedSources } from "./constants";
+import { orderedFilterSources, orderedSources } from "./constants";
 import type { FilterTab, JobSort } from "./constants";
 
 const dateValue = (value: string | null) => {
@@ -89,14 +89,12 @@ export const getJobCounts = (jobs: Job[]): Record<FilterTab, number> => {
   return byTab;
 };
 
-const orderedSourceFilters: JobSource[] = [...orderedSources, "manual"];
-
 export const getSourcesWithJobs = (jobs: Job[]): JobSource[] => {
   const seen = new Set<JobSource>();
   for (const job of jobs) {
     seen.add(job.source);
   }
-  return orderedSourceFilters.filter((source) => seen.has(source));
+  return orderedFilterSources.filter((source) => seen.has(source));
 };
 
 export const getEnabledSources = (settings: AppSettings | null): JobSource[] => {

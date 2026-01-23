@@ -4,6 +4,7 @@ export const DEFAULT_PIPELINE_SOURCES: JobSource[] = ["gradcracker", "indeed", "
 export const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
 
 export const orderedSources: JobSource[] = ["gradcracker", "indeed", "linkedin", "ukvisajobs"];
+export const orderedFilterSources: JobSource[] = [...orderedSources, "manual"];
 
 export const statusTokens: Record<JobStatus, { label: string; badge: string; dot: string }> = {
   discovered: {
