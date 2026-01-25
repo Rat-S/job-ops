@@ -97,9 +97,9 @@ export const JobListPanel: React.FC<JobListPanelProps> = ({
                   <span
                     className={cn(
                       "text-xs tabular-nums",
-                      job.suitabilityScore! >= 70
+                      (job.suitabilityScore ?? 0) >= 70
                         ? "text-emerald-400/90"
-                        : job.suitabilityScore! >= 50
+                        : (job.suitabilityScore ?? 0) >= 50
                           ? "text-foreground/60"
                           : "text-muted-foreground/60",
                     )}

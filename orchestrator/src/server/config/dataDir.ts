@@ -1,5 +1,5 @@
-import { existsSync } from "fs";
-import { basename, join, resolve } from "path";
+import { existsSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
 
 let cachedDir: string | null = null;
 

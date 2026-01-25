@@ -1,4 +1,5 @@
 import type {
+  ResumeProfile,
   ResumeProjectCatalogItem,
   ResumeProjectsSettings,
 } from "../../shared/types.js";
@@ -6,11 +7,11 @@ import type {
 type ResumeProjectSelectionItem = ResumeProjectCatalogItem & {
   summaryText: string;
 };
-export function extractProjectsFromProfile(profile: unknown): {
+export function extractProjectsFromProfile(profile: ResumeProfile): {
   catalog: ResumeProjectCatalogItem[];
   selectionItems: ResumeProjectSelectionItem[];
 } {
-  const items = (profile as any)?.sections?.projects?.items;
+  const items = profile?.sections?.projects?.items;
   if (!Array.isArray(items)) return { catalog: [], selectionItems: [] };
 
   const catalog: ResumeProjectCatalogItem[] = [];
@@ -19,20 +20,14 @@ export function extractProjectsFromProfile(profile: unknown): {
   for (const item of items) {
     if (!item || typeof item !== "object") continue;
 
-    const id = typeof (item as any).id === "string" ? (item as any).id : "";
+    const id = item.id || "";
     if (!id) continue;
 
-    const name =
-      typeof (item as any).name === "string" ? (item as any).name : "";
-    const description =
-      typeof (item as any).description === "string"
-        ? (item as any).description
-        : "";
-    const date =
-      typeof (item as any).date === "string" ? (item as any).date : "";
-    const isVisibleInBase = Boolean((item as any).visible);
-    const summary =
-      typeof (item as any).summary === "string" ? (item as any).summary : "";
+    const name = item.name || "";
+    const description = item.description || "";
+    const date = item.date || "";
+    const isVisibleInBase = Boolean(item.visible);
+    const summary = item.summary || "";
     const summaryText = stripHtml(summary);
 
     const base: ResumeProjectCatalogItem = {
@@ -76,7 +71,7 @@ export function parseResumeProjectsSettings(
 ): ResumeProjectsSettings | null {
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as any;
+    const parsed = JSON.parse(raw) as Partial<ResumeProjectsSettings>;
     if (!parsed || typeof parsed !== "object") return null;
     const maxProjects = parsed.maxProjects;
     const lockedProjectIds = parsed.lockedProjectIds;

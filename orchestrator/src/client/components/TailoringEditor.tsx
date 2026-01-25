@@ -10,7 +10,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import type { Job, ResumeProjectCatalogItem } from "../../shared/types";
@@ -137,7 +136,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
       }
       toast.success("AI Summary & Projects generated");
       await onUpdate();
-    } catch (error) {
+    } catch (_error) {
       toast.error("AI summarization failed");
     } finally {
       setIsSummarizing(false);
@@ -156,7 +155,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
       await api.generateJobPdf(job.id);
       toast.success("Resume PDF generated");
       await onUpdate();
-    } catch (error) {
+    } catch (_error) {
       toast.error("PDF generation failed");
     } finally {
       setIsGeneratingPdf(false);
@@ -203,10 +202,11 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
 
       <div className="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
         <div className="space-y-2">
-          <label className="text-sm font-medium">
+          <label htmlFor="tailor-jd" className="text-sm font-medium">
             Job Description (Edit to help AI tailoring)
           </label>
           <textarea
+            id="tailor-jd"
             className="w-full min-h-[120px] max-h-[250px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
@@ -217,8 +217,11 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
         <Separator />
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Tailored Summary</label>
+          <label htmlFor="tailor-summary" className="text-sm font-medium">
+            Tailored Summary
+          </label>
           <textarea
+            id="tailor-summary"
             className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
@@ -230,7 +233,7 @@ export const TailoringEditor: React.FC<TailoringEditorProps> = ({
 
         <div className="space-y-3">
           <div className="flex flex-wrap items-start gap-2 sm:items-center sm:justify-between">
-            <label className="text-sm font-medium">Selected Projects</label>
+            <span className="text-sm font-medium">Selected Projects</span>
             {tooManyProjects && (
               <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
                 <AlertTriangle className="h-3 w-3" />

@@ -2,6 +2,7 @@
  * Service for generating tailored resume content (Summary, Headline, Skills).
  */
 
+import type { ResumeProfile } from "../../shared/types.js";
 import { getSetting } from "../repositories/settings.js";
 import { callOpenRouter, type JsonSchemaDefinition } from "./openrouter.js";
 
@@ -62,7 +63,7 @@ const TAILORING_SCHEMA: JsonSchemaDefinition = {
  */
 export async function generateTailoring(
   jobDescription: string,
-  profile: Record<string, unknown>,
+  profile: ResumeProfile,
 ): Promise<TailoringResult> {
   if (!process.env.OPENROUTER_API_KEY) {
     console.warn("⚠️ OPENROUTER_API_KEY not set, cannot generate tailoring");
@@ -113,7 +114,7 @@ export async function generateTailoring(
  */
 export async function generateSummary(
   jobDescription: string,
-  profile: Record<string, unknown>,
+  profile: ResumeProfile,
 ): Promise<{ success: boolean; summary?: string; error?: string }> {
   // If we just need summary, we can discard the rest (or cache it? but here we just return summary)
   const result = await generateTailoring(jobDescription, profile);
@@ -124,24 +125,21 @@ export async function generateSummary(
   };
 }
 
-function buildTailoringPrompt(
-  profile: Record<string, unknown>,
-  jd: string,
-): string {
+function buildTailoringPrompt(profile: ResumeProfile, jd: string): string {
   // Extract only needed parts of profile to save tokens
   const relevantProfile = {
     basics: {
-      name: (profile as any).basics?.name,
-      label: (profile as any).basics?.label, // Original headline
-      summary: (profile as any).basics?.summary,
+      name: profile.basics?.name,
+      label: profile.basics?.label, // Original headline
+      summary: profile.basics?.summary,
     },
-    skills: (profile as any).sections?.skills || (profile as any).skills,
-    projects: (profile as any).sections?.projects?.items?.map((p: any) => ({
+    skills: profile.sections?.skills,
+    projects: profile.sections?.projects?.items?.map((p) => ({
       name: p.name,
       description: p.description,
       keywords: p.keywords,
     })),
-    experience: (profile as any).sections?.experience?.items?.map((e: any) => ({
+    experience: profile.sections?.experience?.items?.map((e) => ({
       company: e.company,
       position: e.position,
       summary: e.summary,

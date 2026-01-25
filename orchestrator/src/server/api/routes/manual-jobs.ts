@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { type Request, type Response, Router } from "express";
 import { JSDOM } from "jsdom";
 import { z } from "zod";
@@ -113,7 +113,9 @@ manualJobsRouter.post("/fetch", async (req: Request, res: Response) => {
         '[role="navigation"], [role="banner"], [role="contentinfo"], ' +
         ".nav, .navbar, .header, .footer, .sidebar, .menu, .cookie, .popup, .modal, .ad, .advertisement",
     );
-    elementsToRemove.forEach((el) => el.remove());
+    elementsToRemove.forEach((el) => {
+      el.remove();
+    });
 
     // Try to find the main job content area
     const mainContent =

@@ -43,11 +43,15 @@ export function useProfile() {
         .then((data) => {
           profileCache = data;
           profileError = null;
-          subscribers.forEach((sub) => sub(data, null));
+          subscribers.forEach((sub) => {
+            sub(data, null);
+          });
         })
         .catch((err) => {
           profileError = err instanceof Error ? err : new Error(String(err));
-          subscribers.forEach((sub) => sub(profileCache, profileError));
+          subscribers.forEach((sub) => {
+            sub(profileCache, profileError);
+          });
         })
         .finally(() => {
           isFetching = false;
@@ -62,17 +66,23 @@ export function useProfile() {
   const refreshProfile = async () => {
     isFetching = true;
     profileError = null;
-    subscribers.forEach((sub) => sub(profileCache, null));
+    subscribers.forEach((sub) => {
+      sub(profileCache, null);
+    });
 
     try {
       const data = await api.getProfile();
       profileCache = data;
       profileError = null;
-      subscribers.forEach((sub) => sub(data, null));
+      subscribers.forEach((sub) => {
+        sub(data, null);
+      });
       return data;
     } catch (err) {
       profileError = err instanceof Error ? err : new Error(String(err));
-      subscribers.forEach((sub) => sub(profileCache, profileError));
+      subscribers.forEach((sub) => {
+        sub(profileCache, profileError);
+      });
       throw profileError;
     } finally {
       isFetching = false;

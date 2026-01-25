@@ -12,7 +12,7 @@ export const profileRouter = Router();
 /**
  * GET /api/profile/projects - Get all projects available in the base resume
  */
-profileRouter.get("/projects", async (req: Request, res: Response) => {
+profileRouter.get("/projects", async (_req: Request, res: Response) => {
   try {
     const profile = await getProfile();
     const { catalog } = extractProjectsFromProfile(profile);
@@ -26,7 +26,7 @@ profileRouter.get("/projects", async (req: Request, res: Response) => {
 /**
  * GET /api/profile - Get the full base resume profile
  */
-profileRouter.get("/", async (req: Request, res: Response) => {
+profileRouter.get("/", async (_req: Request, res: Response) => {
   try {
     const profile = await getProfile();
     res.json({ success: true, data: profile });

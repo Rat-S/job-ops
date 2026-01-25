@@ -75,7 +75,7 @@ export async function scoreJobSuitability(
   const { score, reason } = result.data;
 
   // Validate we got a reasonable response
-  if (typeof score !== "number" || isNaN(score)) {
+  if (typeof score !== "number" || Number.isNaN(score)) {
     console.error(
       `❌ [Job ${job.id}] Invalid score in response, using mock scoring`,
     );
@@ -142,7 +142,9 @@ export function parseJsonFromContent(
 
   // Remove ALL control characters (including newlines/tabs INSIDE string values which break JSON)
   // First, let's normalize the string - escape actual newlines inside strings
-  sanitized = sanitized.replace(/[\x00-\x1F\x7F]/g, (match) => {
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: needed to fix broken JSON from AI
+  const controlCharsRegex = /[\x00-\x1F\x7F]/g;
+  sanitized = sanitized.replace(controlCharsRegex, (match) => {
     if (match === "\n") return "\\n";
     if (match === "\r") return "\\r";
     if (match === "\t") return "\\t";
@@ -170,7 +172,7 @@ export function parseJsonFromContent(
   if (scoreMatch) {
     const score = Math.round(parseFloat(scoreMatch[1]));
     const reason = reasonMatch
-      ? reasonMatch[1].trim().replace(/[\x00-\x1F\x7F]/g, "")
+      ? reasonMatch[1].trim().replace(controlCharsRegex, "")
       : "Score extracted from malformed response";
     console.log(
       `⚠️ [Job ${jobId || "unknown"}] Parsed score via regex fallback: ${score}`,

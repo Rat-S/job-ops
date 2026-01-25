@@ -138,9 +138,9 @@ export async function getEnvSettingsData(
   }
 
   const basicAuthUser =
-    activeOverrides["basicAuthUser"] ?? process.env.BASIC_AUTH_USER;
+    activeOverrides.basicAuthUser ?? process.env.BASIC_AUTH_USER;
   const basicAuthPassword =
-    activeOverrides["basicAuthPassword"] ?? process.env.BASIC_AUTH_PASSWORD;
+    activeOverrides.basicAuthPassword ?? process.env.BASIC_AUTH_PASSWORD;
 
   return {
     ...readableValues,

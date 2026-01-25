@@ -25,9 +25,9 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-start gap-2 sm:items-center sm:justify-between">
-        <label className="text-xs font-medium text-muted-foreground">
+        <span className="text-xs font-medium text-muted-foreground">
           Selected Projects
-        </label>
+        </span>
         {tooManyProjects && (
           <span className="flex items-center gap-1 text-[10px] text-amber-500 font-medium">
             <AlertTriangle className="h-3 w-3" />
@@ -43,15 +43,16 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
           </div>
         ) : (
           catalog.map((project) => (
-            <div
+            <label
               key={project.id}
+              htmlFor={`project-${project.id}`}
               className={cn(
                 "flex items-start gap-2.5 rounded-lg border p-2.5 text-xs transition-colors cursor-pointer",
                 selectedIds.has(project.id)
                   ? "border-primary/40 bg-primary/5"
                   : "border-border/40 bg-muted/5 hover:bg-muted/10",
+                disabled && "opacity-50 cursor-not-allowed",
               )}
-              onClick={() => !disabled && onToggle(project.id)}
             >
               <Checkbox
                 id={`project-${project.id}`}
@@ -66,7 +67,7 @@ export const ProjectSelector: React.FC<ProjectSelectorProps> = ({
                   {project.description}
                 </div>
               </div>
-            </div>
+            </label>
           ))
         )}
       </div>

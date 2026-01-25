@@ -1,6 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
-import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { FilterTab, JobSort } from "./constants";
 import { OrchestratorFilters } from "./OrchestratorFilters";
@@ -41,7 +40,7 @@ vi.mock("@/components/ui/dropdown-menu", () => {
     DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
     ),
-    DropdownMenuSeparator: () => <div role="separator" />,
+    DropdownMenuSeparator: () => <hr />,
     DropdownMenuRadioGroup: ({
       children,
       onValueChange,
@@ -56,15 +55,18 @@ vi.mock("@/components/ui/dropdown-menu", () => {
     DropdownMenuRadioItem: ({
       children,
       value,
+      checked,
     }: {
       children: React.ReactNode;
       value: string;
+      checked?: boolean;
     }) => {
       const onValueChange = React.useContext(RadioGroupContext);
       return (
         <button
           type="button"
           role="menuitemradio"
+          aria-checked={checked}
           onClick={() => onValueChange?.(value)}
         >
           {children}

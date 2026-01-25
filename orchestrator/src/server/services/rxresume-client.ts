@@ -256,6 +256,8 @@ export class RxResumeClient {
 
     if (!token) {
       const setCookieHeader = res.headers.get("set-cookie");
+      // getSetCookie is a newer method in standard Fetch API, but might not be in all environments
+      // biome-ignore lint/suspicious/noExplicitAny: headers may not have getSetCookie in all types
       const setCookieArray = (res.headers as any).getSetCookie?.() as
         | string[]
         | undefined;

@@ -7,11 +7,10 @@
  * 3. Leave all jobs in "discovered" for manual processing
  */
 
-import { join } from "path";
+import { join } from "node:path";
 import type {
   CreateJobInput,
   Job,
-  JobSource,
   PipelineConfig,
 } from "../../shared/types.js";
 import { getDataDir } from "../config/dataDir.js";
@@ -539,7 +538,7 @@ export async function summarizeJob(
         });
 
         selectedProjectIds = [...locked, ...picked].join(",");
-      } catch (err) {
+      } catch (_err) {
         console.warn("   ⚠️ Failed to suggest projects, leaving empty");
       }
     }
@@ -563,7 +562,7 @@ export async function summarizeJob(
  */
 export async function generateFinalPdf(
   jobId: string,
-  options?: ProcessJobOptions,
+  _options?: ProcessJobOptions,
 ): Promise<{
   success: boolean;
   error?: string;

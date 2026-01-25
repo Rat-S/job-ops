@@ -16,7 +16,7 @@ export const pipelineRouter = Router();
 /**
  * GET /api/pipeline/status - Get pipeline status
  */
-pipelineRouter.get("/status", async (req: Request, res: Response) => {
+pipelineRouter.get("/status", async (_req: Request, res: Response) => {
   try {
     const { isRunning } = getPipelineStatus();
     const lastRun = await pipelineRepo.getLatestPipelineRun();
@@ -70,7 +70,7 @@ pipelineRouter.get("/progress", (req: Request, res: Response) => {
 /**
  * GET /api/pipeline/runs - Get recent pipeline runs
  */
-pipelineRouter.get("/runs", async (req: Request, res: Response) => {
+pipelineRouter.get("/runs", async (_req: Request, res: Response) => {
   try {
     const runs = await pipelineRepo.getRecentPipelineRuns(20);
     res.json({ success: true, data: runs });

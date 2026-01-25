@@ -2,12 +2,12 @@
  * Service for generating PDF resumes using RxResume v4 API.
  */
 
+import { createWriteStream, existsSync } from "node:fs";
+import { access, mkdir } from "node:fs/promises";
+import { join } from "node:path";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { createId } from "@paralleldrive/cuid2";
-import { createWriteStream, existsSync } from "fs";
-import { access, mkdir } from "fs/promises";
-import { join } from "path";
-import { Readable } from "stream";
-import { pipeline } from "stream/promises";
 import { getDataDir } from "../config/dataDir.js";
 import { getSetting } from "../repositories/settings.js";
 import { getProfile } from "./profile.js";
@@ -29,7 +29,7 @@ export interface PdfResult {
 export interface TailoredPdfContent {
   summary?: string | null;
   headline?: string | null;
-  skills?: any | null; // Accept any for flexibility, expected to be items array or parsed JSON
+  skills?: Array<{ name: string; keywords: string[] }> | null;
 }
 
 /**
@@ -78,6 +78,7 @@ async function downloadFile(url: string, outputPath: string): Promise<void> {
   }
 
   // Convert Web ReadableStream to Node readable
+  // biome-ignore lint/suspicious/noExplicitAny: response.body is a ReadableStream in the browser environment, but Node.js fetch implementation might have slight differences in types.
   const nodeReadable = Readable.fromWeb(response.body as any);
   const fileStream = createWriteStream(outputPath);
 
@@ -126,14 +127,14 @@ export async function generatePdf(
       Array.isArray(baseResume.sections.skills.items)
     ) {
       baseResume.sections.skills.items = baseResume.sections.skills.items.map(
-        (skill: any) => ({
+        (skill: Record<string, unknown>) => ({
           ...skill,
-          id: skill.id || createId(),
-          visible: skill.visible ?? true,
+          id: (skill.id as string) || createId(),
+          visible: (skill.visible as boolean | undefined) ?? true,
           // Zod schema requires string, default to empty string if missing
-          description: skill.description ?? "",
-          level: skill.level ?? 1,
-          keywords: skill.keywords || [],
+          description: (skill.description as string | undefined) ?? "",
+          level: (skill.level as number | undefined) ?? 1,
+          keywords: (skill.keywords as string[] | undefined) || [],
         }),
       );
     }
@@ -165,31 +166,41 @@ export async function generatePdf(
 
       if (newSkills && baseResume.sections?.skills) {
         // Ensure each skill item has required schema fields
-        const existingSkills = baseResume.sections.skills.items || [];
-        const skillsWithSchema = newSkills.map((newSkill: any) => {
-          // Try to find matching existing skill to preserve id and other fields
-          const existing = existingSkills.find(
-            (s: any) => s.name === newSkill.name,
-          );
+        const existingSkills = (baseResume.sections.skills.items ||
+          []) as Array<Record<string, unknown>>;
+        const skillsWithSchema = newSkills.map(
+          (newSkill: Record<string, unknown>) => {
+            // Try to find matching existing skill to preserve id and other fields
+            const existing = existingSkills.find(
+              (s) => s.name === newSkill.name,
+            );
 
-          return {
-            id: newSkill.id || existing?.id || createId(),
-            visible:
-              newSkill.visible !== undefined
-                ? newSkill.visible
-                : (existing?.visible ?? true),
-            name: newSkill.name || existing?.name || "",
-            description:
-              newSkill.description !== undefined
-                ? newSkill.description
-                : existing?.description || "",
-            level:
-              newSkill.level !== undefined
-                ? newSkill.level
-                : (existing?.level ?? 1),
-            keywords: newSkill.keywords || existing?.keywords || [],
-          };
-        });
+            return {
+              id:
+                (newSkill.id as string) ||
+                (existing?.id as string) ||
+                createId(),
+              visible:
+                newSkill.visible !== undefined
+                  ? (newSkill.visible as boolean)
+                  : ((existing?.visible as boolean | undefined) ?? true),
+              name:
+                (newSkill.name as string) || (existing?.name as string) || "",
+              description:
+                newSkill.description !== undefined
+                  ? (newSkill.description as string)
+                  : (existing?.description as string) || "",
+              level:
+                newSkill.level !== undefined
+                  ? (newSkill.level as number)
+                  : ((existing?.level as number | undefined) ?? 1),
+              keywords:
+                (newSkill.keywords as string[]) ||
+                (existing?.keywords as string[]) ||
+                [],
+            };
+          },
+        );
 
         baseResume.sections.skills.items = skillsWithSchema;
       }
@@ -239,10 +250,10 @@ export async function generatePdf(
       if (Array.isArray(projectItems)) {
         for (const item of projectItems) {
           if (!item || typeof item !== "object") continue;
-          const id =
-            typeof (item as any).id === "string" ? (item as any).id : "";
+          const typedItem = item as Record<string, unknown>;
+          const id = typeof typedItem.id === "string" ? typedItem.id : "";
           if (!id) continue;
-          (item as any).visible = selectedSet.has(id);
+          typedItem.visible = selectedSet.has(id);
         }
         projectsSection.visible = selectedSet.size > 0;
       }

@@ -2,7 +2,7 @@
  * Job repository - data access layer for jobs.
  */
 
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type {
   CreateJobInput,
@@ -116,7 +116,11 @@ export async function createJob(input: CreateJobInput): Promise<Job> {
     updatedAt: now,
   });
 
-  return (await getJobById(id))!;
+  const job = await getJobById(id);
+  if (!job) {
+    throw new Error(`Failed to retrieve newly created job with ID ${id}`);
+  }
+  return job;
 }
 
 /**

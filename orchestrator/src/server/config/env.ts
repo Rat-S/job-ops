@@ -1,6 +1,6 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { config } from "dotenv";
-import { existsSync } from "fs";
-import { join } from "path";
 
 const candidates = [
   join(process.cwd(), ".env"),

@@ -4,10 +4,10 @@
  * Uses a small Python wrapper script that writes both CSV + JSON to disk; we ingest the JSON.
  */
 
-import { spawn } from "child_process";
-import { mkdir, readFile, unlink } from "fs/promises";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { spawn } from "node:child_process";
+import { mkdir, readFile, unlink } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { CreateJobInput, JobSource } from "../../shared/types.js";
 import { getDataDir } from "../config/dataDir.js";
 

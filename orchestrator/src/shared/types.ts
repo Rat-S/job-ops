@@ -330,9 +330,23 @@ export interface ResumeProfile {
         url?: string;
       }>;
     };
-    [key: string]: any;
+    experience?: {
+      id?: string;
+      visible?: boolean;
+      name?: string;
+      items?: Array<{
+        id: string;
+        company: string;
+        position: string;
+        location: string;
+        date: string;
+        summary: string;
+        visible: boolean;
+      }>;
+    };
+    [key: string]: unknown;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ProfileStatusResponse {

@@ -34,7 +34,7 @@ vi.mock("@/components/ui/dropdown-menu", () => {
         {children}
       </button>
     ),
-    DropdownMenuSeparator: () => <div role="separator" />,
+    DropdownMenuSeparator: () => <hr />,
   };
 });
 

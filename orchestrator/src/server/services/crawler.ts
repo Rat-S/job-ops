@@ -3,11 +3,11 @@
  * Wraps the existing Crawlee-based crawler.
  */
 
-import { spawn } from "child_process";
-import { mkdir, readdir, readFile, writeFile } from "fs/promises";
-import { dirname, join } from "path";
-import { createInterface } from "readline";
-import { fileURLToPath } from "url";
+import { spawn } from "node:child_process";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { createInterface } from "node:readline";
+import { fileURLToPath } from "node:url";
 import type { CreateJobInput } from "../../shared/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -199,7 +199,7 @@ async function readCrawledJobs(): Promise<CreateJobInput[]> {
  * Clear previous crawl results.
  */
 async function clearStorageDataset(): Promise<void> {
-  const { rm } = await import("fs/promises");
+  const { rm } = await import("node:fs/promises");
   try {
     await rm(STORAGE_DIR, { recursive: true, force: true });
   } catch {

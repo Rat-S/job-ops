@@ -2,7 +2,7 @@
  * Pipeline run repository.
  */
 
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { desc, eq } from "drizzle-orm";
 import type { PipelineRun } from "../../shared/types.js";
 import { db, schema } from "../db/index.js";

@@ -52,7 +52,7 @@ export const TailorMode: React.FC<TailorModeProps> = ({
     const saved = job.selectedProjectIds?.split(",").filter(Boolean) ?? [];
     setSelectedIds(new Set(saved));
     setDraftStatus("saved");
-  }, [job.id, job.tailoredSummary, job.selectedProjectIds, job.jobDescription]);
+  }, [job.tailoredSummary, job.selectedProjectIds, job.jobDescription]);
 
   const savedSummary = job.tailoredSummary || "";
   const savedDescription = job.jobDescription || "";
@@ -248,10 +248,14 @@ export const TailorMode: React.FC<TailorModeProps> = ({
           label={`${showDescription ? "Hide" : "Edit"} job description`}
         >
           <div className="space-y-1">
-            <label className="text-[10px] font-medium text-muted-foreground/70">
+            <label
+              htmlFor="tailor-jd-edit"
+              className="text-[10px] font-medium text-muted-foreground/70"
+            >
               Edit to help AI tailoring
             </label>
             <textarea
+              id="tailor-jd-edit"
               className="w-full min-h-[120px] max-h-[250px] rounded-lg border border-border/60 bg-background/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               value={jobDescription}
               onChange={(event) => setJobDescription(event.target.value)}
@@ -262,10 +266,14 @@ export const TailorMode: React.FC<TailorModeProps> = ({
         </CollapsibleSection>
 
         <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">
+          <label
+            htmlFor="tailor-summary-edit"
+            className="text-xs font-medium text-muted-foreground"
+          >
             Tailored Summary
           </label>
           <textarea
+            id="tailor-summary-edit"
             className="w-full min-h-[100px] rounded-lg border border-border/60 bg-background/50 px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             value={summary}
             onChange={(event) => setSummary(event.target.value)}

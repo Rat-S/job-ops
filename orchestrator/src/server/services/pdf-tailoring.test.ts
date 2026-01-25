@@ -125,11 +125,7 @@ vi.mock("./resumeProjects.js", () => ({
 
 // Mock the RxResumeClient
 vi.mock("./rxresume-client.js", () => ({
-  RxResumeClient: class {
-    constructor() {
-      return mockRxResumeClient;
-    }
-  },
+  RxResumeClient: vi.fn().mockImplementation(() => mockRxResumeClient),
 }));
 
 // Mock stream pipeline for downloading PDF

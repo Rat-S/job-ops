@@ -8,8 +8,6 @@
  */
 
 import {
-  Briefcase,
-  Building2,
   CheckCircle2,
   ChevronUp,
   Copy,
@@ -19,7 +17,6 @@ import {
   FileText,
   FolderKanban,
   Loader2,
-  MoreHorizontal,
   RefreshCcw,
   Undo2,
   XCircle,
@@ -87,7 +84,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   // Reset mode when job changes
   useEffect(() => {
     setMode("ready");
-  }, [job?.id]);
+  }, []);
 
   // Compute derived values
   const pdfHref = job
@@ -100,12 +97,26 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     return job?.selectedProjectIds?.split(",").filter(Boolean) ?? [];
   }, [job?.selectedProjectIds]);
 
-  const selectedProjectNames = useMemo(() => {
-    if (!catalog.length || !selectedProjectIds.length) return [];
-    return selectedProjectIds
-      .map((id) => catalog.find((p) => p.id === id)?.name)
-      .filter(Boolean) as string[];
-  }, [catalog, selectedProjectIds]);
+  const handleUndoApplied = useCallback(
+    async (jobId: string) => {
+      try {
+        // Revert to ready status
+        await api.updateJob(jobId, { status: "ready" });
+        toast.success("Reverted to Ready");
+
+        if (recentlyApplied?.timeoutId) {
+          clearTimeout(recentlyApplied.timeoutId);
+        }
+        setRecentlyApplied(null);
+        await onJobUpdated();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Failed to undo";
+        toast.error(message);
+      }
+    },
+    [onJobUpdated, recentlyApplied],
+  );
 
   // Handle mark as applied with undo capability
   const handleMarkApplied = useCallback(async () => {
@@ -146,28 +157,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     } finally {
       setIsMarkingApplied(false);
     }
-  }, [job, onJobMoved, onJobUpdated]);
-
-  const handleUndoApplied = useCallback(
-    async (jobId: string) => {
-      try {
-        // Revert to ready status
-        await api.updateJob(jobId, { status: "ready" });
-        toast.success("Reverted to Ready");
-
-        if (recentlyApplied?.timeoutId) {
-          clearTimeout(recentlyApplied.timeoutId);
-        }
-        setRecentlyApplied(null);
-        await onJobUpdated();
-      } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to undo";
-        toast.error(message);
-      }
-    },
-    [onJobUpdated, recentlyApplied],
-  );
+  }, [job, onJobMoved, onJobUpdated, handleUndoApplied]);
 
   const handleRegenerate = useCallback(async () => {
     if (!job) return;
@@ -368,10 +358,12 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
               </AccordionTrigger>
               <AccordionContent className="pt-1 pl-11">
                 <ul className="list-disc text-xs text-muted-foreground space-y-1">
-                  {selectedProjectNames.map((name, i) => (
-                    <li key={i}>{name}</li>
-                  ))}
-                  {selectedProjectNames.length === 0 && (
+                  {selectedProjectIds.map((id) => {
+                    const name = catalog.find((p) => p.id === id)?.name;
+                    if (!name) return null;
+                    return <li key={id}>{name}</li>;
+                  })}
+                  {selectedProjectIds.length === 0 && (
                     <li className="list-none italic">No projects selected</li>
                   )}
                 </ul>

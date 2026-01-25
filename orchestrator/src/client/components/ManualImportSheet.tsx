@@ -287,11 +287,15 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
             {step === "paste" && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <label
+                    htmlFor="fetch-url"
+                    className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
                     Job URL (optional)
                   </label>
                   <div className="flex gap-2">
                     <Input
+                      id="fetch-url"
                       value={fetchUrl}
                       onChange={(event) => setFetchUrl(event.target.value)}
                       placeholder="https://example.com/job-posting"
@@ -338,10 +342,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  <label
+                    htmlFor="raw-description"
+                    className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  >
                     Job description
                   </label>
                   <Textarea
+                    id="raw-description"
                     value={rawDescription}
                     onChange={(event) => setRawDescription(event.target.value)}
                     placeholder="Paste the full job description here, or enter a URL above to fetch it..."
@@ -408,10 +416,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-title"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Title *
                     </label>
                     <Input
+                      id="draft-title"
                       value={draft.title}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -423,10 +435,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-employer"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Employer *
                     </label>
                     <Input
+                      id="draft-employer"
                       value={draft.employer}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -438,10 +454,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-location"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Location
                     </label>
                     <Input
+                      id="draft-location"
                       value={draft.location}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -453,10 +473,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-salary"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Salary
                     </label>
                     <Input
+                      id="draft-salary"
                       value={draft.salary}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -468,10 +492,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-deadline"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Deadline
                     </label>
                     <Input
+                      id="draft-deadline"
                       value={draft.deadline}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -483,10 +511,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-jobType"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Job type
                     </label>
                     <Input
+                      id="draft-jobType"
                       value={draft.jobType}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -498,10 +530,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-jobLevel"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Job level
                     </label>
                     <Input
+                      id="draft-jobLevel"
                       value={draft.jobLevel}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -513,10 +549,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-jobFunction"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Job function
                     </label>
                     <Input
+                      id="draft-jobFunction"
                       value={draft.jobFunction}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -528,10 +568,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-disciplines"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Disciplines
                     </label>
                     <Input
+                      id="draft-disciplines"
                       value={draft.disciplines}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -543,10 +587,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-degreeRequired"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Degree required
                     </label>
                     <Input
+                      id="draft-degreeRequired"
                       value={draft.degreeRequired}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -558,10 +606,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-starting"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Starting
                     </label>
                     <Input
+                      id="draft-starting"
                       value={draft.starting}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -573,10 +625,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-jobUrl"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Job URL
                     </label>
                     <Input
+                      id="draft-jobUrl"
                       value={draft.jobUrl}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -588,10 +644,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label
+                      htmlFor="draft-applicationLink"
+                      className="text-xs font-medium text-muted-foreground"
+                    >
                       Application link
                     </label>
                     <Input
+                      id="draft-applicationLink"
                       value={draft.applicationLink}
                       onChange={(event) =>
                         setDraft((prev) => ({
@@ -605,10 +665,14 @@ export const ManualImportSheet: React.FC<ManualImportSheetProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground">
+                  <label
+                    htmlFor="draft-jobDescription"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
                     Job description *
                   </label>
                   <Textarea
+                    id="draft-jobDescription"
                     value={draft.jobDescription}
                     onChange={(event) =>
                       setDraft((prev) => ({

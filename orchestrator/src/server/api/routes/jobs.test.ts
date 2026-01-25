@@ -1,4 +1,4 @@
-import type { Server } from "http";
+import type { Server } from "node:http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils.js";
 

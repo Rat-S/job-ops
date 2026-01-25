@@ -1,15 +1,7 @@
 import * as api from "@client/api";
 import { RefreshCw } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useCallback, useEffect, useState } from "react";
 
 type BaseResumeSelectionProps = {
   value: string | null;
@@ -30,7 +22,7 @@ export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
   const [isFetchingResumes, setIsFetchingResumes] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  const fetchResumes = async () => {
+  const fetchResumes = useCallback(async () => {
     if (!hasRxResumeAccess) return;
 
     setIsFetchingResumes(true);
@@ -50,13 +42,13 @@ export const BaseResumeSelection: React.FC<BaseResumeSelectionProps> = ({
     } finally {
       setIsFetchingResumes(false);
     }
-  };
+  }, [hasRxResumeAccess, onValueChange, value]);
 
   useEffect(() => {
     if (hasRxResumeAccess) {
       fetchResumes();
     }
-  }, [hasRxResumeAccess]);
+  }, [hasRxResumeAccess, fetchResumes]);
 
   return (
     <div className="space-y-2">

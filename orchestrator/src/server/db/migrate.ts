@@ -2,9 +2,9 @@
  * Database migration script - creates tables if they don't exist.
  */
 
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 import Database from "better-sqlite3";
-import { existsSync, mkdirSync } from "fs";
-import { dirname, join } from "path";
 import { getDataDir } from "../config/dataDir.js";
 
 // Database path - can be overridden via env for Docker

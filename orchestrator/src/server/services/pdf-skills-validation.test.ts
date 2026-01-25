@@ -126,11 +126,7 @@ vi.mock("./resumeProjects.js", () => ({
 
 // Mock the RxResumeClient
 vi.mock("./rxresume-client.js", () => ({
-  RxResumeClient: class {
-    constructor() {
-      return mockRxResumeClient;
-    }
-  },
+  RxResumeClient: vi.fn().mockImplementation(() => mockRxResumeClient),
 }));
 
 // Mock stream pipeline for downloading PDF
@@ -268,7 +264,7 @@ describe("PDF Service Skills Validation", () => {
     const skillItems = savedResumeJson.sections.skills.items;
 
     // All skills should have IDs
-    skillItems.forEach((skill: any, index: number) => {
+    skillItems.forEach((skill: any, _index: number) => {
       expect(skill.id).toBeDefined();
       expect(typeof skill.id).toBe("string");
       expect(skill.id.length).toBeGreaterThanOrEqual(20);

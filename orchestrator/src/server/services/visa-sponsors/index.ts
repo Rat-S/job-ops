@@ -4,8 +4,8 @@
  * Manages downloading, storing, and searching the UK visa sponsor list.
  */
 
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 import { getDataDir } from "../../config/dataDir.js";
 
 const DATA_DIR = path.join(getDataDir(), "visa-sponsors");

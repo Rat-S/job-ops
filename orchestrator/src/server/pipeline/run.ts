@@ -16,11 +16,11 @@ async function main() {
   console.log("=".repeat(60));
 
   const result = await runPipeline({
-    topN: parseInt(process.env.PIPELINE_TOP_N || "10"),
-    minSuitabilityScore: parseInt(process.env.PIPELINE_MIN_SCORE || "50"),
+    topN: parseInt(process.env.PIPELINE_TOP_N || "10", 10),
+    minSuitabilityScore: parseInt(process.env.PIPELINE_MIN_SCORE || "50", 10),
   });
 
-  console.log("\n" + "=".repeat(60));
+  console.log(`\n${"=".repeat(60)}`);
   console.log("📊 Pipeline Results:");
   console.log(`   Success: ${result.success}`);
   console.log(`   Jobs Discovered: ${result.jobsDiscovered}`);

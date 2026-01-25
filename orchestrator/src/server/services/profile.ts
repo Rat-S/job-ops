@@ -5,10 +5,11 @@
  * There is no local file fallback.
  */
 
+import type { ResumeProfile } from "../../shared/types.js";
 import { getSetting } from "../repositories/settings.js";
 import { getResume, RxResumeCredentialsError } from "./rxresume-v4.js";
 
-let cachedProfile: any = null;
+let cachedProfile: ResumeProfile | null = null;
 let cachedResumeId: string | null = null;
 
 /**
@@ -20,7 +21,7 @@ let cachedResumeId: string | null = null;
  * @param forceRefresh Force reload from API.
  * @throws Error if rxresumeBaseResumeId is not configured or API call fails.
  */
-export async function getProfile(forceRefresh = false): Promise<any> {
+export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
   const rxresumeBaseResumeId = await getSetting("rxresumeBaseResumeId");
 
   if (!rxresumeBaseResumeId) {

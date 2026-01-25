@@ -136,11 +136,16 @@ vi.mock("./orchestrator/OrchestratorFilters", () => ({
   }) => (
     <div data-testid="filters">
       <div data-testid="sources-with-jobs">{sourcesWithJobs.join(",")}</div>
-      <button onClick={() => onTabChange("discovered")}>To Discovered</button>
-      <button onClick={() => onSearchQueryChange("test search")}>
+      <button type="button" onClick={() => onTabChange("discovered")}>
+        To Discovered
+      </button>
+      <button type="button" onClick={() => onSearchQueryChange("test search")}>
         Set Search
       </button>
-      <button onClick={() => onSortChange({ key: "title", direction: "asc" })}>
+      <button
+        type="button"
+        onClick={() => onSortChange({ key: "title", direction: "asc" })}
+      >
         Set Sort
       </button>
     </div>

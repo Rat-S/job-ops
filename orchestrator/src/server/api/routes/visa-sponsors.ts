@@ -12,7 +12,7 @@ export const visaSponsorsRouter = Router();
 /**
  * GET /api/visa-sponsors/status - Get status of the visa sponsor service
  */
-visaSponsorsRouter.get("/status", async (req: Request, res: Response) => {
+visaSponsorsRouter.get("/status", async (_req: Request, res: Response) => {
   try {
     const status = visaSponsors.getStatus();
     const response: ApiResponse<VisaSponsorStatusResponse> = {
@@ -92,7 +92,7 @@ visaSponsorsRouter.get(
 /**
  * POST /api/visa-sponsors/update - Trigger a manual update of the visa sponsor list
  */
-visaSponsorsRouter.post("/update", async (req: Request, res: Response) => {
+visaSponsorsRouter.post("/update", async (_req: Request, res: Response) => {
   try {
     const result = await visaSponsors.downloadLatestCsv();
 

@@ -78,7 +78,7 @@ describe("calculateSponsorMatchSummary", () => {
     const summary = calculateSponsorMatchSummary(results);
 
     expect(summary.sponsorMatchScore).toBe(100);
-    const names = JSON.parse(summary.sponsorMatchNames!);
+    const names = JSON.parse(summary.sponsorMatchNames || "[]");
     expect(names).toHaveLength(2);
     expect(names).toContain("First PerfectMatch");
     expect(names).toContain("Second PerfectMatch");

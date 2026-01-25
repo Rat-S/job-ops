@@ -2,10 +2,10 @@
  * Database connection and initialization.
  */
 
+import { existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { existsSync, mkdirSync } from "fs";
-import { dirname, join } from "path";
 import { getDataDir } from "../config/dataDir.js";
 import * as schema from "./schema.js";
 

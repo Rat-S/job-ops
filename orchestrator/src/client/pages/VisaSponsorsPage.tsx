@@ -76,12 +76,24 @@ export const VisaSponsorsPage: React.FC = () => {
       : false,
   );
 
-  // Fetch status on mount
-  useEffect(() => {
-    fetchStatus();
+  // Fetch organization details
+  const fetchOrgDetails = useCallback(async (orgName: string) => {
+    setIsLoadingDetails(true);
+    setSelectedOrg(orgName);
+    try {
+      const details = await api.getVisaSponsorOrganization(orgName);
+      setOrgDetails(details);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to fetch details";
+      toast.error(message);
+      setOrgDetails([]);
+    } finally {
+      setIsLoadingDetails(false);
+    }
   }, []);
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     setIsLoadingStatus(true);
     try {
       const data = await api.getVisaSponsorStatus();
@@ -93,7 +105,12 @@ export const VisaSponsorsPage: React.FC = () => {
     } finally {
       setIsLoadingStatus(false);
     }
-  };
+  }, []);
+
+  // Fetch status on mount
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
 
   // Search with debounce
   const handleSearch = useCallback(async (query: string) => {
@@ -143,7 +160,7 @@ export const VisaSponsorsPage: React.FC = () => {
       setSelectedOrg(firstOrg);
       fetchOrgDetails(firstOrg);
     }
-  }, [results]);
+  }, [results, fetchOrgDetails, selectedOrg]);
 
   useEffect(() => {
     if (!selectedOrg) {
@@ -169,23 +186,6 @@ export const VisaSponsorsPage: React.FC = () => {
       setIsDetailDrawerOpen(false);
     }
   }, [isDesktop, isDetailDrawerOpen]);
-
-  // Fetch organization details
-  const fetchOrgDetails = async (orgName: string) => {
-    setIsLoadingDetails(true);
-    setSelectedOrg(orgName);
-    try {
-      const details = await api.getVisaSponsorOrganization(orgName);
-      setOrgDetails(details);
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to fetch details";
-      toast.error(message);
-      setOrgDetails([]);
-    } finally {
-      setIsLoadingDetails(false);
-    }
-  };
 
   // Trigger manual update
   const handleUpdate = async () => {
@@ -276,9 +276,9 @@ export const VisaSponsorsPage: React.FC = () => {
           Licensed Routes ({orgDetails.length})
         </div>
         <div className="space-y-2">
-          {orgDetails.map((entry, index) => (
+          {orgDetails.map((entry) => (
             <div
-              key={index}
+              key={`${entry.route}-${entry.typeRating}`}
               className="rounded-lg border border-border/60 bg-muted/20 p-3"
             >
               <div className="flex items-start justify-between gap-2 mb-1">
@@ -355,12 +355,16 @@ export const VisaSponsorsPage: React.FC = () => {
         {/* Search section */}
         <section className="rounded-xl border border-border/60 bg-card/40 p-4">
           <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <label
+              htmlFor="sponsor-search"
+              className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+            >
               Company name
             </label>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
+                id="sponsor-search"
                 placeholder="Search for a company name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -369,6 +373,7 @@ export const VisaSponsorsPage: React.FC = () => {
               />
               {searchQuery && (
                 <button
+                  type="button"
                   onClick={() => setSearchQuery("")}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >

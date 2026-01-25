@@ -1,5 +1,5 @@
 {
-    "$schema": "https://biomejs.dev/schemas/2.3.11/schema.json",
+    "$schema": "https://biomejs.dev/schemas/2.3.12/schema.json",
     "formatter": {
         "indentStyle": "space",
         "indentWidth": 2
@@ -9,5 +9,26 @@
             "**",
             "!!**/dist"
         ]
-    }
+    },
+    "css": {
+        "parser": {
+            "tailwindDirectives": true
+        }
+    },
+    "overrides": [
+        {
+            "includes": [
+                "**/*.test.ts",
+                "**/*.test.tsx",
+                "**/test-utils.ts"
+            ],
+            "linter": {
+                "rules": {
+                    "suspicious": {
+                        "noExplicitAny": "off"
+                    }
+                }
+            }
+        }
+    ]
 }

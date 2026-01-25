@@ -2,8 +2,8 @@
  * Database utility scripts.
  */
 
+import { join } from "node:path";
 import Database from "better-sqlite3";
-import { join } from "path";
 import { getDataDir } from "../config/dataDir.js";
 
 // Database path - can be overridden via env for Docker
@@ -36,7 +36,7 @@ export function clearDatabase(): { jobsDeleted: number; runsDeleted: number } {
  * Delete database file completely (will recreate on next run).
  */
 export function dropDatabase(): void {
-  const { unlinkSync, existsSync } = require("fs");
+  const { unlinkSync, existsSync } = require("node:fs");
 
   if (existsSync(DB_PATH)) {
     unlinkSync(DB_PATH);

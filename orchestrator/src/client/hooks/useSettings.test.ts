@@ -15,7 +15,7 @@ describe("useSettings", () => {
 
   it("fetches settings on mount if not already cached", async () => {
     const mockSettings = { showSponsorInfo: false };
-    (api.getSettings as any).mockResolvedValue(mockSettings);
+    vi.mocked(api.getSettings).mockResolvedValue(mockSettings as any);
 
     const { result } = renderHook(() => useSettings());
 
@@ -31,7 +31,7 @@ describe("useSettings", () => {
   });
 
   it("uses default values when settings are null", async () => {
-    (api.getSettings as any).mockResolvedValue(null);
+    vi.mocked(api.getSettings).mockResolvedValue(null as any);
 
     const { result } = renderHook(() => useSettings());
 
@@ -45,8 +45,8 @@ describe("useSettings", () => {
     const initialSettings = { showSponsorInfo: true };
     const updatedSettings = { showSponsorInfo: false };
 
-    (api.getSettings as any).mockResolvedValueOnce(initialSettings);
-    (api.getSettings as any).mockResolvedValueOnce(updatedSettings);
+    vi.mocked(api.getSettings).mockResolvedValueOnce(initialSettings as any);
+    vi.mocked(api.getSettings).mockResolvedValueOnce(updatedSettings as any);
 
     const { result } = renderHook(() => useSettings());
 
@@ -54,7 +54,7 @@ describe("useSettings", () => {
       expect(result.current.settings).toEqual(initialSettings);
     });
 
-    let refreshed;
+    let refreshed: any;
     await waitFor(async () => {
       refreshed = await result.current.refreshSettings();
     });
@@ -66,7 +66,7 @@ describe("useSettings", () => {
 
   it("handles errors when fetching settings", async () => {
     const mockError = new Error("Failed to fetch");
-    (api.getSettings as any).mockRejectedValue(mockError);
+    vi.mocked(api.getSettings).mockRejectedValue(mockError);
 
     const { result } = renderHook(() => useSettings());
 

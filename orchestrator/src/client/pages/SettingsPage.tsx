@@ -414,7 +414,6 @@ export const SettingsPage: React.FC = () => {
     envSettings,
     defaultResumeProjects,
     profileProjects,
-    maxProjectsTotal,
   } = derived;
 
   const effectiveProfileProjects = rxResumeProjectsOverride ?? profileProjects;

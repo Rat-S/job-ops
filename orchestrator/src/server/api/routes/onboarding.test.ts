@@ -1,5 +1,5 @@
+import type { Server } from "node:http";
 import { RxResumeClient } from "@server/services/rxresume-client.js";
-import type { Server } from "http";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startServer, stopServer } from "./test-utils.js";
 
@@ -171,7 +171,7 @@ describe.sequential("Onboarding API routes", () => {
 /**
  * Creates a minimal valid RxResume v4 schema compliant JSON
  */
-function createMinimalValidResume() {
+function _createMinimalValidResume() {
   return {
     basics: {
       name: "Test User",

@@ -11,8 +11,8 @@ export interface RxResumeResponse {
   id: string;
   name: string;
   slug: string;
-  data: any;
-  [key: string]: any;
+  data: unknown;
+  [key: string]: unknown;
 }
 
 /**
@@ -26,7 +26,7 @@ let lastWorkingKeyIndex = 0;
 async function executeWithKeyRetries(
   url: string,
   options: RequestInit,
-): Promise<any> {
+): Promise<unknown> {
   const rawApiKey = process.env.RXRESUME_API_KEY;
   if (!rawApiKey) {
     throw new Error("RXRESUME_API_KEY not configured in environment");
@@ -42,52 +42,48 @@ async function executeWithKeyRetries(
   for (let attempt = 0; attempt < apiKeys.length; attempt++) {
     const i = (lastWorkingKeyIndex + attempt) % apiKeys.length;
     const apiKey = apiKeys[i];
-    try {
-      const headers = {
-        "x-api-key": apiKey,
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
-        ...(options.headers || {}),
-      } as Record<string, string>;
+    const headers = {
+      "x-api-key": apiKey,
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...(options.headers || {}),
+    } as Record<string, string>;
 
-      const response = await fetch(url, {
-        ...options,
-        headers,
-      });
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
 
-      if (!response.ok) {
-        const errorData = await response
-          .json()
-          .catch(() => ({ message: response.statusText }));
-        const errorMsg = `Reactive Resume API error (${response.status}): ${errorData.message || response.statusText}`;
+    if (!response.ok) {
+      const errorData = (await response
+        .json()
+        .catch(() => ({ message: response.statusText }))) as {
+        message?: string;
+      };
+      const errorMsg = `Reactive Resume API error (${response.status}): ${errorData.message || response.statusText}`;
 
-        // ONLY retry/rotation on 401 Unauthorized
-        if (
-          response.status === 401 &&
-          apiKeys.length > 1 &&
-          attempt < apiKeys.length - 1
-        ) {
-          console.warn(
-            `[RxResume SDK] Key index ${i} was Unauthorized, trying next key...`,
-          );
-          continue;
-        }
-
-        throw new Error(errorMsg);
+      // ONLY retry/rotation on 401 Unauthorized
+      if (
+        response.status === 401 &&
+        apiKeys.length > 1 &&
+        attempt < apiKeys.length - 1
+      ) {
+        console.warn(
+          `[RxResume SDK] Key index ${i} was Unauthorized, trying next key...`,
+        );
+        continue;
       }
 
-      // Success! Cache this key index for future requests
-      lastWorkingKeyIndex = i;
-
-      const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        return response.json();
-      }
-      return response.text();
-    } catch (error) {
-      // If it was already handled by the 401 check above, it won't reach here
-      // because of the 'continue'. This catch is for network errors or unexpected throw.
-      throw error;
+      throw new Error(errorMsg);
     }
+
+    // Success! Cache this key index for future requests
+    lastWorkingKeyIndex = i;
+
+    const contentType = response.headers.get("content-type");
+    if (contentType?.includes("application/json")) {
+      return response.json();
+    }
+    return response.text();
   }
 
   // Unmissable error block if all keys fail
@@ -111,7 +107,7 @@ async function executeWithKeyRetries(
 export async function fetchRxResume(
   path: string,
   options: RequestInit = {},
-): Promise<any> {
+): Promise<unknown> {
   const baseUrl = process.env.RXRESUME_URL || "https://rxresu.me";
   let cleanBaseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
 
@@ -130,7 +126,7 @@ export async function fetchRxResume(
  * Fetch a resume by its ID.
  */
 export async function getResume(id: string): Promise<RxResumeResponse> {
-  return fetchRxResume(`/resume/${id}`);
+  return (await fetchRxResume(`/resume/${id}`)) as RxResumeResponse;
 }
 
 /**
@@ -139,7 +135,7 @@ export async function getResume(id: string): Promise<RxResumeResponse> {
 export async function importResume(payload: {
   name: string;
   slug: string;
-  data: any;
+  data: unknown;
 }): Promise<string> {
   // Validate data against schema before sending
   try {
@@ -151,8 +147,8 @@ export async function importResume(payload: {
 
   // DEBUG: Save payload to file for debugging (temporary)
   try {
-    const fs = await import("fs/promises");
-    const path = await import("path");
+    const fs = await import("node:fs/promises");
+    const path = await import("node:path");
     const debugDir = path.join(process.cwd(), "debug");
     await fs.mkdir(debugDir, { recursive: true });
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -163,10 +159,10 @@ export async function importResume(payload: {
     console.warn("⚠️ Could not save debug file:", debugErr);
   }
 
-  const result = await fetchRxResume("/resume/import", {
+  const result = (await fetchRxResume("/resume/import", {
     method: "POST",
     body: JSON.stringify(payload),
-  });
+  })) as { id: string } | string;
 
   // Reactive Resume returns the full resume object on import in v4+, or just ID in v5.
   return typeof result === "string" ? result : result.id;
@@ -183,7 +179,9 @@ export async function deleteResume(id: string): Promise<void> {
  * Export a resume as PDF. Returns the URL.
  */
 export async function exportResumePdf(id: string): Promise<string> {
-  const result = await fetchRxResume(`/printer/resume/${id}/pdf`);
+  const result = (await fetchRxResume(`/printer/resume/${id}/pdf`)) as {
+    url: string;
+  };
   return result.url;
 }
 
@@ -192,5 +190,8 @@ export async function exportResumePdf(id: string): Promise<string> {
  * According to official OpenAPI spec, the endpoint is /resume/list
  */
 export async function listResumes(): Promise<{ id: string; name: string }[]> {
-  return fetchRxResume("/resume/list");
+  return (await fetchRxResume("/resume/list")) as {
+    id: string;
+    name: string;
+  }[];
 }

@@ -31,7 +31,7 @@ export const DiscoveredPanel: React.FC<DiscoveredPanelProps> = ({
     setMode("decide");
     setIsSkipping(false);
     setIsFinalizing(false);
-  }, [job?.id]);
+  }, []);
 
   const handleSkip = async () => {
     if (!job) return;

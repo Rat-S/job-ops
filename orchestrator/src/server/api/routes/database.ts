@@ -6,7 +6,7 @@ export const databaseRouter = Router();
 /**
  * DELETE /api/database - Clear all data from the database
  */
-databaseRouter.delete("/", async (req: Request, res: Response) => {
+databaseRouter.delete("/", async (_req: Request, res: Response) => {
   try {
     const result = clearDatabase();
 

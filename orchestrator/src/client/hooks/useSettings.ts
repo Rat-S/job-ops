@@ -39,11 +39,15 @@ export function useSettings() {
         .then((data) => {
           settingsCache = data;
           settingsError = null;
-          subscribers.forEach((sub) => sub(data, null));
+          subscribers.forEach((sub) => {
+            sub(data, null);
+          });
         })
         .catch((err) => {
           settingsError = err instanceof Error ? err : new Error(String(err));
-          subscribers.forEach((sub) => sub(settingsCache, settingsError));
+          subscribers.forEach((sub) => {
+            sub(settingsCache, settingsError);
+          });
         })
         .finally(() => {
           isFetching = false;
@@ -58,17 +62,23 @@ export function useSettings() {
   const refreshSettings = async () => {
     isFetching = true;
     settingsError = null;
-    subscribers.forEach((sub) => sub(settingsCache, null));
+    subscribers.forEach((sub) => {
+      sub(settingsCache, null);
+    });
 
     try {
       const data = await api.getSettings();
       settingsCache = data;
       settingsError = null;
-      subscribers.forEach((sub) => sub(data, null));
+      subscribers.forEach((sub) => {
+        sub(data, null);
+      });
       return data;
     } catch (err) {
       settingsError = err instanceof Error ? err : new Error(String(err));
-      subscribers.forEach((sub) => sub(settingsCache, settingsError));
+      subscribers.forEach((sub) => {
+        sub(settingsCache, settingsError);
+      });
       throw settingsError;
     } finally {
       isFetching = false;

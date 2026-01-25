@@ -4,10 +4,10 @@
  * Spawns the extractor as a child process and reads its output dataset.
  */
 
-import { spawn } from "child_process";
-import { mkdir, readdir, readFile, rm } from "fs/promises";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { spawn } from "node:child_process";
+import { mkdir, readdir, readFile, rm } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { CreateJobInput } from "../../shared/types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -192,7 +192,7 @@ function cleanHtml(html: string): string {
 
   // Limit length to avoid blowing up AI context
   if (text.length > 8000) {
-    text = text.substring(0, 8000) + "...";
+    text = `${text.substring(0, 8000)}...`;
   }
 
   return text;
@@ -220,7 +220,7 @@ async function fetchJobDescription(url: string): Promise<string | null> {
     };
 
     if (cookieParts.length > 0) {
-      headers["Cookie"] = cookieParts.join("; ");
+      headers.Cookie = cookieParts.join("; ");
     }
 
     const response = await fetch(url, {
@@ -272,8 +272,7 @@ function isAuthErrorResponse(status: number, bodyText: string): boolean {
       message?: string;
     };
     if (parsed?.errorType === "expired") return true;
-    if (parsed?.message && parsed.message.toLowerCase().includes("expired"))
-      return true;
+    if (parsed?.message?.toLowerCase().includes("expired")) return true;
   } catch {
     // Ignore parse errors
   }
@@ -413,7 +412,7 @@ export async function fetchUkVisaJobsPage(
   let data: UkVisaJobsApiResponse;
   try {
     data = JSON.parse(text) as UkVisaJobsApiResponse;
-  } catch (error) {
+  } catch (_error) {
     throw new Error("UK Visa Jobs API returned an invalid response.");
   }
 

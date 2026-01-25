@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -120,7 +120,7 @@ export const UkVisaJobsPage: React.FC = () => {
 
   useEffect(() => {
     setSelectedJobIds(new Set());
-  }, [results]);
+  }, []);
 
   const selectedJob = useMemo(
     () =>
@@ -431,10 +431,14 @@ export const UkVisaJobsPage: React.FC = () => {
             onSubmit={handleSearch}
           >
             <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <label
+                htmlFor="uk-visa-search"
+                className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+              >
                 Job title search term
               </label>
               <Input
+                id="uk-visa-search"
                 value={searchTermInput}
                 onChange={(event) => setSearchTermInput(event.target.value)}
                 placeholder="e.g. data analyst"
@@ -569,27 +573,12 @@ export const UkVisaJobsPage: React.FC = () => {
                     return (
                       <div
                         key={key}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => handleSelectJob(key)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            handleSelectJob(key);
-                          }
-                        }}
                         className={cn(
-                          "flex w-full items-start gap-4 px-4 py-3 text-left transition-colors",
+                          "flex w-full items-start gap-4 px-4 py-3 transition-colors",
                           isSelected ? "bg-muted/40" : "hover:bg-muted/30",
                         )}
-                        aria-pressed={isSelected}
                       >
-                        <div
-                          className="mt-1"
-                          onClick={(event) => event.stopPropagation()}
-                          onKeyDown={(event) => event.stopPropagation()}
-                          role="presentation"
-                        >
+                        <div className="mt-1 shrink-0">
                           <Checkbox
                             checked={isChecked}
                             onCheckedChange={(checked) => {
@@ -606,60 +595,67 @@ export const UkVisaJobsPage: React.FC = () => {
                             aria-label={`Select ${job.title}`}
                           />
                         </div>
-                        <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-muted/30">
-                          <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        </span>
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <div className="space-y-1">
-                            <div className="truncate text-sm font-semibold">
-                              {job.title}
+                        <button
+                          type="button"
+                          onClick={() => handleSelectJob(key)}
+                          className="flex flex-1 items-start gap-4 text-left"
+                          aria-pressed={isSelected}
+                        >
+                          <span className="mt-1 flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-muted/30 shrink-0">
+                            <Briefcase className="h-4 w-4 text-muted-foreground" />
+                          </span>
+                          <div className="min-w-0 flex-1 space-y-2">
+                            <div className="space-y-1">
+                              <div className="truncate text-sm font-semibold">
+                                {job.title}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {job.employer}
+                              </div>
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {job.employer}
+                              {description}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                              {job.location && (
+                                <span className="flex items-center gap-1">
+                                  <MapPin className="h-3.5 w-3.5" />
+                                  {job.location}
+                                </span>
+                              )}
+                              {job.salary && (
+                                <span className="flex items-center gap-1">
+                                  <DollarSign className="h-3.5 w-3.5" />
+                                  {job.salary}
+                                </span>
+                              )}
+                              {job.deadline && (
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                  {formatDate(job.deadline)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {job.jobType && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[11px] uppercase tracking-wide"
+                                >
+                                  {job.jobType}
+                                </Badge>
+                              )}
+                              {job.jobLevel && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[11px] uppercase tracking-wide"
+                                >
+                                  {job.jobLevel}
+                                </Badge>
+                              )}
                             </div>
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {description}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                            {job.location && (
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-3.5 w-3.5" />
-                                {job.location}
-                              </span>
-                            )}
-                            {job.salary && (
-                              <span className="flex items-center gap-1">
-                                <DollarSign className="h-3.5 w-3.5" />
-                                {job.salary}
-                              </span>
-                            )}
-                            {job.deadline && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3.5 w-3.5" />
-                                {formatDate(job.deadline)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {job.jobType && (
-                              <Badge
-                                variant="outline"
-                                className="text-[11px] uppercase tracking-wide"
-                              >
-                                {job.jobType}
-                              </Badge>
-                            )}
-                            {job.jobLevel && (
-                              <Badge
-                                variant="outline"
-                                className="text-[11px] uppercase tracking-wide"
-                              >
-                                {job.jobLevel}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
+                        </button>
                       </div>
                     );
                   })}

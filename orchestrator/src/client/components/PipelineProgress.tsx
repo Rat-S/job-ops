@@ -121,7 +121,6 @@ export const PipelineProgress: React.FC<PipelineProgressProps> = ({
       case "completed":
       case "failed":
         return 100;
-      case "idle":
       default:
         return 0;
     }

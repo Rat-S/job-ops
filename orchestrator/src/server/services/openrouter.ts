@@ -14,7 +14,7 @@ export interface JsonSchemaDefinition {
   };
 }
 
-export interface OpenRouterRequestOptions<T> {
+export interface OpenRouterRequestOptions<_T> {
   /** The model to use (e.g., 'google/gemini-3-flash-preview') */
   model: string;
   /** The prompt messages to send */
@@ -40,6 +40,11 @@ export interface OpenRouterError {
 }
 
 export type OpenRouterResponse<T> = OpenRouterResult<T> | OpenRouterError;
+
+interface OpenRouterApiError extends Error {
+  status?: number;
+  body?: string;
+}
 
 /**
  * Call OpenRouter API with structured JSON output.
@@ -100,9 +105,11 @@ export async function callOpenRouter<T>(
       if (!response.ok) {
         // Throw error with status to allow specific retries
         const errorBody = await response.text().catch(() => "No error body");
-        const err = new Error(`OpenRouter API error: ${response.status}`);
-        (err as any).status = response.status;
-        (err as any).body = errorBody;
+        const err = new Error(
+          `OpenRouter API error: ${response.status}`,
+        ) as OpenRouterApiError;
+        err.status = response.status;
+        err.body = errorBody;
         throw err;
       }
 
@@ -119,7 +126,7 @@ export async function callOpenRouter<T>(
       return { success: true, data: parsed };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const status = (error as any).status;
+      const status = (error as OpenRouterApiError).status;
 
       // Retry on:
       // 1. Parsing errors (AI returned malformed JSON)

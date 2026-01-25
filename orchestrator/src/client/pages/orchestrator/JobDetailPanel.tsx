@@ -51,7 +51,6 @@ interface JobDetailPanelProps {
   selectedJob: Job | null;
   onSelectJobId: (jobId: string | null) => void;
   onJobUpdated: () => Promise<void>;
-  onSetActiveTab: (tab: FilterTab) => void;
 }
 
 export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
@@ -60,7 +59,6 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   selectedJob,
   onSelectJobId,
   onJobUpdated,
-  onSetActiveTab,
 }) => {
   const [detailTab, setDetailTab] = useState<
     "overview" | "tailoring" | "description"
@@ -77,7 +75,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   useEffect(() => {
     setHasUnsavedTailoring(false);
     saveTailoringRef.current = null;
-  }, [selectedJob?.id]);
+  }, []);
 
   const description = useMemo(() => {
     if (!selectedJob?.jobDescription) return "No description available.";
@@ -94,7 +92,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     }
     setIsEditingDescription(false);
     setEditedDescription(selectedJob.jobDescription || "");
-  }, [selectedJob?.id]);
+  }, [selectedJob?.id, selectedJob]);
 
   useEffect(() => {
     if (!selectedJob) return;

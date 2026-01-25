@@ -2,11 +2,11 @@
  * Express app factory (useful for tests).
  */
 
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import cors from "cors";
 import express from "express";
-import { readFile } from "fs/promises";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
 import { apiRouter } from "./api/index.js";
 import { getDataDir } from "./config/dataDir.js";
 

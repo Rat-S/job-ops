@@ -58,55 +58,67 @@ export const OrchestratorPage: React.FC = () => {
 
   // Sync searchQuery with URL
   const searchQuery = searchParams.get("q") || "";
-  const setSearchQuery = (q: string) => {
-    setSearchParams(
-      (prev) => {
-        if (q) prev.set("q", q);
-        else prev.delete("q");
-        return prev;
-      },
-      { replace: true },
-    );
-  };
+  const setSearchQuery = useCallback(
+    (q: string) => {
+      setSearchParams(
+        (prev) => {
+          if (q) prev.set("q", q);
+          else prev.delete("q");
+          return prev;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   // Sync sourceFilter with URL
   const sourceFilter =
     (searchParams.get("source") as JobSource | "all") || "all";
-  const setSourceFilter = (source: JobSource | "all") => {
-    setSearchParams(
-      (prev) => {
-        if (source !== "all") prev.set("source", source);
-        else prev.delete("source");
-        return prev;
-      },
-      { replace: true },
-    );
-  };
+  const setSourceFilter = useCallback(
+    (source: JobSource | "all") => {
+      setSearchParams(
+        (prev) => {
+          if (source !== "all") prev.set("source", source);
+          else prev.delete("source");
+          return prev;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   // Sync sort with URL
   const sort = useMemo((): JobSort => {
     const s = searchParams.get("sort");
     if (!s) return DEFAULT_SORT;
     const [key, direction] = s.split("-");
-    return { key: key as any, direction: direction as any };
+    return {
+      key: key as JobSort["key"],
+      direction: direction as JobSort["direction"],
+    };
   }, [searchParams]);
 
-  const setSort = (newSort: JobSort) => {
-    setSearchParams(
-      (prev) => {
-        if (
-          newSort.key === DEFAULT_SORT.key &&
-          newSort.direction === DEFAULT_SORT.direction
-        ) {
-          prev.delete("sort");
-        } else {
-          prev.set("sort", `${newSort.key}-${newSort.direction}`);
-        }
-        return prev;
-      },
-      { replace: true },
-    );
-  };
+  const setSort = useCallback(
+    (newSort: JobSort) => {
+      setSearchParams(
+        (prev) => {
+          if (
+            newSort.key === DEFAULT_SORT.key &&
+            newSort.direction === DEFAULT_SORT.direction
+          ) {
+            prev.delete("sort");
+          } else {
+            prev.set("sort", `${newSort.key}-${newSort.direction}`);
+          }
+          return prev;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   // Effect to sync URL if it was invalid
   useEffect(() => {
@@ -125,13 +137,19 @@ export const OrchestratorPage: React.FC = () => {
       : false,
   );
 
-  const setActiveTab = (newTab: FilterTab) => {
-    navigateWithContext(newTab, selectedJobId);
-  };
+  const setActiveTab = useCallback(
+    (newTab: FilterTab) => {
+      navigateWithContext(newTab, selectedJobId);
+    },
+    [navigateWithContext, selectedJobId],
+  );
 
-  const handleSelectJobId = (id: string | null) => {
-    navigateWithContext(activeTab, id);
-  };
+  const handleSelectJobId = useCallback(
+    (id: string | null) => {
+      navigateWithContext(activeTab, id);
+    },
+    [navigateWithContext, activeTab],
+  );
 
   const { settings } = useSettings();
   const {
@@ -229,7 +247,14 @@ export const OrchestratorPage: React.FC = () => {
         navigateWithContext(activeTab, activeJobs[0].id, true);
       }
     }
-  }, [activeJobs, selectedJobId, isDesktop, activeTab, navigateWithContext]);
+  }, [
+    activeJobs,
+    selectedJobId,
+    isDesktop,
+    activeTab,
+    navigateWithContext,
+    handleSelectJobId,
+  ]);
 
   useEffect(() => {
     if (!selectedJobId) {
