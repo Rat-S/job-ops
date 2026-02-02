@@ -184,6 +184,34 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     : null;
   const showSponsorInfo = overrideShowSponsorInfo ?? defaultShowSponsorInfo;
 
+  // Backup settings
+  const defaultBackupEnabled = false;
+  const overrideBackupEnabledRaw = overrides.backupEnabled;
+  const overrideBackupEnabled = overrideBackupEnabledRaw
+    ? overrideBackupEnabledRaw === "true" || overrideBackupEnabledRaw === "1"
+    : null;
+  const backupEnabled = overrideBackupEnabled ?? defaultBackupEnabled;
+
+  const defaultBackupHour = 2;
+  const overrideBackupHourRaw = overrides.backupHour;
+  const parsedBackupHour = overrideBackupHourRaw
+    ? parseInt(overrideBackupHourRaw, 10)
+    : NaN;
+  const overrideBackupHour = Number.isNaN(parsedBackupHour)
+    ? null
+    : Math.min(23, Math.max(0, parsedBackupHour));
+  const backupHour = overrideBackupHour ?? defaultBackupHour;
+
+  const defaultBackupMaxCount = 5;
+  const overrideBackupMaxCountRaw = overrides.backupMaxCount;
+  const parsedBackupMaxCount = overrideBackupMaxCountRaw
+    ? parseInt(overrideBackupMaxCountRaw, 10)
+    : NaN;
+  const overrideBackupMaxCount = Number.isNaN(parsedBackupMaxCount)
+    ? null
+    : Math.min(5, Math.max(1, parsedBackupMaxCount));
+  const backupMaxCount = overrideBackupMaxCount ?? defaultBackupMaxCount;
+
   return {
     ...envSettings,
     model,
@@ -242,6 +270,15 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
     showSponsorInfo,
     defaultShowSponsorInfo,
     overrideShowSponsorInfo,
+    backupEnabled,
+    defaultBackupEnabled,
+    overrideBackupEnabled,
+    backupHour,
+    defaultBackupHour,
+    overrideBackupHour,
+    backupMaxCount,
+    defaultBackupMaxCount,
+    overrideBackupMaxCount,
   } as AppSettings;
 }
 
