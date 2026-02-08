@@ -1,5 +1,13 @@
+import * as PopoverPrimitive from "@radix-ui/react-popover";
+import {
+  formatCountryLabel,
+  getCompatibleSourcesForCountry,
+  isSourceAllowedForCountry,
+  normalizeCountryKey,
+  SUPPORTED_COUNTRY_KEYS,
+} from "@shared/location-support.js";
 import type { AppSettings, JobSource } from "@shared/types";
-import { Loader2, Sparkles, X } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Sparkles, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -10,10 +18,25 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
-import { sourceLabel } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn, sourceLabel } from "@/lib/utils";
 import {
   AUTOMATIC_PRESETS,
   type AutomaticPresetId,
@@ -30,6 +53,7 @@ interface AutomaticRunTabProps {
   enabledSources: JobSource[];
   pipelineSources: JobSource[];
   onToggleSource: (source: JobSource, checked: boolean) => void;
+  onSetPipelineSources: (sources: JobSource[]) => void;
   isPipelineRunning: boolean;
   onSaveAndRun: (values: AutomaticRunValues) => Promise<void>;
 }
@@ -39,12 +63,14 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   minSuitabilityScore: 50,
   searchTerms: ["web developer"],
   runBudget: 200,
+  country: "united kingdom",
 };
 
 interface AutomaticRunFormValues {
   topN: string;
   minSuitabilityScore: string;
   runBudget: string;
+  country: string;
   searchTerms: string[];
   searchTermDraft: string;
 }
@@ -94,17 +120,20 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   enabledSources,
   pipelineSources,
   onToggleSource,
+  onSetPipelineSources,
   isPipelineRunning,
   onSaveAndRun,
 }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [countryMenuOpen, setCountryMenuOpen] = useState(false);
   const { watch, reset, setValue, getValues } = useForm<AutomaticRunFormValues>(
     {
       defaultValues: {
         topN: String(DEFAULT_VALUES.topN),
         minSuitabilityScore: String(DEFAULT_VALUES.minSuitabilityScore),
         runBudget: String(DEFAULT_VALUES.runBudget),
+        country: DEFAULT_VALUES.country,
         searchTerms: DEFAULT_VALUES.searchTerms,
         searchTermDraft: "",
       },
@@ -114,6 +143,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const topNInput = watch("topN");
   const minScoreInput = watch("minSuitabilityScore");
   const runBudgetInput = watch("runBudget");
+  const countryInput = watch("country");
   const searchTerms = watch("searchTerms");
   const searchTermDraft = watch("searchTermDraft");
 
@@ -129,14 +159,22 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       settings?.gradcrackerMaxJobsPerTerm ??
       settings?.ukvisajobsMaxJobs ??
       DEFAULT_VALUES.runBudget;
+    const rememberedCountry = normalizeCountryKey(
+      settings?.jobspyCountryIndeed ??
+        settings?.jobspyLocation ??
+        DEFAULT_VALUES.country,
+    );
+
     reset({
       topN: String(topN),
       minSuitabilityScore: String(minSuitabilityScore),
       runBudget: String(rememberedRunBudget),
+      country: rememberedCountry || DEFAULT_VALUES.country,
       searchTerms: settings?.searchTerms ?? DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
     });
     setAdvancedOpen(false);
+    setCountryMenuOpen(false);
   }, [open, settings, reset]);
 
   const addSearchTerms = (input: string) => {
@@ -151,6 +189,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   };
 
   const values = useMemo<AutomaticRunValues>(() => {
+    const normalizedCountry = normalizeCountryKey(countryInput);
     return {
       topN: toNumber(topNInput, 1, 50, DEFAULT_VALUES.topN),
       minSuitabilityScore: toNumber(
@@ -159,15 +198,54 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         100,
         DEFAULT_VALUES.minSuitabilityScore,
       ),
-      searchTerms,
       runBudget: toNumber(runBudgetInput, 1, 1000, DEFAULT_VALUES.runBudget),
+      country: normalizedCountry || DEFAULT_VALUES.country,
+      searchTerms,
     };
-  }, [topNInput, minScoreInput, searchTerms, runBudgetInput]);
+  }, [topNInput, minScoreInput, runBudgetInput, countryInput, searchTerms]);
+
+  const compatibleEnabledSources = useMemo(
+    () =>
+      enabledSources.filter((source) =>
+        isSourceAllowedForCountry(source, values.country),
+      ),
+    [enabledSources, values.country],
+  );
+
+  const compatiblePipelineSources = useMemo(
+    () => getCompatibleSourcesForCountry(pipelineSources, values.country),
+    [pipelineSources, values.country],
+  );
+
+  useEffect(() => {
+    const filtered = getCompatibleSourcesForCountry(
+      pipelineSources,
+      values.country,
+    );
+    if (filtered.length === pipelineSources.length) return;
+    if (filtered.length > 0) {
+      onSetPipelineSources(filtered);
+      return;
+    }
+    if (compatibleEnabledSources.length > 0) {
+      onSetPipelineSources([compatibleEnabledSources[0]]);
+    }
+  }, [
+    compatibleEnabledSources,
+    onSetPipelineSources,
+    pipelineSources,
+    values.country,
+  ]);
 
   const estimate = useMemo(
-    () => calculateAutomaticEstimate({ values, sources: pipelineSources }),
-    [values, pipelineSources],
+    () =>
+      calculateAutomaticEstimate({
+        values,
+        sources: compatiblePipelineSources,
+      }),
+    [values, compatiblePipelineSources],
   );
+
   const activePreset = useMemo<AutomaticPresetSelection>(
     () => getPresetSelection(values),
     [values],
@@ -176,7 +254,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const runDisabled =
     isPipelineRunning ||
     isSaving ||
-    pipelineSources.length === 0 ||
+    compatiblePipelineSources.length === 0 ||
     values.searchTerms.length === 0;
 
   const applyPreset = (presetId: AutomaticPresetId) => {
@@ -200,6 +278,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       setIsSaving(false);
     }
   };
+
+  const countryOptions = SUPPORTED_COUNTRY_KEYS;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -241,6 +321,73 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                   Custom
                 </Button>
               </div>
+            </div>
+
+            <div className="grid items-center gap-3 md:grid-cols-[120px_1fr]">
+              <Label className="text-base font-semibold">Country</Label>
+              <Popover open={countryMenuOpen} onOpenChange={setCountryMenuOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={countryMenuOpen}
+                    aria-label={formatCountryLabel(values.country)}
+                    className="h-9 w-full justify-between md:max-w-xs"
+                  >
+                    {formatCountryLabel(values.country)}
+                    <ChevronsUpDown className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverPrimitive.Content
+                  align="start"
+                  sideOffset={4}
+                  className={cn(
+                    "z-50 w-[320px] rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none",
+                    "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+                    "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+                    "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2",
+                    "data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+                    "origin-[--radix-popover-content-transform-origin]",
+                  )}
+                >
+                  <Command loop>
+                    <CommandInput placeholder="Search country..." />
+                    <CommandList
+                      className="max-h-56"
+                      onWheelCapture={(event) => event.stopPropagation()}
+                    >
+                      <CommandEmpty>No matching countries.</CommandEmpty>
+                      <CommandGroup>
+                        {countryOptions.map((country) => {
+                          const selected = values.country === country;
+                          const label = formatCountryLabel(country);
+                          return (
+                            <CommandItem
+                              key={country}
+                              value={`${country} ${label}`}
+                              onSelect={() => {
+                                setValue("country", country, {
+                                  shouldDirty: true,
+                                });
+                                setCountryMenuOpen(false);
+                              }}
+                            >
+                              {label}
+                              <Check
+                                className={cn(
+                                  "ml-auto h-4 w-4",
+                                  selected ? "opacity-100" : "opacity-0",
+                                )}
+                              />
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverPrimitive.Content>
+              </Popover>
             </div>
             <Separator />
             <Accordion
@@ -372,25 +519,49 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         <Card>
           <CardHeader className="pb-3">
             <CardTitle>
-              Sources ({pipelineSources.length}/{enabledSources.length})
+              Sources ({compatiblePipelineSources.length}/
+              {compatibleEnabledSources.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            {enabledSources.map((source) => (
-              <Button
-                key={source}
-                type="button"
-                size="sm"
-                variant={
-                  pipelineSources.includes(source) ? "default" : "outline"
+            <TooltipProvider>
+              {enabledSources.map((source) => {
+                const allowed = isSourceAllowedForCountry(
+                  source,
+                  values.country,
+                );
+                const selected = compatiblePipelineSources.includes(source);
+                const disabledReason = `${sourceLabel[source]} is available only when country is United Kingdom.`;
+
+                const button = (
+                  <Button
+                    key={source}
+                    type="button"
+                    size="sm"
+                    variant={selected ? "default" : "outline"}
+                    disabled={!allowed}
+                    onClick={() => onToggleSource(source, !selected)}
+                  >
+                    {sourceLabel[source]}
+                  </Button>
+                );
+
+                if (allowed) {
+                  return button;
                 }
-                onClick={() =>
-                  onToggleSource(source, !pipelineSources.includes(source))
-                }
-              >
-                {sourceLabel[source]}
-              </Button>
-            ))}
+
+                return (
+                  <Tooltip key={source}>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex" title={disabledReason}>
+                        {button}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{disabledReason}</TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </TooltipProvider>
           </CardContent>
         </Card>
       </div>

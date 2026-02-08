@@ -225,6 +225,87 @@ describe("discoverJobsStep", () => {
     expect(progress.crawlingJobPagesProcessed).toBe(18);
   });
 
+  it("skips UK-only sources for non-UK country and runs compatible sources", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const jobSpy = await import("../../services/jobspy");
+    const crawler = await import("../../services/crawler");
+    const ukVisa = await import("../../services/ukvisajobs");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united states",
+    } as any);
+
+    vi.mocked(jobSpy.runJobSpy).mockResolvedValue({
+      success: true,
+      jobs: [
+        {
+          source: "linkedin",
+          title: "Engineer",
+          employer: "ACME",
+          jobUrl: "https://example.com/job",
+        },
+      ],
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: {
+        ...config,
+        sources: ["linkedin", "gradcracker", "ukvisajobs"],
+      },
+    });
+
+    expect(result.discoveredJobs).toHaveLength(1);
+    expect(vi.mocked(jobSpy.runJobSpy)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(crawler.runCrawler)).not.toHaveBeenCalled();
+    expect(vi.mocked(ukVisa.runUkVisaJobs)).not.toHaveBeenCalled();
+  });
+
+  it("throws when all requested sources are incompatible for country", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united states",
+    } as any);
+
+    await expect(
+      discoverJobsStep({
+        mergedConfig: {
+          ...config,
+          sources: ["gradcracker", "ukvisajobs"],
+        },
+      }),
+    ).rejects.toThrow(
+      "No compatible sources for selected country: United States",
+    );
+  });
+
+  it("does not throw when no sources are requested", async () => {
+    const settingsRepo = await import("../../repositories/settings");
+    const jobSpy = await import("../../services/jobspy");
+    const crawler = await import("../../services/crawler");
+    const ukVisa = await import("../../services/ukvisajobs");
+
+    vi.mocked(settingsRepo.getAllSettings).mockResolvedValue({
+      searchTerms: JSON.stringify(["engineer"]),
+      jobspyCountryIndeed: "united states",
+    } as any);
+
+    const result = await discoverJobsStep({
+      mergedConfig: {
+        ...config,
+        sources: [],
+      },
+    });
+
+    expect(result.discoveredJobs).toEqual([]);
+    expect(result.sourceErrors).toEqual([]);
+    expect(vi.mocked(jobSpy.runJobSpy)).not.toHaveBeenCalled();
+    expect(vi.mocked(crawler.runCrawler)).not.toHaveBeenCalled();
+    expect(vi.mocked(ukVisa.runUkVisaJobs)).not.toHaveBeenCalled();
+  });
+
   it("tracks source completion counters across source transitions", async () => {
     const settingsRepo = await import("../../repositories/settings");
     const jobSpy = await import("../../services/jobspy");
