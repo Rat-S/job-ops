@@ -6,7 +6,9 @@ import {
 } from "@client/pages/settings/resume-projects-state";
 import type { ResumeProjectsSettingsInput } from "@shared/settings-schema.js";
 import type { ResumeProjectCatalogItem, RxResumeMode } from "@shared/types.js";
+import { AlertCircle, AlertTriangle } from "lucide-react";
 import type React from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -26,6 +28,7 @@ type VersionValidationState = {
   checked: boolean;
   valid: boolean;
   message?: string | null;
+  status?: number | null;
 };
 
 type ProjectSelectionConfig = {
@@ -107,6 +110,11 @@ function renderStatusPill(label: string, state: VersionValidationState) {
   );
 }
 
+function isAvailabilityWarning(state?: VersionValidationState): boolean {
+  const status = state?.status ?? null;
+  return status === 0 || (typeof status === "number" && status >= 500);
+}
+
 export const ReactiveResumeConfigPanel: React.FC<
   ReactiveResumeConfigPanelProps
 > = ({
@@ -126,6 +134,14 @@ export const ReactiveResumeConfigPanel: React.FC<
     projectSelection && hasRxResumeAccess,
   );
   const selectedValidationStatus = validationStatuses?.[mode];
+  const showInlineValidationAlert = Boolean(
+    selectedValidationStatus?.checked &&
+      !selectedValidationStatus.valid &&
+      selectedValidationStatus.message,
+  );
+  const selectedValidationIsWarning =
+    showInlineValidationAlert &&
+    isAvailabilityWarning(selectedValidationStatus);
   const handleModeChange = (value: string) =>
     onModeChange(value === "v4" ? "v4" : "v5");
 
@@ -155,6 +171,30 @@ export const ReactiveResumeConfigPanel: React.FC<
         <div className="flex flex-wrap items-center gap-2 text-xs w-full justify-between">
           {renderStatusPill(`${mode} status`, selectedValidationStatus)}
         </div>
+      ) : null}
+
+      {showInlineValidationAlert && selectedValidationStatus?.message ? (
+        <Alert
+          variant={selectedValidationIsWarning ? "default" : "destructive"}
+          className={
+            selectedValidationIsWarning
+              ? "border-amber-200 bg-amber-50 text-amber-950 [&>svg]:text-amber-700"
+              : undefined
+          }
+        >
+          {selectedValidationIsWarning ? (
+            <AlertTriangle className="h-4 w-4" />
+          ) : (
+            <AlertCircle className="h-4 w-4" />
+          )}
+          <AlertTitle>
+            Reactive Resume {mode.toUpperCase()}{" "}
+            {selectedValidationIsWarning ? "warning" : "error"}
+          </AlertTitle>
+          <AlertDescription>
+            {selectedValidationStatus.message}
+          </AlertDescription>
+        </Alert>
       ) : null}
 
       {mode === "v5" ? (

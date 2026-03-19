@@ -117,12 +117,41 @@ export const getRxResumeMissingCredentialLabels = (input: {
 
 export const toRxResumeValidationPayload = (
   draft: RxResumeCredentialDrafts,
-) => ({
-  email: draft.email || undefined,
-  baseUrl: draft.baseUrl || undefined,
-  password: draft.password || undefined,
-  apiKey: draft.apiKey || undefined,
-});
+  options?: {
+    preserveBlankFields?: Array<keyof RxResumeCredentialDrafts>;
+  },
+) => {
+  const preserveBlankFields = new Set(options?.preserveBlankFields ?? []);
+  return {
+    email: preserveBlankFields.has("email")
+      ? draft.email
+      : draft.email || undefined,
+    baseUrl: preserveBlankFields.has("baseUrl")
+      ? draft.baseUrl
+      : draft.baseUrl || undefined,
+    password: preserveBlankFields.has("password")
+      ? draft.password
+      : draft.password || undefined,
+    apiKey: preserveBlankFields.has("apiKey")
+      ? draft.apiKey
+      : draft.apiKey || undefined,
+  };
+};
+
+export const isRxResumeBlockingValidationFailure = (
+  validation: ValidationResult,
+): boolean =>
+  !validation.valid &&
+  typeof validation.status === "number" &&
+  validation.status >= 400 &&
+  validation.status < 500;
+
+export const isRxResumeAvailabilityValidationFailure = (
+  validation: ValidationResult,
+): boolean =>
+  !validation.valid &&
+  (validation.status === 0 ||
+    (typeof validation.status === "number" && validation.status >= 500));
 
 export const buildRxResumeSettingsUpdate = (
   mode: RxResumeMode,
@@ -149,6 +178,7 @@ type ValidateAndMaybePersistRxResumeModeInput<TSettings> = {
   ) => Promise<ValidationResult>;
   persist?: (update: Partial<UpdateSettingsInput>) => Promise<TSettings>;
   persistOnSuccess?: boolean;
+  skipPrecheck?: boolean;
   getPrecheckMessage?: (
     failure: Exclude<RxResumeCredentialPrecheckFailure, null>,
   ) => string;
@@ -172,6 +202,7 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
     validate,
     persist,
     persistOnSuccess = false,
+    skipPrecheck = false,
     getPrecheckMessage = (failure) => RXRESUME_PRECHECK_MESSAGES[failure],
     getValidationErrorMessage = (error) =>
       error instanceof Error ? error.message : "RxResume validation failed",
@@ -181,16 +212,19 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
         : "Failed to save RxResume settings",
   } = input;
 
-  const precheckFailure = getRxResumeCredentialPrecheckFailure({
-    mode,
-    stored,
-    draft,
-  });
-  if (precheckFailure) {
+  const precheckFailure = skipPrecheck
+    ? null
+    : getRxResumeCredentialPrecheckFailure({
+        mode,
+        stored,
+        draft,
+      });
+  if (precheckFailure !== null) {
     return {
       validation: {
         valid: false,
         message: getPrecheckMessage(precheckFailure),
+        status: 400,
       },
       precheckFailure,
       updatedSettings: null,
@@ -208,6 +242,7 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
       validation: {
         valid: false,
         message: getValidationErrorMessage(error, mode),
+        status: 0,
       },
       precheckFailure: null,
       updatedSettings: null,
@@ -219,6 +254,7 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
       validation: {
         valid: validation.valid,
         message: validation.valid ? null : (validation.message ?? null),
+        status: validation.valid ? null : (validation.status ?? null),
       },
       precheckFailure: null,
       updatedSettings: null,
@@ -233,6 +269,7 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
       validation: {
         valid: true,
         message: null,
+        status: null,
       },
       precheckFailure: null,
       updatedSettings,
@@ -242,6 +279,7 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
       validation: {
         valid: false,
         message: getPersistErrorMessage(error, mode),
+        status: 0,
       },
       precheckFailure: null,
       updatedSettings: null,

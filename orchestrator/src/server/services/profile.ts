@@ -38,7 +38,9 @@ export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
     logger.info("Fetching profile from Reactive Resume", {
       resumeId: rxresumeBaseResumeId,
     });
-    const resume = await getResume(rxresumeBaseResumeId);
+    const resume = forceRefresh
+      ? await getResume(rxresumeBaseResumeId, { forceRefresh: true })
+      : await getResume(rxresumeBaseResumeId);
 
     if (!resume.data || typeof resume.data !== "object") {
       throw new Error("Resume data is empty or invalid");
