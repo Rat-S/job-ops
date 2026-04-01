@@ -146,6 +146,7 @@ describe("InProgressBoardPage", () => {
           actor: "user",
           eventType: "status_update",
           eventLabel: "Moved to Offer",
+          reasonCode: "in_progress_board_drag",
         },
       });
     });
