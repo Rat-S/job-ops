@@ -72,33 +72,35 @@ jobs:
             TAG_EXISTS_ON_ORIGIN=false
           fi
 
-          if [ "$CURRENT_VERSION" = "$RELEASE_VERSION" ] && { [ "$TAG_EXISTS_LOCALLY" = true ] || [ "$TAG_EXISTS_ON_ORIGIN" = true ]; }; then
-            echo "Release v$RELEASE_VERSION already exists; skipping remaining release steps."
-            echo "release_already_exists=true" >> "$GITHUB_OUTPUT"
-            exit 0
+          if [ "$TAG_EXISTS_LOCALLY" = true ] || [ "$TAG_EXISTS_ON_ORIGIN" = true ]; then
+            echo "tag_already_exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag_already_exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-          echo "release_already_exists=false" >> "$GITHUB_OUTPUT"
-
           if [ "$TAG_EXISTS_LOCALLY" = true ] || [ "$TAG_EXISTS_ON_ORIGIN" = true ]; then
-            echo "Tag v$RELEASE_VERSION already exists, but orchestrator/package.json is still at $CURRENT_VERSION" >&2
-            exit 1
+            if [ "$CURRENT_VERSION" = "$RELEASE_VERSION" ]; then
+              echo "Release tag v$RELEASE_VERSION already exists; skipping version bump and tag creation."
+            else
+              echo "Tag v$RELEASE_VERSION already exists, but orchestrator/package.json is still at $CURRENT_VERSION" >&2
+              exit 1
+            fi
           fi
 
       - name: Bump orchestrator version files
-        if: steps.validate.outputs.release_already_exists != 'true' && steps.validate.outputs.version_already_set != 'true'
+        if: steps.validate.outputs.version_already_set != 'true'
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: node ./scripts/set-orchestrator-version.mjs "$RELEASE_VERSION"
 
       - name: Generate docs version
-        if: steps.validate.outputs.release_already_exists != 'true' && steps.validate.outputs.version_already_set != 'true'
+        if: steps.validate.outputs.version_already_set != 'true'
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: npm run docs:version -- "$RELEASE_VERSION"
 
       - name: Format generated docs files
-        if: steps.validate.outputs.release_already_exists != 'true' && steps.validate.outputs.version_already_set != 'true'
+        if: steps.validate.outputs.version_already_set != 'true'
         run: |
           ./orchestrator/node_modules/.bin/biome check --write \
             docs-site/versions.json \
@@ -106,7 +108,7 @@ jobs:
             docs-site/versioned_sidebars
 
       - name: Commit and push version bump
-        if: steps.validate.outputs.release_already_exists != 'true' && steps.validate.outputs.version_already_set != 'true'
+        if: steps.validate.outputs.version_already_set != 'true'
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
@@ -123,7 +125,7 @@ jobs:
           git push origin HEAD:main
 
       - name: Create and push release tag
-        if: steps.validate.outputs.release_already_exists != 'true'
+        if: steps.validate.outputs.tag_already_exists != 'true'
         env:
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
@@ -131,15 +133,12 @@ jobs:
           git push origin "v$RELEASE_VERSION"
 
       - name: Set up QEMU
-        if: steps.validate.outputs.release_already_exists != 'true'
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        if: steps.validate.outputs.release_already_exists != 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
-        if: steps.validate.outputs.release_already_exists != 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -147,7 +146,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker meta (tags/labels)
-        if: steps.validate.outputs.release_already_exists != 'true'
         id: docker-meta
         uses: docker/metadata-action@v5
         with:
@@ -158,7 +156,6 @@ jobs:
             type=sha
 
       - name: Build and push GHCR image
-        if: steps.validate.outputs.release_already_exists != 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -171,7 +168,6 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Create GitHub release
-        if: steps.validate.outputs.release_already_exists != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.version }}
@@ -182,4 +178,8 @@ jobs:
             RELEASE_TITLE="v$RELEASE_VERSION"
           fi
 
-          gh release create "v$RELEASE_VERSION" --title "$RELEASE_TITLE" --generate-notes
+          if gh release view "v$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "GitHub release v$RELEASE_VERSION already exists; skipping release creation."
+          else
+            gh release create "v$RELEASE_VERSION" --title "$RELEASE_TITLE" --generate-notes
+          fi
