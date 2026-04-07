@@ -412,10 +412,7 @@ interface PageMainProps {
 
 export const PageMain: React.FC<PageMainProps> = ({ children, className }) => (
   <main
-    className={cn(
-      "container mx-auto space-y-6 px-4 py-6 pb-12",
-      className,
-    )}
+    className={cn("container mx-auto space-y-6 px-4 py-6 pb-12", className)}
   >
     {children}
   </main>

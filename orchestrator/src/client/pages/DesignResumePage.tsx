@@ -1,10 +1,11 @@
 import * as api from "@client/api";
-import { DesignResumeArtboard } from "@client/components/design-resume/DesignResumeArtboard";
+import { DesignResumePreviewPanel } from "@client/components/design-resume/DesignResumePreviewPanel";
 import { DesignResumeRail } from "@client/components/design-resume/DesignResumeRail";
 import { ItemDialog } from "@client/components/design-resume/ItemDialog";
 import { PageHeader, PageMain } from "@client/components/layout";
 import { useDesignResume } from "@client/hooks/useDesignResume";
-import type { DesignResumeDocument } from "@shared/types";
+import { useSettings } from "@client/hooks/useSettings";
+import type { DesignResumeDocument, PdfRenderer } from "@shared/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { Download, Import, PanelLeft, PenSquare } from "lucide-react";
 import type React from "react";
@@ -31,6 +32,7 @@ import { queryKeys } from "../lib/queryKeys";
 export const DesignResumePage: React.FC = () => {
   const queryClient = useQueryClient();
   const { document, status, isLoading, error } = useDesignResume();
+  const { settings, isLoading: settingsLoading } = useSettings();
   const [draft, setDraft] = useState<DesignResumeDocument | null>(null);
   const [saveState, setSaveState] = useState<
     "idle" | "saving" | "saved" | "error"
@@ -41,7 +43,10 @@ export const DesignResumePage: React.FC = () => {
   } | null>(null);
   const [mobileRailOpen, setMobileRailOpen] = useState(false);
   const [pictureUploading, setPictureUploading] = useState(false);
+  const [rendererUpdating, setRendererUpdating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const pdfRenderer = settings?.pdfRenderer?.value ?? "rxresume";
 
   useEffect(() => {
     if (!document) return;
@@ -186,6 +191,31 @@ export const DesignResumePage: React.FC = () => {
     }
   };
 
+  const handlePdfRendererChange = async (nextRenderer: PdfRenderer) => {
+    if (settingsLoading || nextRenderer === pdfRenderer) return;
+
+    try {
+      setRendererUpdating(true);
+      const updatedSettings = await api.updateSettings({
+        pdfRenderer: nextRenderer,
+      });
+      queryClient.setQueryData(queryKeys.settings.current(), updatedSettings);
+      toast.success(
+        nextRenderer === "latex"
+          ? "Jake's template is now active."
+          : "React Resume Renderer is now active.",
+      );
+    } catch (updateError) {
+      toast.error(
+        updateError instanceof Error
+          ? updateError.message
+          : "Failed to update the resume template.",
+      );
+    } finally {
+      setRendererUpdating(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <>
@@ -319,7 +349,12 @@ export const DesignResumePage: React.FC = () => {
               </div>
             </aside>
 
-            <DesignResumeArtboard />
+            <DesignResumePreviewPanel
+              draft={draft}
+              pdfRenderer={pdfRenderer}
+              isUpdatingRenderer={rendererUpdating || settingsLoading}
+              onPdfRendererChange={handlePdfRendererChange}
+            />
           </div>
         )}
       </PageMain>

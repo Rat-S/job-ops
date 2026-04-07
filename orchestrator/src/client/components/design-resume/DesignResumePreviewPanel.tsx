@@ -1,0 +1,84 @@
+import type { DesignResumeDocument, PdfRenderer } from "@shared/types";
+import { PDF_RENDERER_LABELS } from "@shared/types";
+import { Eye, FileText } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DesignResumeArtboard } from "./DesignResumeArtboard";
+import { DesignResumeJakePreview } from "./DesignResumeJakePreview";
+
+type DesignResumePreviewPanelProps = {
+  draft: DesignResumeDocument;
+  pdfRenderer: PdfRenderer;
+  isUpdatingRenderer: boolean;
+  onPdfRendererChange: (renderer: PdfRenderer) => void;
+};
+
+export function DesignResumePreviewPanel({
+  draft,
+  pdfRenderer,
+  isUpdatingRenderer,
+  onPdfRendererChange,
+}: DesignResumePreviewPanelProps) {
+  const latexSelected = pdfRenderer === "latex";
+
+  return (
+    <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-muted/20">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border/70 px-4 py-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            {latexSelected ? (
+              <Eye className="h-4 w-4" />
+            ) : (
+              <FileText className="h-4 w-4" />
+            )}
+            {latexSelected ? "Live preview" : "Preview space"}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {latexSelected
+              ? "Jake's template updates here as you edit your resume."
+              : "This export mode keeps the zoomable canvas for now. Switch to Jake's template if you want a live preview while you edit."}
+          </p>
+        </div>
+
+        <div className="grid w-full gap-2 sm:max-w-[17rem]">
+          <label
+            htmlFor="design-resume-template"
+            className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground"
+          >
+            Template
+          </label>
+          <Select
+            value={pdfRenderer}
+            onValueChange={(value) =>
+              onPdfRendererChange(value === "latex" ? "latex" : "rxresume")
+            }
+            disabled={isUpdatingRenderer}
+          >
+            <SelectTrigger id="design-resume-template">
+              <SelectValue placeholder="Choose a template" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="rxresume">
+                {PDF_RENDERER_LABELS.rxresume}
+              </SelectItem>
+              <SelectItem value="latex">{PDF_RENDERER_LABELS.latex}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {latexSelected ? (
+          <DesignResumeJakePreview draft={draft} />
+        ) : (
+          <DesignResumeArtboard />
+        )}
+      </div>
+    </section>
+  );
+}

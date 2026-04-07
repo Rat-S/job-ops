@@ -127,20 +127,8 @@ export function DesignResumeRail({
     });
   };
 
-  const accordionValues = [
-    "picture",
-    "basics",
-    "basics-custom-fields",
-    "summary",
-    ...ITEM_DEFINITIONS.map((definition) => definition.key),
-  ];
-
   return (
-    <Accordion
-      type="multiple"
-      defaultValue={[]}
-      className="space-y-3"
-    >
+    <Accordion type="multiple" defaultValue={[]} className="space-y-3">
       <DesignResumeSection
         value="picture"
         title="Picture"

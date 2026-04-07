@@ -2,7 +2,15 @@ import { MoveDiagonal2, RefreshCw } from "lucide-react";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import { Button } from "@/components/ui/button";
 
-export function DesignResumeArtboard() {
+type DesignResumeArtboardProps = {
+  title?: string;
+  description?: string;
+};
+
+export function DesignResumeArtboard({
+  title = "Preview coming soon",
+  description = "Switch to Jake's template for a live preview. This space stays ready for zooming and panning when you use the Reactive Resume PDF path.",
+}: DesignResumeArtboardProps) {
   return (
     <section className="relative flex min-h-0 flex-col overflow-hidden rounded-2xl">
       <div className="relative min-h-0 flex-1 overflow-hidden">
@@ -56,11 +64,10 @@ export function DesignResumeArtboard() {
                           <MoveDiagonal2 className="h-6 w-6" />
                         </div>
                         <div className="text-3xl font-semibold tracking-tight text-foreground">
-                          Preview coming soon
+                          {title}
                         </div>
                         <p className="text-sm leading-7 text-muted-foreground">
-                          This area is ready for zooming and panning once the
-                          live preview is added.
+                          {description}
                         </p>
                       </div>
                     </div>

@@ -13,10 +13,6 @@ const insetPanelClassName =
 const subtlePanelClassName =
   "rounded-lg border border-border/60 bg-muted/20 px-4 py-3";
 
-function isHexColor(value: string): boolean {
-  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
-}
-
 function normalizeColorValue(value: string): string {
   const trimmed = value.trim();
   if (/^#[0-9a-f]{3}$/i.test(trimmed)) {
