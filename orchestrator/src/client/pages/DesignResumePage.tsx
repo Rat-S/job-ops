@@ -1,3 +1,14 @@
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import * as api from "@client/api";
 import {
   ItemDialog,
@@ -24,18 +35,6 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
 import { queryKeys } from "../lib/queryKeys";
 
 type ItemDefinition = {
@@ -585,20 +584,20 @@ function DesignResumeRail(props: {
     children: React.ReactNode,
   ) => (
     <section className={cardClassName}>
-      <div className="mb-3">
-        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        <p className="text-xs leading-5 text-muted-foreground">{subtitle}</p>
+      <div className='mb-3'>
+        <h3 className='text-sm font-semibold text-foreground'>{title}</h3>
+        <p className='text-xs leading-5 text-muted-foreground'>{subtitle}</p>
       </div>
       {children}
     </section>
   );
 
   return (
-    <div className="space-y-4">
+    <div className='space-y-4'>
       {sectionCard(
         "Picture",
         "Inline controls matching the imported resume picture block.",
-        <div className="grid gap-3">
+        <div className='grid gap-3'>
           {picture.url ? (
             <div
               className={cn(
@@ -608,44 +607,44 @@ function DesignResumeRail(props: {
             >
               <img
                 src={toText(picture.url)}
-                alt="Design Resume profile"
-                className="h-16 w-16 rounded-lg border border-border/60 object-cover"
+                alt='Design Resume profile'
+                className='h-16 w-16 rounded-lg border border-border/60 object-cover'
               />
-              <div className="flex flex-wrap gap-2">
+              <div className='flex flex-wrap gap-2'>
                 <Button
-                  type="button"
-                  variant="outline"
+                  type='button'
+                  variant='outline'
                   onClick={onUploadPicture}
                   disabled={pictureUploading}
                 >
-                  <ImagePlus className="mr-2 h-4 w-4" />
+                  <ImagePlus className='mr-2 h-4 w-4' />
                   Replace
                 </Button>
                 <Button
-                  type="button"
-                  variant="ghost"
-                  className="text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                  type='button'
+                  variant='ghost'
+                  className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-300'
                   onClick={onDeletePicture}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
+                  <Trash2 className='mr-2 h-4 w-4' />
                   Delete
                 </Button>
               </div>
             </div>
           ) : (
             <Button
-              type="button"
-              variant="outline"
-              className="justify-start border-dashed"
+              type='button'
+              variant='outline'
+              className='justify-start border-dashed'
               onClick={onUploadPicture}
               disabled={pictureUploading}
             >
-              <FileImage className="mr-2 h-4 w-4" />
+              <FileImage className='mr-2 h-4 w-4' />
               {pictureUploading ? "Uploading..." : "Upload image"}
             </Button>
           )}
 
-          <div className="grid gap-2">
+          <div className='grid gap-2'>
             <label
               className={labelClassName}
               htmlFor={fieldId("picture", "url")}
@@ -669,10 +668,10 @@ function DesignResumeRail(props: {
             )}
           >
             <div>
-              <div className="text-sm font-medium text-foreground">
+              <div className='text-sm font-medium text-foreground'>
                 Show picture
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className='text-xs text-muted-foreground'>
                 Toggles image visibility in the stored resume.
               </div>
             </div>
@@ -682,7 +681,7 @@ function DesignResumeRail(props: {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className='grid grid-cols-2 gap-3'>
             {[
               ["size", "Size"],
               ["rotation", "Rotation"],
@@ -691,7 +690,10 @@ function DesignResumeRail(props: {
               ["borderWidth", "Border width"],
               ["shadowWidth", "Shadow width"],
             ].map(([key, label]) => (
-              <div key={key} className="grid gap-2">
+              <div
+                key={key}
+                className='grid gap-2'
+              >
                 <label
                   className={labelClassName}
                   htmlFor={fieldId("picture", key)}
@@ -700,7 +702,7 @@ function DesignResumeRail(props: {
                 </label>
                 <Input
                   id={fieldId("picture", key)}
-                  type="number"
+                  type='number'
                   value={String(toNumber(picture[key], 0))}
                   onChange={(event) =>
                     updatePicture(key, Number(event.currentTarget.value || 0))
@@ -713,7 +715,10 @@ function DesignResumeRail(props: {
               ["borderColor", "Border color"],
               ["shadowColor", "Shadow color"],
             ].map(([key, label]) => (
-              <div key={key} className="grid gap-2">
+              <div
+                key={key}
+                className='grid gap-2'
+              >
                 <label
                   className={labelClassName}
                   htmlFor={fieldId("picture", key)}
@@ -737,7 +742,7 @@ function DesignResumeRail(props: {
       {sectionCard(
         "Basics",
         "Core identity fields used by profile context and exports.",
-        <div className="grid gap-3">
+        <div className='grid gap-3'>
           {[
             ["name", "Name"],
             ["headline", "Headline"],
@@ -746,7 +751,10 @@ function DesignResumeRail(props: {
             ["location", "Location"],
             ["website.url", "Website"],
           ].map(([path, label]) => (
-            <div key={path} className="grid gap-2">
+            <div
+              key={path}
+              className='grid gap-2'
+            >
               <label
                 className={labelClassName}
                 htmlFor={fieldId("basics", path)}
@@ -769,19 +777,22 @@ function DesignResumeRail(props: {
       {sectionCard(
         "Basics Custom Fields",
         "Inline badges and links shown with the main contact block.",
-        <div className="space-y-3">
+        <div className='space-y-3'>
           {customFields.map((field, index) => (
             <div
               key={toText(field.id, `field-${index}`)}
               className={cn("p-3", insetPanelClassName)}
             >
-              <div className="grid gap-3">
+              <div className='grid gap-3'>
                 {[
                   ["icon", "Icon"],
                   ["text", "Text"],
                   ["link", "Link"],
                 ].map(([key, label]) => (
-                  <div key={key} className="grid gap-2">
+                  <div
+                    key={key}
+                    className='grid gap-2'
+                  >
                     <label
                       className={labelClassName}
                       htmlFor={fieldId("custom-field", String(index), key)}
@@ -812,25 +823,25 @@ function DesignResumeRail(props: {
                   </div>
                 ))}
               </div>
-              <div className="mt-3 flex items-center justify-end gap-2">
+              <div className='mt-3 flex items-center justify-end gap-2'>
                 <Button
-                  type="button"
-                  variant="ghost"
+                  type='button'
+                  variant='ghost'
                   onClick={() => moveCustomField(index, -1)}
                 >
                   Up
                 </Button>
                 <Button
-                  type="button"
-                  variant="ghost"
+                  type='button'
+                  variant='ghost'
                   onClick={() => moveCustomField(index, 1)}
                 >
                   Down
                 </Button>
                 <Button
-                  type="button"
-                  variant="ghost"
-                  className="text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                  type='button'
+                  variant='ghost'
+                  className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-300'
                   onClick={() =>
                     updateCustomFields(
                       customFields.filter(
@@ -845,9 +856,9 @@ function DesignResumeRail(props: {
             </div>
           ))}
           <Button
-            type="button"
-            variant="outline"
-            className="w-full border-dashed"
+            type='button'
+            variant='outline'
+            className='w-full border-dashed'
             onClick={() =>
               updateCustomFields([
                 ...customFields,
@@ -862,7 +873,7 @@ function DesignResumeRail(props: {
               ])
             }
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className='mr-2 h-4 w-4' />
             Add custom field
           </Button>
         </div>,
@@ -871,7 +882,7 @@ function DesignResumeRail(props: {
       {sectionCard(
         "Summary",
         "Rich text content stored as HTML.",
-        <div className="space-y-3">
+        <div className='space-y-3'>
           <div
             className={cn(
               "flex items-center justify-between",
@@ -879,10 +890,10 @@ function DesignResumeRail(props: {
             )}
           >
             <div>
-              <div className="text-sm font-medium text-foreground">
+              <div className='text-sm font-medium text-foreground'>
                 Show summary
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className='text-xs text-muted-foreground'>
                 Preserves the section visibility flag from the imported resume.
               </div>
             </div>
@@ -894,7 +905,7 @@ function DesignResumeRail(props: {
           <RichTextEditor
             value={toText(summary.content)}
             onChange={(next) => updateSummary("content", next)}
-            placeholder="Summarize the story your resume should tell."
+            placeholder='Summarize the story your resume should tell.'
           />
         </div>,
       )}
@@ -929,7 +940,7 @@ function DesignResumeRail(props: {
         return sectionCard(
           definition.title,
           definition.description,
-          <div className="space-y-3">
+          <div className='space-y-3'>
             <div
               className={cn(
                 "flex items-center justify-between",
@@ -937,62 +948,62 @@ function DesignResumeRail(props: {
               )}
             >
               <div>
-                <div className="text-sm font-medium text-foreground">
+                <div className='text-sm font-medium text-foreground'>
                   {items.length} item{items.length === 1 ? "" : "s"}
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div className='text-xs text-muted-foreground'>
                   Edit, reorder, and hide entries for{" "}
                   {definition.title.toLowerCase()}.
                 </div>
               </div>
               <Button
-                type="button"
-                variant="outline"
+                type='button'
+                variant='outline'
                 onClick={() => onOpenDialog(definition, null)}
               >
-                <Plus className="mr-2 h-4 w-4" />
+                <Plus className='mr-2 h-4 w-4' />
                 Add
               </Button>
             </div>
             {items.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-5 text-sm text-muted-foreground">
+              <div className='rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-5 text-sm text-muted-foreground'>
                 No items yet.
               </div>
             ) : (
               items.map((item, index) => (
                 <div
                   key={toText(item.id, `${definition.key}-${index}`)}
-                  className="rounded-lg border border-border/60 bg-background/60 px-4 py-3"
+                  className='rounded-lg border border-border/60 bg-background/60 px-4 py-3'
                 >
-                  <div className="flex items-start justify-between gap-3">
+                  <div className='flex items-start justify-between gap-3'>
                     <div>
-                      <div className="text-sm font-semibold text-foreground">
+                      <div className='text-sm font-semibold text-foreground'>
                         {toText(
                           getByPath(item, definition.primaryField),
                           "Untitled",
                         )}
                       </div>
                       {definition.secondaryField ? (
-                        <div className="text-xs text-muted-foreground">
+                        <div className='text-xs text-muted-foreground'>
                           {toText(getByPath(item, definition.secondaryField))}
                         </div>
                       ) : null}
                     </div>
-                    <div className="rounded-full border border-border/60 px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                    <div className='rounded-full border border-border/60 px-2 py-0.5 text-[11px] uppercase tracking-[0.18em] text-muted-foreground'>
                       {toBoolean(item.hidden, false) ? "Hidden" : "Visible"}
                     </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <div className='mt-3 flex flex-wrap items-center gap-2'>
                     <Button
-                      type="button"
-                      variant="ghost"
+                      type='button'
+                      variant='ghost'
                       onClick={() => onOpenDialog(definition, index)}
                     >
                       Edit
                     </Button>
                     <Button
-                      type="button"
-                      variant="ghost"
+                      type='button'
+                      variant='ghost'
                       onClick={() => {
                         const nextItems = [...items];
                         nextItems[index] = {
@@ -1005,8 +1016,8 @@ function DesignResumeRail(props: {
                       {toBoolean(item.hidden, false) ? "Show" : "Hide"}
                     </Button>
                     <Button
-                      type="button"
-                      variant="ghost"
+                      type='button'
+                      variant='ghost'
                       onClick={() => {
                         if (index === 0) return;
                         const nextItems = [...items];
@@ -1018,8 +1029,8 @@ function DesignResumeRail(props: {
                       Up
                     </Button>
                     <Button
-                      type="button"
-                      variant="ghost"
+                      type='button'
+                      variant='ghost'
                       onClick={() => {
                         if (index === items.length - 1) return;
                         const nextItems = [...items];
@@ -1031,9 +1042,9 @@ function DesignResumeRail(props: {
                       Down
                     </Button>
                     <Button
-                      type="button"
-                      variant="ghost"
-                      className="text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                      type='button'
+                      variant='ghost'
+                      className='text-rose-400 hover:bg-rose-500/10 hover:text-rose-300'
                       onClick={() =>
                         updateSectionItems(
                           items.filter(
@@ -1225,11 +1236,11 @@ export const DesignResumePage: React.FC = () => {
       <>
         <PageHeader
           icon={PenSquare}
-          title="Design Resume"
-          subtitle="Loading your local resume context"
+          title='Design Resume'
+          subtitle='Loading your local resume context'
         />
         <PageMain>
-          <div className="rounded-2xl border border-border/70 bg-background/95 px-6 py-20 text-center text-sm text-muted-foreground">
+          <div className='rounded-2xl border border-border/70 bg-background/95 px-6 py-20 text-center text-sm text-muted-foreground'>
             Loading Design Resume…
           </div>
         </PageMain>
@@ -1254,9 +1265,9 @@ export const DesignResumePage: React.FC = () => {
     <>
       <input
         ref={fileInputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/webp"
-        className="hidden"
+        type='file'
+        accept='image/png,image/jpeg,image/webp'
+        className='hidden'
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
           if (file) {
@@ -1266,86 +1277,79 @@ export const DesignResumePage: React.FC = () => {
       />
       <PageHeader
         icon={PenSquare}
-        title="Design Resume"
-        subtitle="Local-first resume context with a future artboard built in"
-        badge={status?.exists ? "Local" : "Not Imported"}
+        title='Design Resume'
+        subtitle='Edit your resume details'
         actions={
-          <div className="flex items-center gap-2">
-            <Sheet open={mobileRailOpen} onOpenChange={setMobileRailOpen}>
+          <div className='flex items-center gap-2'>
+            <Sheet
+              open={mobileRailOpen}
+              onOpenChange={setMobileRailOpen}
+            >
               <SheetTrigger asChild>
-                <Button type="button" variant="outline" className="lg:hidden">
-                  <PanelLeft className="mr-2 h-4 w-4" />
+                <Button
+                  type='button'
+                  variant='outline'
+                  className='lg:hidden'
+                >
+                  <PanelLeft className='mr-2 h-4 w-4' />
                   Edit
                 </Button>
               </SheetTrigger>
               <SheetContent
-                side="left"
-                className="w-full max-w-[28rem] overflow-y-auto"
+                side='left'
+                className='w-full max-w-[28rem] overflow-y-auto'
               >
                 <SheetHeader>
                   <SheetTitle>Design Resume</SheetTitle>
                 </SheetHeader>
-                <div className="mt-6">{rail}</div>
+                <div className='mt-6'>{rail}</div>
               </SheetContent>
             </Sheet>
-            <Button type="button" variant="outline" onClick={handleImport}>
-              <Import className="mr-2 h-4 w-4" />
+            <Button
+              type='button'
+              variant='outline'
+              onClick={handleImport}
+            >
+              <Import className='mr-2 h-4 w-4' />
               {status?.exists ? "Re-import" : "Import"}
             </Button>
             <Button
-              type="button"
-              variant="outline"
+              type='button'
+              variant='outline'
               onClick={handleExport}
               disabled={!status?.exists}
             >
-              <Download className="mr-2 h-4 w-4" />
+              <Download className='mr-2 h-4 w-4' />
               Export
             </Button>
-            <Badge
-              variant={
-                saveState === "error"
-                  ? "destructive"
-                  : saveState === "saved"
-                    ? "outline"
-                    : "secondary"
-              }
-              className="hidden md:inline-flex"
-            >
-              {saveState === "saving"
-                ? "Saving locally..."
-                : saveState === "saved"
-                  ? "Saved"
-                  : saveState === "error"
-                    ? "Needs attention"
-                    : dirty
-                      ? "Pending changes"
-                      : "In sync"}
-            </Badge>
           </div>
         }
       />
 
-      <PageMain className="h-[calc(100dvh-5rem)] overflow-hidden py-6 pb-6">
+      <PageMain className='h-[calc(100dvh-5rem)] overflow-hidden'>
         {!draft ? (
-          <div className="flex h-full items-center justify-center rounded-2xl border border-border/70 bg-background/95 px-6 py-20 text-center">
-            <div className="mx-auto max-w-xl space-y-4">
-              <div className="inline-flex rounded-full border border-border/70 bg-muted/20 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+          <div className='flex h-full items-center justify-center rounded-2xl border border-border/70 bg-background/95 px-6 py-20 text-center'>
+            <div className='mx-auto max-w-xl space-y-4'>
+              <div className='inline-flex rounded-full border border-border/70 bg-muted/20 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-muted-foreground'>
                 Resume context
               </div>
-              <h2 className="text-3xl font-semibold tracking-tight text-foreground">
+              <h2 className='text-3xl font-semibold tracking-tight text-foreground'>
                 Import your current Reactive Resume once, then design locally.
               </h2>
-              <p className="text-sm leading-7 text-muted-foreground">
+              <p className='text-sm leading-7 text-muted-foreground'>
                 JobOps will use this local Design Resume as the source of truth
                 for tailoring, scoring, and project context.
               </p>
-              <div className="flex justify-center gap-3">
-                <Button type="button" onClick={handleImport}>
-                  <Import className="mr-2 h-4 w-4" />
+              <div className='flex justify-center gap-3'>
+                <Button
+                  type='button'
+                  onClick={handleImport}
+                >
+                  <Import className='mr-2 h-4 w-4' />
                   Import from Reactive Resume
                 </Button>
                 {error ? (
-                  <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-300">
+                  <div className='rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-sm text-rose-300'>
                     {error instanceof Error
                       ? error.message
                       : "Unable to load Design Resume."}
@@ -1355,36 +1359,23 @@ export const DesignResumePage: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="grid h-full min-h-0 gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
-            <aside className="hidden min-h-0 lg:block">
-              <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/95">
-                <div className="border-b border-border/70 px-4 py-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <div className='grid h-full min-h-0 gap-6 lg:grid-cols-[400px_minmax(0,1fr)] xl:grid-cols-[500px_minmax(0,1fr)]'>
+            <aside className='hidden min-h-0 lg:block'>
+              <div className='flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/95'>
+                <div className='border-b border-border/70 px-4 py-4'>
+                  <div className='text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground'>
                     Design Resume
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Edit the local source of truth JobOps uses everywhere else.
+                  <p className='mt-1 text-xs text-muted-foreground'>
+                    Edit your resume details and see a live preview on the
+                    right. Changes are saved automatically.
                   </p>
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto p-4">{rail}</div>
+                <div className='min-h-0 flex-1 overflow-y-auto p-4'>{rail}</div>
               </div>
             </aside>
-            <section className="relative flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/95">
-              <div className="flex items-center justify-between border-b border-border/70 px-4 py-4">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                    Artboard shell
-                  </div>
-                  <div className="text-sm font-medium text-foreground">
-                    Preview space reserved for zoom + pan
-                  </div>
-                </div>
-                <div className="rounded-full border border-border/60 bg-muted/20 px-3 py-1.5 text-xs text-muted-foreground">
-                  No render preview in v1
-                </div>
-              </div>
-
-              <div className="relative min-h-0 flex-1 overflow-hidden">
+            <section className='relative flex min-h-0 flex-col overflow-hidden rounded-2xl border border-border/70 bg-background/95'>
+              <div className='relative min-h-0 flex-1 overflow-hidden'>
                 <TransformWrapper
                   initialScale={0.9}
                   minScale={0.6}
@@ -1393,51 +1384,51 @@ export const DesignResumePage: React.FC = () => {
                 >
                   {({ zoomIn, zoomOut, resetTransform }) => (
                     <>
-                      <div className="absolute right-4 top-4 z-10 flex flex-col gap-2">
+                      <div className='absolute right-4 top-4 z-10 flex flex-col gap-2'>
                         <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="bg-background/90"
+                          type='button'
+                          variant='outline'
+                          size='icon'
+                          className='bg-background/90'
                           onClick={() => zoomIn()}
                         >
                           +
                         </Button>
                         <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="bg-background/90"
+                          type='button'
+                          variant='outline'
+                          size='icon'
+                          className='bg-background/90'
                           onClick={() => zoomOut()}
                         >
                           -
                         </Button>
                         <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          className="bg-background/90"
+                          type='button'
+                          variant='outline'
+                          size='icon'
+                          className='bg-background/90'
                           onClick={() => resetTransform()}
                         >
-                          <RefreshCw className="h-4 w-4" />
+                          <RefreshCw className='h-4 w-4' />
                         </Button>
                       </div>
 
                       <TransformComponent
-                        wrapperClass="!h-full !w-full !min-h-0"
-                        contentClass="!w-full !h-full"
+                        wrapperClass='!h-full !w-full !min-h-0'
+                        contentClass='!w-full !h-full'
                       >
-                        <div className="flex h-full min-h-0 items-center justify-center bg-muted/10 px-6 py-12">
-                          <div className="relative h-[980px] w-[720px] rounded-[1.75rem] border border-border/70 bg-card shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
-                            <div className="absolute inset-5 grid place-items-center rounded-[1.25rem] border border-dashed border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] text-center">
-                              <div className="max-w-md space-y-4 px-10">
-                                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-border/70 bg-background/80 text-muted-foreground">
-                                  <MoveDiagonal2 className="h-6 w-6" />
+                        <div className='flex h-full min-h-0 items-center justify-center bg-muted/10 px-6 py-12'>
+                          <div className='relative h-[980px] w-[720px] rounded-[1.75rem] border border-border/70 bg-card shadow-[0_24px_80px_rgba(0,0,0,0.24)]'>
+                            <div className='absolute inset-5 grid place-items-center rounded-[1.25rem] border border-dashed border-border/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] text-center'>
+                              <div className='max-w-md space-y-4 px-10'>
+                                <div className='mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-border/70 bg-background/80 text-muted-foreground'>
+                                  <MoveDiagonal2 className='h-6 w-6' />
                                 </div>
-                                <div className="text-3xl font-semibold tracking-tight text-foreground">
+                                <div className='text-3xl font-semibold tracking-tight text-foreground'>
                                   Artboard reserved
                                 </div>
-                                <p className="text-sm leading-7 text-muted-foreground">
+                                <p className='text-sm leading-7 text-muted-foreground'>
                                   The central canvas already supports zooming
                                   and panning so we can drop in the renderer
                                   preview later without rebuilding the page
