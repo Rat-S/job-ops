@@ -1,0 +1,210 @@
+import type { DesignResumeDocument } from "@shared/types";
+import { Accordion } from "@/components/ui/accordion";
+import {
+  BasicsCustomFieldsSection,
+  BasicsSection,
+  PictureSection,
+  SummarySection,
+} from "./DesignResumeInlineSections";
+import { DesignResumeListSection } from "./DesignResumeListSection";
+import { DesignResumeSection } from "./DesignResumeSection";
+import { ITEM_DEFINITIONS, type ItemDefinition } from "./definitions";
+import { asArray, asRecord, setByPath } from "./utils";
+
+type DesignResumeRailProps = {
+  draft: DesignResumeDocument;
+  onUpdateResumeJson: (
+    updater: (resumeJson: Record<string, unknown>) => Record<string, unknown>,
+  ) => void;
+  onOpenDialog: (definition: ItemDefinition, index: number | null) => void;
+  onUploadPicture: () => void;
+  onDeletePicture: () => void;
+  pictureUploading: boolean;
+};
+
+export function DesignResumeRail({
+  draft,
+  onUpdateResumeJson,
+  onOpenDialog,
+  onUploadPicture,
+  onDeletePicture,
+  pictureUploading,
+}: DesignResumeRailProps) {
+  const resumeJson = draft.resumeJson as Record<string, unknown>;
+  const basics = (asRecord(resumeJson.basics) ?? {}) as Record<string, unknown>;
+  const picture = (asRecord(resumeJson.picture) ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const summary = (asRecord(resumeJson.summary) ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const sections = (asRecord(resumeJson.sections) ?? {}) as Record<
+    string,
+    unknown
+  >;
+  const customFields = asArray(basics.customFields) as Record<
+    string,
+    unknown
+  >[];
+
+  const updateBasics = (path: string, value: unknown) => {
+    onUpdateResumeJson((current) => {
+      const next = structuredClone(current);
+      const currentBasics = (asRecord(next.basics) ?? {}) as Record<
+        string,
+        unknown
+      >;
+      next.basics = setByPath(currentBasics, path, value);
+      return next;
+    });
+  };
+
+  const updatePicture = (key: string, value: unknown) => {
+    onUpdateResumeJson((current) => {
+      const next = structuredClone(current);
+      const currentPicture = (asRecord(next.picture) ?? {}) as Record<
+        string,
+        unknown
+      >;
+      next.picture = {
+        ...currentPicture,
+        [key]: value,
+      };
+      return next;
+    });
+  };
+
+  const updateSummary = (key: string, value: unknown) => {
+    onUpdateResumeJson((current) => {
+      const next = structuredClone(current);
+      const currentSummary = (asRecord(next.summary) ?? {}) as Record<
+        string,
+        unknown
+      >;
+      next.summary = {
+        ...currentSummary,
+        [key]: value,
+      };
+      return next;
+    });
+  };
+
+  const updateCustomFields = (nextFields: Record<string, unknown>[]) => {
+    onUpdateResumeJson((current) => {
+      const next = structuredClone(current);
+      const currentBasics = (asRecord(next.basics) ?? {}) as Record<
+        string,
+        unknown
+      >;
+      next.basics = {
+        ...currentBasics,
+        customFields: nextFields,
+      };
+      return next;
+    });
+  };
+
+  const updateSectionItems = (
+    sectionKey: string,
+    nextItems: Record<string, unknown>[],
+  ) => {
+    onUpdateResumeJson((current) => {
+      const next = structuredClone(current);
+      const currentSections = (asRecord(next.sections) ?? {}) as Record<
+        string,
+        unknown
+      >;
+      next.sections = {
+        ...currentSections,
+        [sectionKey]: {
+          ...(asRecord(currentSections[sectionKey]) ?? {}),
+          items: nextItems,
+        },
+      };
+      return next;
+    });
+  };
+
+  const accordionValues = [
+    "picture",
+    "basics",
+    "basics-custom-fields",
+    "summary",
+    ...ITEM_DEFINITIONS.map((definition) => definition.key),
+  ];
+
+  return (
+    <Accordion
+      type="multiple"
+      defaultValue={accordionValues}
+      className="space-y-3"
+    >
+      <DesignResumeSection
+        value="picture"
+        title="Picture"
+        subtitle="Inline controls matching the imported resume picture block."
+      >
+        <PictureSection
+          picture={picture}
+          pictureUploading={pictureUploading}
+          onUploadPicture={onUploadPicture}
+          onDeletePicture={onDeletePicture}
+          onUpdatePicture={updatePicture}
+        />
+      </DesignResumeSection>
+
+      <DesignResumeSection
+        value="basics"
+        title="Basics"
+        subtitle="Core identity fields used by profile context and exports."
+      >
+        <BasicsSection basics={basics} onUpdateBasics={updateBasics} />
+      </DesignResumeSection>
+
+      <DesignResumeSection
+        value="basics-custom-fields"
+        title="Basics Custom Fields"
+        subtitle="Inline badges and links shown with the main contact block."
+        badge={customFields.length === 0 ? "Empty" : `${customFields.length}`}
+      >
+        <BasicsCustomFieldsSection
+          customFields={customFields}
+          onChange={updateCustomFields}
+        />
+      </DesignResumeSection>
+
+      <DesignResumeSection
+        value="summary"
+        title="Summary"
+        subtitle="Rich text content stored as HTML."
+      >
+        <SummarySection summary={summary} onUpdateSummary={updateSummary} />
+      </DesignResumeSection>
+
+      {ITEM_DEFINITIONS.map((definition) => {
+        const section = (asRecord(sections[definition.key]) ?? {}) as Record<
+          string,
+          unknown
+        >;
+        const items = asArray(section.items).map(
+          (item) => asRecord(item) ?? {},
+        ) as Record<string, unknown>[];
+
+        return (
+          <DesignResumeListSection
+            key={definition.key}
+            definition={definition}
+            items={items}
+            onAdd={() => onOpenDialog(definition, null)}
+            onEdit={(index) => onOpenDialog(definition, index)}
+            onUpdateItems={(nextItems) =>
+              updateSectionItems(definition.key, nextItems)
+            }
+          />
+        );
+      })}
+    </Accordion>
+  );
+}
