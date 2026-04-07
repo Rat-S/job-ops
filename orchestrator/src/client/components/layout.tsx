@@ -72,7 +72,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
+      <div className="container mx-auto flex items-center justify-between gap-4 px-4 py-4">
         <div className="flex items-center gap-3">
           <Sheet open={navOpen} onOpenChange={setNavOpen}>
             <SheetTrigger asChild>
@@ -413,7 +413,7 @@ interface PageMainProps {
 export const PageMain: React.FC<PageMainProps> = ({ children, className }) => (
   <main
     className={cn(
-      "container mx-auto max-w-7xl space-y-6 px-4 py-6 pb-12",
+      "container mx-auto space-y-6 px-4 py-6 pb-12",
       className,
     )}
   >

@@ -71,7 +71,7 @@ export const App: React.FC = () => {
       <BasicAuthPrompt />
       {demoInfo?.demoMode && !demoWaitlistBannerDismissed && (
         <div className="sticky top-0 z-50 w-full border-b border-orange-400/60 bg-orange-500 px-4 py-2 text-xs text-orange-950 shadow-sm">
-          <div className="mx-auto flex max-w-7xl items-center justify-center gap-3">
+          <div className="mx-auto flex items-center justify-center gap-3">
             <p className="flex-1 text-center font-medium">
               This is a read-only demo. Want JobOps without the Docker setup? ☁️{" "}
               Cloud version coming soon — join the waitlist at{" "}
