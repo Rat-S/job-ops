@@ -1,5 +1,6 @@
 /**
- * Service for generating PDF resumes from tailored Reactive Resume data.
+ * Service for generating PDF resumes from the local Design Resume when available,
+ * falling back to the configured Reactive Resume base resume otherwise.
  */
 
 import { existsSync } from "node:fs";
@@ -10,6 +11,7 @@ import { getSetting } from "@server/repositories/settings";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { PdfRenderer } from "@shared/types";
 import { getDataDir } from "../config/dataDir";
+import { getCurrentDesignResume } from "./design-resume";
 import { renderResumePdf } from "./resume-renderer";
 import {
   deleteResume as deleteRxResume,
@@ -99,6 +101,39 @@ async function renderRxResumePdf(args: {
   }
 }
 
+async function loadBaseResumeSource(): Promise<{
+  data: Record<string, unknown>;
+  mode: "v4" | "v5";
+}> {
+  const designResume = await getCurrentDesignResume();
+  if (designResume?.resumeJson) {
+    return {
+      data: designResume.resumeJson as Record<string, unknown>,
+      mode: "v5",
+    };
+  }
+
+  const { resumeId: baseResumeId } = await getConfiguredRxResumeBaseResumeId();
+  if (!baseResumeId) {
+    throw new Error(
+      "No Design Resume found, and no Reactive Resume base resume is configured. Import a Design Resume or select a base resume in Settings.",
+    );
+  }
+
+  const baseResume = await getRxResume(baseResumeId);
+  if (!baseResume.data || typeof baseResume.data !== "object") {
+    throw new Error("Reactive Resume base resume is empty or invalid.");
+  }
+  if (baseResume.mode !== "v4" && baseResume.mode !== "v5") {
+    throw new Error("Reactive Resume returned an unsupported resume mode.");
+  }
+
+  return {
+    data: baseResume.data as Record<string, unknown>,
+    mode: baseResume.mode,
+  };
+}
+
 /**
  * Generate a tailored PDF resume for a job using the configured resume source.
  *
@@ -111,7 +146,7 @@ export async function generatePdf(
   jobId: string,
   tailoredContent: TailoredPdfContent,
   jobDescription: string,
-  _baseResumePath?: string, // Deprecated: now always uses configured Reactive Resume base resume
+  _baseResumePath?: string, // Deprecated: now always uses Design Resume or the configured Reactive Resume base resume
   selectedProjectIds?: string | null,
   options?: GeneratePdfOptions,
 ): Promise<PdfResult> {
@@ -126,17 +161,7 @@ export async function generatePdf(
       await mkdir(OUTPUT_DIR, { recursive: true });
     }
 
-    const { resumeId: baseResumeId } =
-      await getConfiguredRxResumeBaseResumeId();
-    if (!baseResumeId) {
-      throw new Error(
-        "Base resume not configured. Please select a base resume from your Reactive Resume account in Settings.",
-      );
-    }
-    const baseResume = await getRxResume(baseResumeId);
-    if (!baseResume.data || typeof baseResume.data !== "object") {
-      throw new Error("Reactive Resume base resume is empty or invalid.");
-    }
+    const baseResume = await loadBaseResumeSource();
 
     let preparedResume: Awaited<
       ReturnType<typeof prepareTailoredResumeForPdf>
