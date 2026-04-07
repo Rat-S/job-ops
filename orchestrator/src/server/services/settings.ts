@@ -5,6 +5,7 @@ import {
   settingsRegistry,
 } from "@shared/settings-registry";
 import type { AppSettings } from "@shared/types";
+import { designResumeToProfile, getCurrentDesignResume } from "./design-resume";
 import { getEnvSettingsData } from "./envSettings";
 import { getProfile } from "./profile";
 import { resolveResumeProjectsSettings } from "./resumeProjects";
@@ -92,7 +93,16 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   });
   let profile: Record<string, unknown> = {};
 
-  if (rxresumeBaseResumeId) {
+  const localDesignResume = await getCurrentDesignResume();
+  if (localDesignResume?.resumeJson) {
+    profile =
+      ((await designResumeToProfile(localDesignResume.resumeJson)) as Record<
+        string,
+        unknown
+      > | null) ?? {};
+  }
+
+  if (Object.keys(profile).length === 0 && rxresumeBaseResumeId) {
     try {
       const resume = await getResume(rxresumeBaseResumeId);
       if (resume.data && typeof resume.data === "object") {

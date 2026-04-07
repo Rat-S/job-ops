@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { BasicAuthPrompt } from "./components/BasicAuthPrompt";
 import { OnboardingGate } from "./components/OnboardingGate";
 import { useDemoInfo } from "./hooks/useDemoInfo";
+import { DesignResumePage } from "./pages/DesignResumePage";
 import { GmailOauthCallbackPage } from "./pages/GmailOauthCallbackPage";
 import { HomePage } from "./pages/HomePage";
 import { InProgressBoardPage } from "./pages/InProgressBoardPage";
@@ -140,6 +141,7 @@ export const App: React.FC = () => {
                   path="/applications/in-progress"
                   element={<InProgressBoardPage />}
                 />
+                <Route path="/design-resume" element={<DesignResumePage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/tracer-links" element={<TracerLinksPage />} />
                 <Route path="/visa-sponsors" element={<VisaSponsorsPage />} />
