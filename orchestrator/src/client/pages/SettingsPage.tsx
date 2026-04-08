@@ -424,7 +424,9 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   modelScorer: data.modelScorer.override ?? "",
   modelTailoring: data.modelTailoring.override ?? "",
   modelProjectSelection: data.modelProjectSelection.override ?? "",
-  llmProvider: normalizeLlmProviderValue(data.llmProvider.override),
+  llmProvider: normalizeLlmProviderValue(
+    data.llmProvider.override ?? data.llmProvider.value,
+  ),
   llmBaseUrl: data.llmBaseUrl.override ?? "",
   llmApiKey: "",
   pipelineWebhookUrl: data.pipelineWebhookUrl.override ?? "",
@@ -811,7 +813,7 @@ export const SettingsPage: React.FC = () => {
           getValues("resumeProjects") ?? null,
         );
         if (normalized) {
-          setValue("resumeProjects", normalized, { shouldDirty: true });
+          setValue("resumeProjects", normalized, { shouldDirty: false });
         }
       })
       .catch((error) => {

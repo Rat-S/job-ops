@@ -52,7 +52,7 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
     control,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useFormContext<UpdateSettingsInput>();
 
   const selectedProvider = watch("llmProvider") || llmProvider || "openrouter";
@@ -92,11 +92,15 @@ export const ModelSettingsSection: React.FC<ModelSettingsSectionProps> = ({
     }
 
     previousProviderRef.current = selectedProvider;
+    if (!dirtyFields.llmProvider) {
+      return;
+    }
+
     setValue("model", "", { shouldDirty: true });
     setValue("modelScorer", "", { shouldDirty: true });
     setValue("modelTailoring", "", { shouldDirty: true });
     setValue("modelProjectSelection", "", { shouldDirty: true });
-  }, [selectedProvider, setValue]);
+  }, [dirtyFields.llmProvider, selectedProvider, setValue]);
 
   useEffect(() => {
     if (!supportsModelSuggestions) {

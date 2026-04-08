@@ -296,6 +296,109 @@ describe("SettingsPage", () => {
     );
   });
 
+  it("does not mark model settings dirty on initial load when provider comes from effective settings", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+
+    renderPage();
+    await openModelSection();
+
+    const saveButton = getSaveButton();
+    await waitFor(() => expect(saveButton).toBeDisabled());
+  });
+
+  it("does not mark Reactive Resume settings dirty when project catalog hydration finishes", async () => {
+    vi.mocked(api.validateRxresume).mockResolvedValue({
+      valid: true,
+      message: null,
+      status: 200,
+    });
+    vi.mocked(api.getRxResumeProjects).mockResolvedValue([
+      {
+        id: "proj-1",
+        name: "Project One",
+        description: "Desc 1",
+        date: "2024",
+        isVisibleInBase: true,
+      },
+    ]);
+    vi.mocked(api.getSettings).mockResolvedValue(
+      createAppSettings({
+        rxresumeApiKeyHint: "rr-v5",
+        rxresumeBaseResumeId: "resume-123",
+        profileProjects: [
+          {
+            id: "proj-1",
+            name: "Project One",
+            description: "Desc 1",
+            date: "2024",
+            isVisibleInBase: true,
+          },
+        ],
+      }),
+    );
+
+    renderPage();
+    await openReactiveResumeSection();
+
+    await waitFor(() => expect(api.getRxResumeProjects).toHaveBeenCalled());
+
+    const saveButton = getSaveButton();
+    await waitFor(() => expect(saveButton).toBeDisabled());
+  });
+
+  it("does not clear the model override when saving an unrelated setting", async () => {
+    vi.mocked(api.getSettings).mockResolvedValue(
+      createAppSettings({
+        model: {
+          value: "gpt-4.1-mini",
+          default: "gpt-4o",
+          override: "gpt-4.1-mini",
+        },
+        llmProvider: {
+          value: "openai",
+          default: "openai",
+          override: null,
+        },
+      }),
+    );
+    vi.mocked(api.updateSettings).mockResolvedValue(
+      createAppSettings({
+        model: {
+          value: "gpt-4.1-mini",
+          default: "gpt-4o",
+          override: "gpt-4.1-mini",
+        },
+        llmProvider: {
+          value: "openai",
+          default: "openai",
+          override: null,
+        },
+        showSponsorInfo: {
+          value: false,
+          default: true,
+          override: false,
+        },
+      }),
+    );
+
+    renderPage();
+
+    await openDisplaySection();
+    fireEvent.click(screen.getByLabelText(/show visa sponsor information/i));
+
+    const saveButton = getSaveButton();
+    await waitFor(() => expect(saveButton).toBeEnabled());
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
+    expect(api.updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: "gpt-4.1-mini",
+        showSponsorInfo: false,
+      }),
+    );
+  });
+
   it("hides pipeline tuning sections that moved to run modal", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     renderPage();
