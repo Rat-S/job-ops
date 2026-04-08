@@ -6,6 +6,7 @@ import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
 let cachedProfile: ResumeProfile | null = null;
 let cachedResumeId: string | null = null;
+let cachedLocalProfile: ResumeProfile | null = null;
 
 /**
  * Get the base resume profile from RxResume.
@@ -17,8 +18,13 @@ let cachedResumeId: string | null = null;
  * @throws Error if rxresumeBaseResumeId is not configured or API call fails.
  */
 export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
+  if (cachedLocalProfile && !forceRefresh) {
+    return cachedLocalProfile;
+  }
+
   const localProfile = await designResumeToProfile();
   if (localProfile) {
+    cachedLocalProfile = localProfile;
     return localProfile;
   }
 
@@ -84,4 +90,5 @@ export async function getPersonName(): Promise<string> {
 export function clearProfileCache(): void {
   cachedProfile = null;
   cachedResumeId = null;
+  cachedLocalProfile = null;
 }

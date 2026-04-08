@@ -77,8 +77,8 @@ function JakeEntryList({ entries }: { entries: DesignResumeJakeEntry[] }) {
           </div>
           {entry.bullets.length > 0 ? (
             <ul className="space-y-1 pl-4 text-[12px] leading-[1.45] text-black">
-              {entry.bullets.map((bullet) => (
-                <li key={bullet} className="list-disc">
+              {entry.bullets.map((bullet, index) => (
+                <li key={`${entry.id}-bullet-${index}`} className="list-disc">
                   {bullet}
                 </li>
               ))}
@@ -112,8 +112,8 @@ function JakeProjectList({ entries }: { entries: DesignResumeJakeEntry[] }) {
           </div>
           {entry.bullets.length > 0 ? (
             <ul className="space-y-1 pl-4 text-[12px] leading-[1.45] text-black">
-              {entry.bullets.map((bullet) => (
-                <li key={bullet} className="list-disc">
+              {entry.bullets.map((bullet, index) => (
+                <li key={`${entry.id}-bullet-${index}`} className="list-disc">
                   {bullet}
                 </li>
               ))}

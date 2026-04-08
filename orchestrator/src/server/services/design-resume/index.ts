@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { badRequest, conflict, notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
@@ -148,14 +149,20 @@ function normalizeV5Document(input: unknown): DesignResumeJson {
   const basics = asRecord(parsed.basics) ?? {};
   const summary = asRecord(parsed.summary) ?? {};
   const sections = asRecord(parsed.sections) ?? {};
+  const picture = asRecord(parsed.picture) ?? {};
+  const { hidden: _hidden, ...pictureWithoutHidden } = picture;
+  const show =
+    typeof picture.show === "boolean"
+      ? picture.show
+      : !toBoolean(picture.hidden, false);
 
   return {
     ...defaults,
     ...parsed,
     picture: {
       ...defaultPicture(),
-      ...(asRecord(parsed.picture) ?? {}),
-      show: !toBoolean(asRecord(parsed.picture)?.hidden, false),
+      ...pictureWithoutHidden,
+      show,
     },
     basics: {
       ...(defaults.basics as Record<string, unknown>),
@@ -627,7 +634,7 @@ function applyPatchOperation(
     }
     case "test": {
       const actual = readPointerValue(root, operation.path);
-      if (JSON.stringify(actual) !== JSON.stringify(operation.value)) {
+      if (!isDeepStrictEqual(actual, operation.value)) {
         throw conflict(`Patch test failed for path ${operation.path}.`);
       }
       return root;

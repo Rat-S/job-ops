@@ -54,6 +54,18 @@ describe("getProfile", () => {
     expect(profile).toEqual(localProfile);
   });
 
+  it("should cache the local Design Resume profile", async () => {
+    const localProfile = { basics: { name: "Local User" } };
+    vi.mocked(designResumeToProfile).mockResolvedValue(localProfile as any);
+
+    await getProfile();
+    await getProfile();
+
+    expect(designResumeToProfile).toHaveBeenCalledTimes(1);
+    expect(getConfiguredRxResumeBaseResumeId).not.toHaveBeenCalled();
+    expect(getResume).not.toHaveBeenCalled();
+  });
+
   it("should fetch profile from Reactive Resume when configured", async () => {
     const mockResumeData = { basics: { name: "Test User" } };
     vi.mocked(getConfiguredRxResumeBaseResumeId).mockResolvedValue({

@@ -11,6 +11,7 @@ import {
   uploadDesignResumePicture,
 } from "@server/services/design-resume";
 import { generateDesignResumePdf } from "@server/services/pdf";
+import { clearProfileCache } from "@server/services/profile";
 import { type Request, type Response, Router } from "express";
 import { z } from "zod";
 
@@ -58,7 +59,9 @@ designResumeRouter.get(
 designResumeRouter.post(
   "/import/rxresume",
   asyncRoute(async (_req: Request, res: Response) => {
-    ok(res, await importDesignResumeFromReactiveResume(), 201);
+    const document = await importDesignResumeFromReactiveResume();
+    clearProfileCache();
+    ok(res, document, 201);
   }),
 );
 
@@ -66,7 +69,9 @@ designResumeRouter.patch(
   "/",
   asyncRoute(async (req: Request, res: Response) => {
     const input = patchSchema.parse(req.body);
-    ok(res, await updateCurrentDesignResume(input));
+    const document = await updateCurrentDesignResume(input);
+    clearProfileCache();
+    ok(res, document);
   }),
 );
 
@@ -74,21 +79,21 @@ designResumeRouter.post(
   "/assets",
   asyncRoute(async (req: Request, res: Response) => {
     const input = uploadSchema.parse(req.body);
-    ok(
-      res,
-      await uploadDesignResumePicture({
-        fileName: input.fileName,
-        dataUrl: input.dataUrl,
-      }),
-      201,
-    );
+    const document = await uploadDesignResumePicture({
+      fileName: input.fileName,
+      dataUrl: input.dataUrl,
+    });
+    clearProfileCache();
+    ok(res, document, 201);
   }),
 );
 
 designResumeRouter.delete(
   "/assets/picture",
   asyncRoute(async (_req: Request, res: Response) => {
-    ok(res, await deleteDesignResumePicture());
+    const document = await deleteDesignResumePicture();
+    clearProfileCache();
+    ok(res, document);
   }),
 );
 

@@ -45,6 +45,7 @@ export const DesignResumePage: React.FC = () => {
   const [pictureUploading, setPictureUploading] = useState(false);
   const [pdfDownloading, setPdfDownloading] = useState(false);
   const [rendererUpdating, setRendererUpdating] = useState(false);
+  const [dirty, setDirty] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const pdfRenderer = settings?.pdfRenderer?.value ?? "rxresume";
@@ -52,14 +53,8 @@ export const DesignResumePage: React.FC = () => {
   useEffect(() => {
     if (!document) return;
     setDraft(document);
+    setDirty(false);
   }, [document]);
-
-  const dirty = useMemo(() => {
-    if (!draft || !document) return false;
-    return (
-      JSON.stringify(draft.resumeJson) !== JSON.stringify(document.resumeJson)
-    );
-  }, [document, draft]);
 
   useEffect(() => {
     if (!draft || !document || !dirty) return;
@@ -77,6 +72,7 @@ export const DesignResumePage: React.FC = () => {
           updatedAt: updated.updatedAt,
         });
         setDraft(updated);
+        setDirty(false);
         setSaveState("saved");
       } catch (saveError) {
         setSaveState("error");
@@ -99,6 +95,7 @@ export const DesignResumePage: React.FC = () => {
       updatedAt: next.updatedAt,
     });
     setDraft(next);
+    setDirty(false);
   };
 
   const updateResumeJson = (
@@ -111,15 +108,18 @@ export const DesignResumePage: React.FC = () => {
         resumeJson: updater(current.resumeJson as Record<string, unknown>),
       };
     });
+    setDirty(true);
     if (saveState === "saved") setSaveState("idle");
   };
 
   const activeDialogItem = useMemo(() => {
     if (!dialogState) return null;
-    return getDesignResumeDialogItem(
-      draft,
-      dialogState.definition,
-      dialogState.index,
+    return (
+      getDesignResumeDialogItem(
+        draft,
+        dialogState.definition,
+        dialogState.index,
+      ) ?? dialogState.definition.createItem()
     );
   }, [dialogState, draft]);
 

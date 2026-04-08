@@ -168,7 +168,7 @@ describe("design resume service", () => {
     } as never);
   });
 
-  it("rejects replace patches that target an array append position", async () => {
+  it("rejects replace patches that target a missing array index", async () => {
     await expect(
       updateCurrentDesignResume({
         baseRevision: 1,
@@ -181,6 +181,48 @@ describe("design resume service", () => {
         ],
       }),
     ).rejects.toThrow("Invalid array patch path");
+  });
+
+  it("preserves an explicit picture show flag during normalization", async () => {
+    repo.getLatestDesignResumeDocument.mockResolvedValueOnce(
+      makeDocumentRow({
+        resumeJson: {
+          ...makeDocumentRow().resumeJson,
+          picture: { url: "", show: false, hidden: false },
+        },
+      }),
+    );
+
+    const updated = await updateCurrentDesignResume({
+      baseRevision: 1,
+      document: {
+        ...makeDocumentRow().resumeJson,
+        picture: { url: "", show: false, hidden: false },
+      },
+    });
+
+    expect(
+      (
+        updated.resumeJson.picture as {
+          show?: boolean;
+        }
+      ).show,
+    ).toBe(false);
+  });
+
+  it("uses structural equality for patch test operations", async () => {
+    await expect(
+      updateCurrentDesignResume({
+        baseRevision: 1,
+        operations: [
+          {
+            op: "test",
+            path: "/metadata",
+            value: {},
+          },
+        ],
+      }),
+    ).resolves.toBeTruthy();
   });
 
   it("cleans up the uploaded file when picture asset insertion fails", async () => {
