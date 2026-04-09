@@ -78,6 +78,9 @@ export const JobPage: React.FC = () => {
     null,
   );
   const pendingEventRef = React.useRef<StageEvent | null>(null);
+  const openEditDetails = React.useCallback(() => {
+    window.setTimeout(() => setIsEditDetailsOpen(true), 0);
+  }, []);
 
   const jobQuery = useQuery<Job | null>({
     queryKey: ["jobs", "detail", id ?? null] as const,
@@ -520,7 +523,7 @@ export const JobPage: React.FC = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => setIsEditDetailsOpen(true)}>
+                  <DropdownMenuItem onSelect={openEditDetails}>
                     <Edit2 className="mr-2 h-4 w-4" />
                     Edit details
                   </DropdownMenuItem>
