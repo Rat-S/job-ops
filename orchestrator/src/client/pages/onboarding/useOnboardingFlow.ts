@@ -1,4 +1,5 @@
 import * as api from "@client/api";
+import { fileToDataUrl } from "@client/components/design-resume/utils";
 import { useDemoInfo } from "@client/hooks/useDemoInfo";
 import { useRxResumeConfigState } from "@client/hooks/useRxResumeConfigState";
 import { useSettings } from "@client/hooks/useSettings";
@@ -25,6 +26,7 @@ import type {
   BasicAuthChoice,
   OnboardingFormData,
   OnboardingStep,
+  ResumeSetupMode,
   StepId,
   ValidationState,
 } from "./types";
@@ -42,6 +44,7 @@ export function useOnboardingFlow() {
   const [isValidatingLlm, setIsValidatingLlm] = useState(false);
   const [isValidatingRxresume, setIsValidatingRxresume] = useState(false);
   const [isValidatingBaseResume, setIsValidatingBaseResume] = useState(false);
+  const [isImportingResume, setIsImportingResume] = useState(false);
   const [llmValidation, setLlmValidation] = useState<ValidationState>(
     EMPTY_VALIDATION_STATE,
   );
@@ -50,8 +53,11 @@ export function useOnboardingFlow() {
   );
   const [baseResumeValidation, setBaseResumeValidation] =
     useState<ValidationState>(EMPTY_VALIDATION_STATE);
-  const [basicAuthChoice, setBasicAuthChoice] = useState<BasicAuthChoice>(null);
+  const [basicAuthChoice, setBasicAuthChoice] =
+    useState<BasicAuthChoice>("enable");
   const [isRxResumeSelfHosted, setIsRxResumeSelfHosted] = useState(false);
+  const [resumeSetupMode, setResumeSetupMode] =
+    useState<ResumeSetupMode>("upload");
   const [currentStep, setCurrentStep] = useState<StepId | null>(null);
 
   const { control, getValues, reset, setValue, watch } =
@@ -60,7 +66,7 @@ export function useOnboardingFlow() {
         llmProvider: "",
         llmBaseUrl: "",
         llmApiKey: "",
-        pdfRenderer: "rxresume",
+        pdfRenderer: "latex",
         rxresumeUrl: "",
         rxresumeApiKey: "",
         rxresumeBaseResumeId: null,
@@ -80,11 +86,14 @@ export function useOnboardingFlow() {
     if (!settings) return;
 
     const selectedId = syncBaseResumeId();
+    setLlmValidation(EMPTY_VALIDATION_STATE);
+    setRxresumeValidation(EMPTY_VALIDATION_STATE);
+    setBaseResumeValidation(EMPTY_VALIDATION_STATE);
     reset({
       llmProvider: settings.llmProvider?.value || "",
       llmBaseUrl: settings.llmBaseUrl?.value || "",
       llmApiKey: "",
-      pdfRenderer: settings.pdfRenderer?.value ?? "rxresume",
+      pdfRenderer: selectedId ? "rxresume" : "latex",
       rxresumeUrl: settings.rxresumeUrl ?? "",
       rxresumeApiKey: "",
       rxresumeBaseResumeId: selectedId,
@@ -96,9 +105,10 @@ export function useOnboardingFlow() {
         ? "enable"
         : settings.onboardingBasicAuthDecision === "skipped"
           ? "skip"
-          : null,
+          : "enable",
     );
     setIsRxResumeSelfHosted(Boolean(settings.rxresumeUrl));
+    setResumeSetupMode(selectedId ? "rxresume" : "upload");
   }, [reset, settings, syncBaseResumeId]);
 
   const llmProvider = watch("llmProvider");
@@ -120,77 +130,108 @@ export function useOnboardingFlow() {
     settings?.basicAuthActive || settings?.onboardingBasicAuthDecision !== null,
   );
 
-  const validateLlm = useCallback(async () => {
-    const values = getValues();
+  const toValidationState = useCallback(
+    (
+      result: ValidationResult,
+      options?: {
+        markChecked?: boolean;
+      },
+    ): ValidationState => ({
+      ...result,
+      checked: options?.markChecked ?? true,
+      hydrated: true,
+    }),
+    [],
+  );
 
-    setIsValidatingLlm(true);
-    try {
-      const result = await api.validateLlm({
-        provider: selectedProvider,
-        baseUrl: showBaseUrl
-          ? values.llmBaseUrl.trim() || undefined
-          : undefined,
-        apiKey: requiresLlmKey
-          ? values.llmApiKey.trim() || undefined
-          : undefined,
-      });
-      setLlmValidation({ ...result, checked: true });
-      return result;
-    } catch (error) {
-      const result = {
-        valid: false,
-        message:
-          error instanceof Error ? error.message : "LLM validation failed",
-      };
-      setLlmValidation({ ...result, checked: true });
-      return result;
-    } finally {
-      setIsValidatingLlm(false);
-    }
-  }, [getValues, requiresLlmKey, selectedProvider, showBaseUrl]);
+  const validateLlm = useCallback(
+    async (options?: { markChecked?: boolean }) => {
+      const values = getValues();
 
-  const validateBaseResume = useCallback(async () => {
-    setIsValidatingBaseResume(true);
-    try {
-      const result = await api.validateResumeConfig();
-      setBaseResumeValidation({ ...result, checked: true });
-      return result;
-    } catch (error) {
-      const result = {
-        valid: false,
-        message:
-          error instanceof Error
-            ? error.message
-            : "Base resume validation failed",
-      };
-      setBaseResumeValidation({ ...result, checked: true });
-      return result;
-    } finally {
-      setIsValidatingBaseResume(false);
-    }
-  }, []);
+      setIsValidatingLlm(true);
+      try {
+        const result = await api.validateLlm({
+          provider: selectedProvider,
+          baseUrl: showBaseUrl
+            ? values.llmBaseUrl.trim() || undefined
+            : undefined,
+          apiKey: requiresLlmKey
+            ? values.llmApiKey.trim() || undefined
+            : undefined,
+        });
+        setLlmValidation(toValidationState(result, options));
+        return result;
+      } catch (error) {
+        const result = {
+          valid: false,
+          message:
+            error instanceof Error ? error.message : "LLM validation failed",
+        };
+        setLlmValidation(toValidationState(result, options));
+        return result;
+      } finally {
+        setIsValidatingLlm(false);
+      }
+    },
+    [
+      getValues,
+      requiresLlmKey,
+      selectedProvider,
+      showBaseUrl,
+      toValidationState,
+    ],
+  );
 
-  const validateRxresume = useCallback(async () => {
-    setIsValidatingRxresume(true);
-    try {
-      const result = await validateAndMaybePersistRxResumeMode({
-        stored: storedRxResume,
-        draft: getRxResumeCredentialDrafts({
-          ...getValues(),
-          rxresumeUrl: isRxResumeSelfHosted ? getValues().rxresumeUrl : "",
-        }),
-        validate: api.validateRxresume,
-        getPrecheckMessage: () =>
-          "v5 API key required. Add a v5 API key, then test again.",
-        getValidationErrorMessage: (error: unknown) =>
-          error instanceof Error ? error.message : "RxResume validation failed",
-      });
-      setRxresumeValidation({ ...result.validation, checked: true });
-      return result.validation;
-    } finally {
-      setIsValidatingRxresume(false);
-    }
-  }, [getValues, isRxResumeSelfHosted, storedRxResume]);
+  const validateBaseResume = useCallback(
+    async (options?: { markChecked?: boolean }) => {
+      setIsValidatingBaseResume(true);
+      try {
+        const result = await api.validateResumeConfig();
+        setBaseResumeValidation(toValidationState(result, options));
+        return result;
+      } catch (error) {
+        const result = {
+          valid: false,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Base resume validation failed",
+        };
+        setBaseResumeValidation(toValidationState(result, options));
+        return result;
+      } finally {
+        setIsValidatingBaseResume(false);
+      }
+    },
+    [toValidationState],
+  );
+
+  const validateRxresume = useCallback(
+    async (options?: { markChecked?: boolean }) => {
+      setIsValidatingRxresume(true);
+      try {
+        const result = await validateAndMaybePersistRxResumeMode({
+          stored: storedRxResume,
+          draft: getRxResumeCredentialDrafts({
+            ...getValues(),
+            rxresumeUrl: isRxResumeSelfHosted ? getValues().rxresumeUrl : "",
+          }),
+          validate: api.validateRxresume,
+          getPrecheckMessage: () =>
+            "v5 API key required. Add a v5 API key, then test again.",
+          getValidationErrorMessage: (error: unknown) =>
+            error instanceof Error
+              ? error.message
+              : "RxResume validation failed",
+        });
+        setRxresumeValidation(toValidationState(result.validation, options));
+        return result.validation;
+      } finally {
+        setIsValidatingRxresume(false);
+      }
+    },
+    [getValues, isRxResumeSelfHosted, storedRxResume, toValidationState],
+  );
 
   useEffect(() => {
     if (!showBaseUrl) {
@@ -200,16 +241,16 @@ export function useOnboardingFlow() {
 
   useEffect(() => {
     if (!selectedProvider) return;
-    setLlmValidation({ valid: false, message: null, checked: false });
+    setLlmValidation(EMPTY_VALIDATION_STATE);
   }, [selectedProvider]);
 
   const runAllValidations = useCallback(async () => {
     if (!settings || demoMode) return;
 
     const validations: Promise<ValidationResult>[] = [
-      validateLlm(),
-      validateRxresume(),
-      validateBaseResume(),
+      validateLlm({ markChecked: false }),
+      validateRxresume({ markChecked: false }),
+      validateBaseResume({ markChecked: false }),
     ];
     await Promise.allSettled(validations);
   }, [demoMode, settings, validateBaseResume, validateLlm, validateRxresume]);
@@ -218,18 +259,18 @@ export function useOnboardingFlow() {
     if (demoMode || !settings || settingsLoading) return;
 
     const needsValidation =
-      !llmValidation.checked ||
-      !rxresumeValidation.checked ||
-      !baseResumeValidation.checked;
+      !llmValidation.hydrated ||
+      !rxresumeValidation.hydrated ||
+      !baseResumeValidation.hydrated;
     if (!needsValidation) return;
 
     void runAllValidations();
   }, [
-    baseResumeValidation.checked,
+    baseResumeValidation.hydrated,
     demoMode,
-    llmValidation.checked,
+    llmValidation.hydrated,
     runAllValidations,
-    rxresumeValidation.checked,
+    rxresumeValidation.hydrated,
     settings,
     settingsLoading,
   ]);
@@ -244,18 +285,11 @@ export function useOnboardingFlow() {
         disabled: false,
       },
       {
-        id: "rxresume",
-        label: "RxResume",
-        subtitle: "Resume export connection",
-        complete: rxresumeValidation.valid,
-        disabled: false,
-      },
-      {
         id: "baseresume",
-        label: "Template",
-        subtitle: "Choose the source resume",
+        label: "Resume",
+        subtitle: "Upload a file or use Reactive Resume",
         complete: baseResumeValidation.valid,
-        disabled: !rxresumeValidation.valid,
+        disabled: false,
       },
       {
         id: "basicauth",
@@ -265,12 +299,7 @@ export function useOnboardingFlow() {
         disabled: false,
       },
     ],
-    [
-      basicAuthComplete,
-      baseResumeValidation.valid,
-      llmValidated,
-      rxresumeValidation.valid,
-    ],
+    [basicAuthComplete, baseResumeValidation.valid, llmValidated],
   );
 
   useEffect(() => {
@@ -292,10 +321,7 @@ export function useOnboardingFlow() {
       : 0;
 
   const complete =
-    llmValidated &&
-    rxresumeValidation.valid &&
-    baseResumeValidation.valid &&
-    basicAuthComplete;
+    llmValidated && baseResumeValidation.valid && basicAuthComplete;
 
   useEffect(() => {
     if (demoMode) {
@@ -400,7 +426,8 @@ export function useOnboardingFlow() {
           try {
             const nextSettings = await api.updateSettings({
               ...update,
-              pdfRenderer: values.pdfRenderer,
+              pdfRenderer: "rxresume",
+              rxresumeBaseResumeId: values.rxresumeBaseResumeId,
             });
             syncSettingsCache(nextSettings);
           } finally {
@@ -418,15 +445,25 @@ export function useOnboardingFlow() {
             : "Failed to save RxResume credentials",
       });
 
-      setRxresumeValidation({ ...result.validation, checked: true });
+      setRxresumeValidation(toValidationState(result.validation));
       if (!result.validation.valid) {
         toast.error(result.validation.message || "RxResume validation failed");
         return false;
       }
 
       setValue("rxresumeApiKey", "");
-      toast.success("Reactive Resume connected");
-      return true;
+      const resumeValidation = await validateBaseResume();
+      if (resumeValidation.valid) {
+        toast.success("Reactive Resume connected");
+        return true;
+      }
+
+      toast.info("Reactive Resume connected", {
+        description:
+          resumeValidation.message ||
+          "Choose a template resume to finish this step.",
+      });
+      return false;
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -444,6 +481,8 @@ export function useOnboardingFlow() {
     setValue,
     storedRxResume,
     syncSettingsCache,
+    toValidationState,
+    validateBaseResume,
   ]);
 
   const handleRxresumeSelfHostedChange = useCallback(
@@ -457,37 +496,84 @@ export function useOnboardingFlow() {
   );
 
   const handleSaveBaseResume = useCallback(async () => {
-    const values = getValues();
-
-    if (!values.rxresumeBaseResumeId) {
-      toast.info("Select a template resume to continue");
-      return false;
-    }
-
     try {
-      setIsSaving(true);
-      const nextSettings = await api.updateSettings({
-        pdfRenderer: values.pdfRenderer,
-        rxresumeBaseResumeId: values.rxresumeBaseResumeId,
-      });
-      syncSettingsCache(nextSettings);
       const validation = await validateBaseResume();
       if (!validation.valid) {
         toast.error(validation.message || "Base resume validation failed");
         return false;
       }
 
-      toast.success("Template resume locked in");
+      toast.success("Resume source is ready");
       return true;
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to save base resume",
+        error instanceof Error ? error.message : "Failed to validate resume",
       );
       return false;
-    } finally {
-      setIsSaving(false);
     }
-  }, [getValues, syncSettingsCache, validateBaseResume]);
+  }, [validateBaseResume]);
+
+  const handleImportResumeFile = useCallback(
+    async (file: File) => {
+      try {
+        setIsImportingResume(true);
+        const dataUrl = await fileToDataUrl(file);
+        const match = /^data:([^;]+);base64,(.+)$/s.exec(dataUrl.trim());
+
+        if (!match) {
+          throw new Error("Resume file could not be encoded for upload.");
+        }
+
+        const document = await api.importDesignResumeFromFile({
+          fileName: file.name,
+          mediaType: file.type || match[1],
+          dataBase64: match[2],
+        });
+
+        queryClient.setQueryData(queryKeys.designResume.current(), document);
+        queryClient.setQueryData(queryKeys.designResume.status(), {
+          exists: true,
+          documentId: document.id,
+          updatedAt: document.updatedAt,
+        });
+
+        if (settings?.pdfRenderer?.value !== "latex") {
+          const nextSettings = await api.updateSettings({
+            pdfRenderer: "latex",
+          });
+          syncSettingsCache(nextSettings);
+          setValue("pdfRenderer", "latex");
+        }
+
+        const validation = await validateBaseResume();
+        if (!validation.valid) {
+          throw new Error(validation.message || "Resume validation failed.");
+        }
+
+        toast.success("Resume uploaded", {
+          description:
+            settings?.pdfRenderer?.value === "latex"
+              ? "Your local Design Resume is ready."
+              : "Your local Design Resume is ready and PDF rendering was switched to LaTeX.",
+        });
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to import resume file",
+        );
+      } finally {
+        setIsImportingResume(false);
+      }
+    },
+    [
+      queryClient,
+      settings?.pdfRenderer?.value,
+      setValue,
+      syncSettingsCache,
+      validateBaseResume,
+    ],
+  );
 
   const handleCompleteBasicAuth = useCallback(async () => {
     if (basicAuthChoice === "skip") {
@@ -555,11 +641,11 @@ export function useOnboardingFlow() {
       await handleSaveLlm();
       return;
     }
-    if (currentStep === "rxresume") {
-      await handleSaveRxresume();
-      return;
-    }
     if (currentStep === "baseresume") {
+      if (resumeSetupMode === "rxresume") {
+        await handleSaveRxresume();
+        return;
+      }
       await handleSaveBaseResume();
       return;
     }
@@ -570,6 +656,7 @@ export function useOnboardingFlow() {
     handleSaveBaseResume,
     handleSaveLlm,
     handleSaveRxresume,
+    resumeSetupMode,
   ]);
 
   const stepIndex = currentStep
@@ -579,6 +666,7 @@ export function useOnboardingFlow() {
   const isBusy =
     isSaving ||
     settingsLoading ||
+    isImportingResume ||
     isValidatingLlm ||
     isValidatingRxresume ||
     isValidatingBaseResume;
@@ -590,22 +678,23 @@ export function useOnboardingFlow() {
       ? llmValidated
         ? "Revalidate connection"
         : "Save connection"
-      : currentStep === "rxresume"
-        ? rxresumeValidation.valid
-          ? "Recheck connection"
-          : "Save connection"
-        : currentStep === "baseresume"
-          ? baseResumeValidation.valid
-            ? "Recheck selection"
-            : "Save selection"
-          : basicAuthChoice === "enable"
-            ? "Enable basic auth"
-            : basicAuthChoice === "skip"
-              ? "Finish onboarding"
-              : "Choose an option";
+      : currentStep === "baseresume"
+        ? resumeSetupMode === "rxresume"
+          ? rxresumeValidation.valid
+            ? "Recheck Reactive Resume"
+            : "Connect Reactive Resume"
+          : baseResumeValidation.valid
+            ? "Recheck resume"
+            : "Check resume"
+        : basicAuthChoice === "enable"
+          ? "Enable basic auth"
+          : basicAuthChoice === "skip"
+            ? "Finish onboarding"
+            : "Choose an option";
 
   return {
     baseResumeValidation,
+    baseResumeValue: watch("rxresumeBaseResumeId"),
     basicAuthChoice,
     canGoBack,
     complete,
@@ -614,12 +703,15 @@ export function useOnboardingFlow() {
     currentStep,
     demoMode,
     handleRxresumeSelfHostedChange,
+    handleImportResumeFile,
     isBusy,
+    isImportingResume,
     isRxResumeSelfHosted,
     llmKeyHint,
     llmValidation,
     primaryLabel,
     progressValue,
+    resumeSetupMode,
     rxresumeValidation,
     selectedProvider,
     settings,
@@ -628,6 +720,7 @@ export function useOnboardingFlow() {
     watch,
     setCurrentStep,
     setBasicAuthChoice,
+    setResumeSetupMode,
     setValue,
     setBaseResumeId,
     handleBack: () => {

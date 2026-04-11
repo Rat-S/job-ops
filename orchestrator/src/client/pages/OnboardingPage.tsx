@@ -31,10 +31,10 @@ export const OnboardingPage: React.FC = () => {
       />
 
       <PageMain className="space-y-4">
-        <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
           <Card className="border-border/60 bg-card/40 shadow-none">
             <CardHeader className="space-y-3">
-              <CardTitle>Let&apos;s get you a job</CardTitle>
+              <CardTitle>Getting started</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <OnboardingStepRail
@@ -82,22 +82,24 @@ export const OnboardingPage: React.FC = () => {
                 <CardContent className="flex flex-1 flex-col gap-6 pt-6">
                   <OnboardingStepContent
                     baseResumeValidation={flow.baseResumeValidation}
+                    baseResumeValue={flow.baseResumeValue}
                     basicAuthChoice={flow.basicAuthChoice}
                     basicAuthPassword={flow.watch("basicAuthPassword")}
                     basicAuthUser={flow.watch("basicAuthUser")}
                     control={flow.control}
                     currentStep={flow.currentStep}
                     isBusy={flow.isBusy}
+                    isImportingResume={flow.isImportingResume}
+                    isResumeReady={flow.baseResumeValidation.valid}
                     isRxResumeSelfHosted={flow.isRxResumeSelfHosted}
                     llmKeyHint={flow.llmKeyHint}
                     llmValidation={flow.llmValidation}
-                    pdfRenderer={flow.watch("pdfRenderer")}
+                    resumeSetupMode={flow.resumeSetupMode}
                     rxresumeApiKey={flow.watch("rxresumeApiKey")}
                     rxresumeApiKeyHint={flow.settings?.rxresumeApiKeyHint}
                     rxresumeUrl={flow.watch("rxresumeUrl")}
                     rxresumeValidation={flow.rxresumeValidation}
                     selectedProvider={flow.selectedProvider}
-                    templateResumeId={flow.watch("rxresumeBaseResumeId")}
                     onBasicAuthChoiceChange={flow.setBasicAuthChoice}
                     onBasicAuthPasswordChange={(value) =>
                       flow.setValue("basicAuthPassword", value)
@@ -105,9 +107,8 @@ export const OnboardingPage: React.FC = () => {
                     onBasicAuthUserChange={(value) =>
                       flow.setValue("basicAuthUser", value)
                     }
-                    onPdfRendererChange={(renderer) =>
-                      flow.setValue("pdfRenderer", renderer)
-                    }
+                    onImportResumeFile={flow.handleImportResumeFile}
+                    onResumeSetupModeChange={flow.setResumeSetupMode}
                     onRxresumeApiKeyChange={(value) =>
                       flow.setValue("rxresumeApiKey", value)
                     }
@@ -136,19 +137,7 @@ export const OnboardingPage: React.FC = () => {
                   </Button>
 
                   <div className="flex flex-col items-start gap-2 sm:items-end">
-                    <p className="text-sm text-muted-foreground">
-                      {flow.currentStep === "basicauth"
-                        ? "Finish by enabling basic auth or explicitly skipping it for now."
-                        : null}
-                    </p>
-                    <Button
-                      type="submit"
-                      disabled={
-                        flow.isBusy ||
-                        (flow.currentStep === "baseresume" &&
-                          !flow.rxresumeValidation.valid)
-                      }
-                    >
+                    <Button type="submit" disabled={flow.isBusy}>
                       {flow.primaryLabel}
                       <ArrowRight className="h-4 w-4" />
                     </Button>

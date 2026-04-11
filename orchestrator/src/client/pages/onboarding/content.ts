@@ -4,6 +4,7 @@ export const EMPTY_VALIDATION_STATE: ValidationState = {
   valid: false,
   message: null,
   checked: false,
+  hydrated: false,
 };
 
 export const STEP_COPY: Record<
@@ -16,26 +17,20 @@ export const STEP_COPY: Record<
 > = {
   llm: {
     eyebrow: "Step 1",
-    title: "Choose the LLM connection Job Ops should trust.",
+    title: "Choose the LLM connection Job Ops should use.",
     description:
       "Pick the provider, confirm the endpoint, and validate the credentials this workspace will use for scoring and tailoring.",
   },
-  rxresume: {
-    eyebrow: "Step 2",
-    title: "Connect the resume engine that will export tailored PDFs.",
-    description:
-      "Point Job Ops at your Reactive Resume instance so tailoring can render a final document without extra setup later.",
-  },
   baseresume: {
-    eyebrow: "Step 3",
-    title: "Pick the template resume the pipeline will start from.",
+    eyebrow: "Step 2",
+    title: "Import your current resume.",
     description:
-      "This becomes the source document for tailoring, so choose the version you want every application to inherit from.",
+      "Choose how to bring your base resume into Job Ops. Upload a PDF or DOCX to create a local Design Resume, or connect Reactive Resume with a v5 API key and select an existing resume there.",
   },
   basicauth: {
-    eyebrow: "Step 4",
-    title: "Decide whether write actions should be protected.",
+    eyebrow: "Step 3",
+    title: "Secure your workspace",
     description:
-      "You can enable basic auth now for a safer local setup, or explicitly skip it for now and come back later in Settings.",
+      "Add a username and password so only you can make changes. You can always set this up later in Settings.",
   },
 };
