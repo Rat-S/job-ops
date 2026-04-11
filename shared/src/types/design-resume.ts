@@ -1,5 +1,3 @@
-import type { RxResumeMode } from "./settings";
-
 export type ReactiveResumeV5LooseObject = Record<string, unknown>;
 
 export interface ReactiveResumeV5Url extends ReactiveResumeV5LooseObject {
@@ -350,7 +348,7 @@ export interface DesignResumeDocument {
   resumeJson: DesignResumeJson;
   revision: number;
   sourceResumeId: string | null;
-  sourceMode: RxResumeMode | null;
+  sourceMode: "v4" | "v5" | null;
   importedAt: string | null;
   createdAt: string;
   updatedAt: string;

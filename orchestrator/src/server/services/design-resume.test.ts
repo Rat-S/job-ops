@@ -34,9 +34,6 @@ vi.mock("@server/services/rxresume/baseResumeId", () => ({
 vi.mock("@server/services/rxresume", () => ({
   getResume: vi.fn(),
 }));
-vi.mock("@server/services/rxresume/schema/v4", () => ({
-  parseV4ResumeData: vi.fn((input: unknown) => input),
-}));
 vi.mock("@server/services/tracer-links", () => ({
   resolveTracerPublicBaseUrl: vi.fn(() => null),
 }));
@@ -496,18 +493,6 @@ describe("design resume service", () => {
     );
     expect(fsMocks.unlink).toHaveBeenCalledWith(
       "/tmp/job-ops-test/design-resume/assets/old-picture.png",
-    );
-  });
-
-  it("rejects importing a v4 Reactive Resume source", async () => {
-    vi.mocked(getResume).mockResolvedValueOnce({
-      id: "rx-1",
-      mode: "v4",
-      data: {},
-    } as never);
-
-    await expect(importDesignResumeFromReactiveResume()).rejects.toThrow(
-      "Design Resume only works with Reactive Resume v5",
     );
   });
 

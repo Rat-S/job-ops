@@ -1,7 +1,6 @@
 // rxresume/v5.ts
 // Reactive Resume v5/OpenAPI implementation (API key auth).
 import { logger } from "@infra/logger";
-import type { ResumeData } from "./schema/v4";
 import { parseV5ResumeData } from "./schema/v5";
 
 type RxResumeApiConfig = { baseUrl?: string; apiKey?: string };
@@ -23,7 +22,7 @@ export type RxResumeGetByIdResponse = {
   name: string;
   slug: string;
   tags: string[];
-  data: ResumeData | Record<string, unknown>;
+  data: unknown;
   isPublic: boolean;
   isLocked: boolean;
   hasPassword: boolean;
@@ -31,7 +30,7 @@ export type RxResumeGetByIdResponse = {
 };
 
 export type RxResumeImportRequest = {
-  data: ResumeData | unknown;
+  data: unknown;
   name?: string;
   slug?: string;
 };
@@ -172,9 +171,7 @@ export async function getResume(
     config,
   )) as RxResumeGetByIdResponse;
   if (payload.data !== undefined) {
-    payload.data = parseV5ResumeData(payload.data) as
-      | ResumeData
-      | Record<string, unknown>;
+    payload.data = parseV5ResumeData(payload.data) as Record<string, unknown>;
   }
   return payload;
 }
@@ -227,7 +224,7 @@ export async function importResume(
     config,
   )) as { id: string } | string;
 
-  // Reactive Resume returns the full resume object on import in v4+, or just ID in v5.
+  // In v5, Reactive Resume may return the full resume object or just the ID string.
   return typeof result === "string" ? result : result.id;
 }
 

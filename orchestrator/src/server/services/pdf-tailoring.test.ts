@@ -278,7 +278,6 @@ vi.mock("../repositories/settings", () => ({
   getAllSettings: vi.fn().mockResolvedValue({}),
 }));
 
-// Mock the profile service - getProfile now fetches from v4 API
 vi.mock("./profile", () => ({
   getProfile: vi.fn().mockResolvedValue(mockProfile),
 }));
@@ -515,54 +514,6 @@ describe("PDF Service Tailoring Logic", () => {
     );
   });
 
-  it("passes v4 mode through to the LaTeX renderer when falling back to a v4 base resume", async () => {
-    const rxresume = await import("./rxresume");
-    vi.mocked(rxresume.getResume).mockResolvedValueOnce({
-      id: "base-resume-id",
-      name: "Base Resume",
-      mode: "v4",
-      data: {
-        basics: {
-          name: "Jane Doe",
-          headline: "Platform Engineer",
-          email: "jane@example.com",
-          phone: "",
-          url: {
-            href: "https://jane.dev",
-            label: "Portfolio",
-          },
-        },
-        sections: {
-          summary: {
-            id: "summary",
-            visible: true,
-            content: "<p>Summary</p>",
-          },
-          projects: {
-            id: "projects",
-            visible: true,
-            items: [],
-          },
-          skills: {
-            id: "skills",
-            visible: true,
-            items: [],
-          },
-        },
-      },
-    } as any);
-
-    await generatePdf("job-v4-latex", {}, "desc");
-
-    expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalledWith(
-      expect.objectContaining({
-        jobId: "job-v4-latex",
-        mode: "v4",
-      }),
-    );
-    expect(mockResumeRenderer.getLastResumeArgs()?.mode).toBe("v4");
-  });
-
   it("uses the RxResume export flow when the renderer setting is rxresume", async () => {
     currentPdfRenderer.value = "rxresume";
     const fetchMock = vi.fn().mockResolvedValue({
@@ -577,16 +528,11 @@ describe("PDF Service Tailoring Logic", () => {
       await generatePdf("job-rxresume", {}, "desc");
 
       expect(mockResumeRenderer.renderResumePdf).not.toHaveBeenCalled();
-      expect(rxresume.importResume).toHaveBeenCalledWith(
-        {
-          name: "JobOps Tailored Resume job-rxresume",
-          data: expect.any(Object),
-        },
-        { mode: "v5" },
-      );
-      expect(rxresume.exportResumePdf).toHaveBeenCalledWith("temp-resume-id", {
-        mode: "v5",
+      expect(rxresume.importResume).toHaveBeenCalledWith({
+        name: "JobOps Tailored Resume job-rxresume",
+        data: expect.any(Object),
       });
+      expect(rxresume.exportResumePdf).toHaveBeenCalledWith("temp-resume-id");
       expect(fetchMock).toHaveBeenCalledWith(
         "https://pdf.rxresume.test/print/123",
       );
@@ -594,9 +540,7 @@ describe("PDF Service Tailoring Logic", () => {
         expect.stringContaining("resume_job-rxresume.pdf"),
         expect.any(Uint8Array),
       );
-      expect(rxresume.deleteResume).toHaveBeenCalledWith("temp-resume-id", {
-        mode: "v5",
-      });
+      expect(rxresume.deleteResume).toHaveBeenCalledWith("temp-resume-id");
     } finally {
       vi.unstubAllGlobals();
     }
