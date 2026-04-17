@@ -35,8 +35,13 @@ vi.mock("@server/services/rxresume", () => ({
   extractCertificationsFromResumeV5: vi.fn((data: unknown) => {
     const root = (data ?? {}) as Record<string, unknown>;
     const sections = (root.sections ?? {}) as Record<string, unknown>;
-    const certifications = (sections.certifications ?? {}) as Record<string, unknown>;
-    const items = Array.isArray(certifications.items) ? certifications.items : [];
+    const certifications = (sections.certifications ?? {}) as Record<
+      string,
+      unknown
+    >;
+    const items = Array.isArray(certifications.items)
+      ? certifications.items
+      : [];
     return {
       catalog: items.map((item) => {
         const cert = item as Record<string, unknown>;

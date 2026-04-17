@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { resumeCertificationsSchema, resumeProjectsSchema, settingsRegistry } from "./settings-registry";
+import {
+  resumeCertificationsSchema,
+  resumeProjectsSchema,
+  settingsRegistry,
+} from "./settings-registry";
 
 export { resumeProjectsSchema, resumeCertificationsSchema };
 

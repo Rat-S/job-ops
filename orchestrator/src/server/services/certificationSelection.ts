@@ -2,16 +2,16 @@
  * Service for AI-powered certification selection for resumes.
  */
 
-import { stripHtmlTags } from "@shared/utils/string";
-import { LlmService } from "./llm/service";
-import type { JsonSchemaDefinition } from "./llm/types";
-import { resolveLlmModel } from "./modelSelection";
 import { logger } from "@infra/logger";
 import type {
   ResumeCertificationCatalogItem,
   ResumeCertificationSelectionItem,
   ResumeProfile,
 } from "@shared/types";
+import { stripHtmlTags } from "@shared/utils/string";
+import { LlmService } from "./llm/service";
+import type { JsonSchemaDefinition } from "./llm/types";
+import { resolveLlmModel } from "./modelSelection";
 
 /** JSON schema for certification selection response */
 const CERTIFICATION_SELECTION_SCHEMA: JsonSchemaDefinition = {
@@ -72,8 +72,8 @@ export async function pickCertificationIdsForJob(args: {
 
   logger.info("Certification selection: AI response", {
     success: result.success,
-    data: result.data,
-    error: result.error,
+    data: result.success ? result.data : undefined,
+    error: result.success ? undefined : result.error,
   });
 
   if (!result.success) {
@@ -118,7 +118,9 @@ export async function pickCertificationIdsForJob(args: {
   });
 
   if (unique.length === 0) {
-    logger.warn("Certification selection: no valid IDs after validation, using fallback");
+    logger.warn(
+      "Certification selection: no valid IDs after validation, using fallback",
+    );
     return fallbackPickCertificationIds(
       args.jobDescription,
       args.eligibleCertifications,
@@ -239,7 +241,9 @@ export function extractCertificationsFromProfile(profile: ResumeProfile): {
     hasProfile: !!profile,
     hasSections: !!profile?.sections,
     hasCertifications: !!profile?.sections?.certifications,
-    certificationsKeys: profile?.sections?.certifications ? Object.keys(profile.sections.certifications) : [],
+    certificationsKeys: profile?.sections?.certifications
+      ? Object.keys(profile.sections.certifications)
+      : [],
     certificationsItems: profile?.sections?.certifications?.items,
   });
 
@@ -268,7 +272,7 @@ export function extractCertificationsFromProfile(profile: ResumeProfile): {
     const title = item.title || "";
     const issuer = item.issuer || "";
     const date = item.date || "";
-    const isVisibleInBase = !Boolean(item.hidden); // Inverted: hidden=false means visible
+    const isVisibleInBase = !item.hidden; // Inverted: hidden=false means visible
     const description = item.description || "";
     const summaryText = stripHtmlTags(description);
 

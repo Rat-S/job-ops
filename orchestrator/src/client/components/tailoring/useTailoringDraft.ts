@@ -97,9 +97,7 @@ export function useTailoringDraft({
     parseSelectedIds(job.selectedProjectIds),
   );
   const [savedSelectedCertificationIds, setSavedSelectedCertificationIds] =
-    useState<Set<string>>(() =>
-      parseSelectedIds(job.selectedCertificationIds),
-    );
+    useState<Set<string>>(() => parseSelectedIds(job.selectedCertificationIds));
   const [savedSkillsJson, setSavedSkillsJson] = useState(() =>
     serializeTailoredSkills(parseTailoredSkills(job.tailoredSkills)),
   );

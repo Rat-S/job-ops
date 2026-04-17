@@ -239,8 +239,7 @@ export function extractCertificationsFromResume(resumeData: RecordLike): {
     if (!id) continue;
 
     const title = typeof item.name === "string" ? item.name : id;
-    const issuer =
-      typeof item.issuer === "string" ? item.issuer : "";
+    const issuer = typeof item.issuer === "string" ? item.issuer : "";
     const date = typeof item.date === "string" ? item.date : "";
 
     const isVisibleInBase = !(typeof item.hidden === "boolean"

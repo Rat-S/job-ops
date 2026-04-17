@@ -16,16 +16,14 @@ import { getDataDir } from "../config/dataDir";
 import * as jobsRepo from "../repositories/jobs";
 import * as pipelineRepo from "../repositories/pipeline";
 import { getSetting } from "../repositories/settings";
-import { generatePdf } from "../services/pdf";
-import { getProfile } from "../services/profile";
 import {
   extractCertificationsFromProfile,
   pickCertificationIdsForJob,
 } from "../services/certificationSelection";
-import {
-  resolveResumeCertificationsSettings,
-} from "../services/resumeCertifications";
+import { generatePdf } from "../services/pdf";
+import { getProfile } from "../services/profile";
 import { pickProjectIdsForJob } from "../services/projectSelection";
+import { resolveResumeCertificationsSettings } from "../services/resumeCertifications";
 import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,

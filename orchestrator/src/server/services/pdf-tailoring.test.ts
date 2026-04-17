@@ -513,7 +513,7 @@ describe("PDF Service Tailoring Logic", () => {
   });
 
   it("does not rewrite links when tracer links are disabled", async () => {
-    await generatePdf("job-no-tracer", {}, "desc", undefined, undefined, {
+    await generatePdf("job-no-tracer", {}, "desc", undefined, undefined, undefined, {
       tracerLinksEnabled: false,
     });
 
@@ -522,7 +522,7 @@ describe("PDF Service Tailoring Logic", () => {
   });
 
   it("rewrites links when tracer links are enabled", async () => {
-    await generatePdf("job-with-tracer", {}, "desc", undefined, undefined, {
+    await generatePdf("job-with-tracer", {}, "desc", undefined, undefined, undefined, {
       tracerLinksEnabled: true,
       requestOrigin: "https://jobops.example",
     });
@@ -606,7 +606,14 @@ describe("PDF Service Tailoring Logic", () => {
   });
 
   it("keeps certifications section visible when selected certification list is explicitly empty", async () => {
-    await generatePdf("job-empty-certs", {}, "desc", "base.json", undefined, "");
+    await generatePdf(
+      "job-empty-certs",
+      {},
+      "desc",
+      "base.json",
+      undefined,
+      "",
+    );
 
     expect(mockResumeRenderer.renderResumePdf).toHaveBeenCalled();
     const savedResumeJson = mockResumeRenderer.getLastResumeJson();

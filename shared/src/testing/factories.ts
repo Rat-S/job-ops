@@ -35,6 +35,7 @@ export const createJob = (overrides: Partial<Job> = {}): Job => ({
   tailoredHeadline: null,
   tailoredSkills: null,
   selectedProjectIds: null,
+  selectedCertificationIds: null,
   pdfPath: null,
   tracerLinksEnabled: false,
   sponsorMatchScore: null,
@@ -141,12 +142,26 @@ export const createAppSettings = (
   pipelineWebhookUrl: { value: "", default: "", override: null },
   jobCompleteWebhookUrl: { value: "", default: "", override: null },
   profileProjects: [],
+  profileCertifications: [],
   resumeProjects: {
     value: { maxProjects: 3, lockedProjectIds: [], aiSelectableProjectIds: [] },
     default: {
       maxProjects: 3,
       lockedProjectIds: [],
       aiSelectableProjectIds: [],
+    },
+    override: null,
+  },
+  resumeCertifications: {
+    value: {
+      maxCertifications: 11,
+      lockedCertificationIds: [],
+      aiSelectableCertificationIds: [],
+    },
+    default: {
+      maxCertifications: 11,
+      lockedCertificationIds: [],
+      aiSelectableCertificationIds: [],
     },
     override: null,
   },

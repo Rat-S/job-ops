@@ -35,8 +35,8 @@ vi.mock("@server/repositories/settings", async (importOriginal) => {
 });
 
 import { getSetting } from "@server/repositories/settings";
-import { extractCertificationsFromProfile } from "@server/services/resumeCertifications";
 import { getProfile } from "@server/services/profile";
+import { extractCertificationsFromProfile } from "@server/services/resumeCertifications";
 import { getResume, RxResumeAuthConfigError } from "@server/services/rxresume";
 
 describe.sequential("Profile API routes", () => {

@@ -1763,10 +1763,11 @@ export async function getRxResumeCertifications(
   resumeId: string,
   signal?: AbortSignal,
 ): Promise<ResumeCertificationCatalogItem[]> {
-  const data = await fetchApi<{ certifications: ResumeCertificationCatalogItem[] }>(
-    `/settings/rx-resumes/${encodeURIComponent(resumeId)}/certifications`,
-    { signal },
-  );
+  const data = await fetchApi<{
+    certifications: ResumeCertificationCatalogItem[];
+  }>(`/settings/rx-resumes/${encodeURIComponent(resumeId)}/certifications`, {
+    signal,
+  });
   return data.certifications;
 }
 

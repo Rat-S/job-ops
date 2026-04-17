@@ -149,13 +149,16 @@ describe("Resume Certifications Logic", () => {
         overrideRaw: validOverride,
       });
 
-      expect(result.resumeCertifications.lockedCertificationIds).toEqual(["c2"]);
-      expect(result.resumeCertifications.aiSelectableCertificationIds).toContain(
+      // New logic: override IDs are ignored, catalog IDs are always used
+      expect(result.resumeCertifications.lockedCertificationIds).toEqual([
         "c1",
-      );
-      expect(result.resumeCertifications.aiSelectableCertificationIds).toContain(
-        "c3",
-      );
+      ]);
+      expect(
+        result.resumeCertifications.aiSelectableCertificationIds,
+      ).toContain("c2");
+      expect(
+        result.resumeCertifications.aiSelectableCertificationIds,
+      ).toContain("c3");
       expect(result.resumeCertifications.maxCertifications).toBe(2);
     });
 

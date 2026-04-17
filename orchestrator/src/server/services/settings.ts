@@ -12,13 +12,13 @@ import {
 import { getEnvSettingsData } from "./envSettings";
 import { getProfile } from "./profile";
 import {
-  extractProjectsFromProfile,
-  resolveResumeProjectsSettings,
-} from "./resumeProjects";
-import {
   extractCertificationsFromProfile,
   resolveResumeCertificationsSettings,
 } from "./resumeCertifications";
+import {
+  extractProjectsFromProfile,
+  resolveResumeProjectsSettings,
+} from "./resumeProjects";
 import {
   extractProjectsFromResume,
   getResume,

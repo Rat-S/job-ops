@@ -8,7 +8,6 @@ import {
   resolveTracerPublicBaseUrl,
   rewriteResumeLinksWithTracer,
 } from "@server/services/tracer-links";
-import type { ResumeCertificationCatalogItem } from "@shared/types";
 import type { ResumeProjectCatalogItem } from "@shared/types";
 import {
   getResumeSchemaValidationMessage,
@@ -21,19 +20,20 @@ import {
   cloneResumeData,
   extractCertificationsFromResume as extractCertificationsFromResumeV5,
   extractProjectsFromResume as extractProjectsFromResumeV5,
-  type TailoredSkillsInput,
   type RecordLike,
+  type TailoredSkillsInput,
 } from "./tailoring";
 
-function asRecord(value: unknown): RecordLike | null {
+function _asRecord(value: unknown): RecordLike | null {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as RecordLike)
     : null;
 }
 
-function asArray(value: unknown): unknown[] | null {
+function _asArray(value: unknown): unknown[] | null {
   return Array.isArray(value) ? value : null;
 }
+
 import * as v5 from "./v5";
 
 export type RxResumeResume = {
@@ -459,15 +459,21 @@ export async function prepareTailoredResumeForPdf(args: {
   let selectedCertificationIds = parseSelectedProjectIds(
     args.selectedCertificationIds,
   );
-  if (
+  // Handle empty string as "hide all certifications"
+  if (args.selectedCertificationIds === "") {
+    selectedCertificationIds = [];
+  } else if (
     args.selectedCertificationIds === null ||
     args.selectedCertificationIds === undefined
   ) {
     // Extract certifications from resume
-    const { catalog: certificationCatalog } = extractCertificationsFromResumeV5(workingCopy);
+    const { catalog: certificationCatalog } =
+      extractCertificationsFromResumeV5(workingCopy);
 
     // Use database settings for certifications
-    const overrideResumeCertificationsRaw = await getSetting("resumeCertifications");
+    const overrideResumeCertificationsRaw = await getSetting(
+      "resumeCertifications",
+    );
     const { resumeCertifications } = resolveResumeCertificationsSettings({
       catalog: certificationCatalog,
       overrideRaw: overrideResumeCertificationsRaw,
@@ -478,7 +484,9 @@ export async function prepareTailoredResumeForPdf(args: {
       0,
       resumeCertifications.maxCertifications - locked.length,
     );
-    const eligibleSet = new Set(resumeCertifications.aiSelectableCertificationIds);
+    const eligibleSet = new Set(
+      resumeCertifications.aiSelectableCertificationIds,
+    );
     const eligibleCertifications = certificationCatalog.filter((c) =>
       eligibleSet.has(c.id),
     );
@@ -494,7 +502,6 @@ export async function prepareTailoredResumeForPdf(args: {
 
     selectedCertificationIds = [...locked, ...picked];
   }
-
   applyCertificationVisibility({
     resumeData: workingCopy,
     selectedCertificationIds: new Set(selectedCertificationIds),

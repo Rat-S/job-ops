@@ -549,6 +549,10 @@ settingsRouter.get(
       }
 
       const resume = await getResume(resumeId);
+      if (!resume) {
+        fail(res, badRequest("Resume not found."));
+        return;
+      }
       const validated = await validateResumeSchema(resume.data ?? {});
       if (!validated.ok) {
         fail(res, badRequest(validated.message));

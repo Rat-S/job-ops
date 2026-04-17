@@ -77,7 +77,9 @@ export function parseResumeCertificationsSettings(
       return null;
     if (!lockedCertificationIds.every((v: unknown) => typeof v === "string"))
       return null;
-    if (!aiSelectableCertificationIds.every((v: unknown) => typeof v === "string"))
+    if (
+      !aiSelectableCertificationIds.every((v: unknown) => typeof v === "string")
+    )
       return null;
 
     return {
@@ -121,7 +123,11 @@ export function normalizeResumeCertificationsSettings(
     Math.max(minRequired, maxCertificationsInt),
   );
 
-  return { maxCertifications, lockedCertificationIds, aiSelectableCertificationIds };
+  return {
+    maxCertifications,
+    lockedCertificationIds,
+    aiSelectableCertificationIds,
+  };
 }
 
 export function resolveResumeCertificationsSettings(args: {
@@ -135,8 +141,9 @@ export function resolveResumeCertificationsSettings(args: {
 } {
   const profileCertifications = args.catalog;
   const allowed = new Set(profileCertifications.map((c) => c.id));
-  const defaultResumeCertifications =
-    buildDefaultResumeCertificationsSettings(profileCertifications);
+  const defaultResumeCertifications = buildDefaultResumeCertificationsSettings(
+    profileCertifications,
+  );
   const overrideParsed = parseResumeCertificationsSettings(args.overrideRaw);
   const overrideResumeCertifications = overrideParsed
     ? normalizeResumeCertificationsSettings(overrideParsed, allowed)
@@ -148,7 +155,8 @@ export function resolveResumeCertificationsSettings(args: {
   if (overrideResumeCertifications) {
     resumeCertifications = {
       maxCertifications: overrideResumeCertifications.maxCertifications,
-      lockedCertificationIds: defaultResumeCertifications.lockedCertificationIds,
+      lockedCertificationIds:
+        defaultResumeCertifications.lockedCertificationIds,
       aiSelectableCertificationIds:
         defaultResumeCertifications.aiSelectableCertificationIds,
     };
