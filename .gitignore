@@ -22,3 +22,6 @@ Thumbs.db
 
 # local temp artifacts
 tmp/
+
+# Docker compose override for local testing
+docker-compose.override.yml

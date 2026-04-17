@@ -13,7 +13,7 @@ services:
       - "3005:3001"
     volumes:
       # Persist database and generated PDFs
-      - ./data:/app/data
+      - ./data:/app/data:z
       # Persist Codex login/session data for app-server provider
       - codex-home:/app/codex-home
     environment:

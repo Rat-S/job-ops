@@ -321,20 +321,38 @@ export async function summarizeJob(
         try {
           const { catalog, selectionItems } =
             extractCertificationsFromProfile(profile);
+          jobLogger.info("Certification selection: profile data", {
+            totalCertifications: catalog.length,
+            selectionItemsCount: selectionItems.length,
+          });
+
           const certificationSettings =
             buildDefaultResumeCertificationsSettings(catalog);
+          jobLogger.info("Certification selection: settings", {
+            maxCertifications: certificationSettings.maxCertifications,
+            lockedCount: certificationSettings.lockedCertificationIds.length,
+            aiSelectableCount:
+              certificationSettings.aiSelectableCertificationIds.length,
+          });
 
           const locked = certificationSettings.lockedCertificationIds;
           const desiredCount = Math.max(
             0,
             certificationSettings.maxCertifications - locked.length,
           );
+          jobLogger.info("Certification selection: desiredCount", {
+            desiredCount,
+          });
+
           const eligibleSet = new Set(
             certificationSettings.aiSelectableCertificationIds,
           );
           const eligibleCertifications = selectionItems.filter((c) =>
             eligibleSet.has(c.id),
           );
+          jobLogger.info("Certification selection: eligible certifications", {
+            eligibleCount: eligibleCertifications.length,
+          });
 
           const picked = await pickCertificationIdsForJob({
             jobDescription: job.jobDescription || "",
@@ -342,7 +360,17 @@ export async function summarizeJob(
             desiredCount,
           });
 
+          jobLogger.info("Certification selection: picked IDs", {
+            pickedCount: picked.length,
+            pickedIds: picked,
+          });
+
           selectedCertificationIds = [...locked, ...picked].join(",");
+          jobLogger.info("Certification selection: final result", {
+            lockedCount: locked.length,
+            pickedCount: picked.length,
+            total: selectedCertificationIds,
+          });
         } catch (error) {
           jobLogger.warn("Failed to suggest certifications", error);
         }

@@ -29,6 +29,11 @@ export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
     const localProfile = await designResumeToProfile();
     if (localProfile) {
       cachedLocalProfile = localProfile;
+      logger.info("Profile loaded from local Design Resume", {
+        hasSections: !!localProfile?.sections,
+        hasCertifications: !!localProfile?.sections?.certifications,
+        certificationsKeys: localProfile?.sections?.certifications ? Object.keys(localProfile.sections.certifications) : [],
+      });
       return localProfile;
     }
   } catch (error) {
@@ -77,6 +82,9 @@ export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
     cachedResumeId = rxresumeBaseResumeId;
     logger.info("Profile loaded from Reactive Resume", {
       resumeId: rxresumeBaseResumeId,
+      hasSections: !!cachedProfile?.sections,
+      hasCertifications: !!cachedProfile?.sections?.certifications,
+      certificationsKeys: cachedProfile?.sections?.certifications ? Object.keys(cachedProfile.sections.certifications) : [],
     });
     return cachedProfile;
   } catch (error) {

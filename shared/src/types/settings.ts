@@ -153,7 +153,8 @@ export interface ResumeProfile {
         issuer: string;
         date: string;
         description: string;
-        visible: boolean;
+        hidden?: boolean; // Reactive Resume uses hidden instead of visible
+        visible?: boolean; // Legacy field for compatibility
       }>;
     };
     [key: string]: unknown;

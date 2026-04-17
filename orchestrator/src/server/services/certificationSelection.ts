@@ -6,6 +6,7 @@ import { stripHtmlTags } from "@shared/utils/string";
 import { LlmService } from "./llm/service";
 import type { JsonSchemaDefinition } from "./llm/types";
 import { resolveLlmModel } from "./modelSelection";
+import { logger } from "@infra/logger";
 import type {
   ResumeCertificationCatalogItem,
   ResumeCertificationSelectionItem,
@@ -35,12 +36,24 @@ export async function pickCertificationIdsForJob(args: {
   desiredCount: number;
 }): Promise<string[]> {
   const desiredCount = Math.max(0, Math.floor(args.desiredCount));
-  if (desiredCount === 0) return [];
+  logger.info("Certification selection started", {
+    desiredCount,
+    eligibleCount: args.eligibleCertifications.length,
+  });
+
+  if (desiredCount === 0) {
+    logger.info("Certification selection skipped: desiredCount is 0");
+    return [];
+  }
 
   const eligibleIds = new Set(args.eligibleCertifications.map((c) => c.id));
-  if (eligibleIds.size === 0) return [];
+  if (eligibleIds.size === 0) {
+    logger.info("Certification selection skipped: no eligible certifications");
+    return [];
+  }
 
   const model = await resolveLlmModel("certificationSelection");
+  logger.info("Certification selection: calling LLM", { model });
 
   const prompt = buildCertificationSelectionPrompt({
     jobDescription: args.jobDescription,
@@ -56,6 +69,9 @@ export async function pickCertificationIdsForJob(args: {
   });
 
   if (!result.success) {
+    logger.warn("Certification selection: LLM call failed, using fallback", {
+      error: result.error,
+    });
     return fallbackPickCertificationIds(
       args.jobDescription,
       args.eligibleCertifications,
@@ -68,6 +84,11 @@ export async function pickCertificationIdsForJob(args: {
   )
     ? result.data.selectedCertificationIds
     : [];
+
+  logger.info("Certification selection: LLM returned", {
+    returnedCount: selectedCertificationIds.length,
+    returnedIds: selectedCertificationIds,
+  });
 
   // Validate and dedupe the returned IDs
   const unique: string[] = [];
@@ -83,13 +104,24 @@ export async function pickCertificationIdsForJob(args: {
     if (unique.length >= desiredCount) break;
   }
 
+  logger.info("Certification selection: after validation", {
+    uniqueCount: unique.length,
+    uniqueIds: unique,
+  });
+
   if (unique.length === 0) {
+    logger.warn("Certification selection: no valid IDs after validation, using fallback");
     return fallbackPickCertificationIds(
       args.jobDescription,
       args.eligibleCertifications,
       desiredCount,
     );
   }
+
+  logger.info("Certification selection completed", {
+    finalCount: unique.length,
+    finalIds: unique,
+  });
 
   return unique;
 }
@@ -195,8 +227,26 @@ export function extractCertificationsFromProfile(profile: ResumeProfile): {
   catalog: ResumeCertificationCatalogItem[];
   selectionItems: ResumeCertificationSelectionItem[];
 } {
+  logger.info("Extracting certifications from profile", {
+    hasProfile: !!profile,
+    hasSections: !!profile?.sections,
+    hasCertifications: !!profile?.sections?.certifications,
+    certificationsKeys: profile?.sections?.certifications ? Object.keys(profile.sections.certifications) : [],
+    certificationsItems: profile?.sections?.certifications?.items,
+  });
+
   const items = profile?.sections?.certifications?.items;
-  if (!Array.isArray(items)) return { catalog: [], selectionItems: [] };
+  if (!Array.isArray(items)) {
+    logger.warn("Certification extraction failed: items is not an array", {
+      items,
+      itemsType: typeof items,
+    });
+    return { catalog: [], selectionItems: [] };
+  }
+
+  logger.info("Certification extraction: found items", {
+    itemsCount: items.length,
+  });
 
   const catalog: ResumeCertificationCatalogItem[] = [];
   const selectionItems: ResumeCertificationSelectionItem[] = [];
@@ -210,7 +260,7 @@ export function extractCertificationsFromProfile(profile: ResumeProfile): {
     const title = item.title || "";
     const issuer = item.issuer || "";
     const date = item.date || "";
-    const isVisibleInBase = Boolean(item.visible);
+    const isVisibleInBase = !Boolean(item.hidden); // Inverted: hidden=false means visible
     const description = item.description || "";
     const summaryText = stripHtmlTags(description);
 
@@ -224,6 +274,11 @@ export function extractCertificationsFromProfile(profile: ResumeProfile): {
     catalog.push(base);
     selectionItems.push({ ...base, summaryText });
   }
+
+  logger.info("Certification extraction completed", {
+    catalogCount: catalog.length,
+    selectionItemsCount: selectionItems.length,
+  });
 
   return { catalog, selectionItems };
 }

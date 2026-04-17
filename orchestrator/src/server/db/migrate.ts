@@ -70,6 +70,7 @@ const migrations = [
     tailored_headline TEXT,
     tailored_skills TEXT,
     selected_project_ids TEXT,
+    selected_certification_ids TEXT,
     pdf_path TEXT,
     tracer_links_enabled INTEGER NOT NULL DEFAULT 0,
     discovered_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -385,6 +386,7 @@ const migrations = [
   `ALTER TABLE jobs ADD COLUMN vacancy_count INTEGER`,
   `ALTER TABLE jobs ADD COLUMN work_from_home_type TEXT`,
   `ALTER TABLE jobs ADD COLUMN selected_project_ids TEXT`,
+  `ALTER TABLE jobs ADD COLUMN selected_certification_ids TEXT`,
   `ALTER TABLE jobs ADD COLUMN tailored_headline TEXT`,
   `ALTER TABLE jobs ADD COLUMN tailored_skills TEXT`,
   `ALTER TABLE jobs ADD COLUMN tracer_links_enabled INTEGER NOT NULL DEFAULT 0`,
@@ -501,6 +503,7 @@ const migrations = [
     tailored_headline TEXT,
     tailored_skills TEXT,
     selected_project_ids TEXT,
+    selected_certification_ids TEXT,
     pdf_path TEXT,
     tracer_links_enabled INTEGER NOT NULL DEFAULT 0,
     sponsor_match_score REAL,
@@ -520,7 +523,7 @@ const migrations = [
     vacancy_count, work_from_home_type, title, employer, employer_url, job_url, application_link, disciplines,
     deadline, salary, location, degree_required, starting, job_description, status, outcome, closed_at,
     suitability_score, suitability_reason, tailored_summary, tailored_headline, tailored_skills,
-    selected_project_ids, pdf_path, tracer_links_enabled, sponsor_match_score, sponsor_match_names, discovered_at, processed_at,
+    selected_project_ids, selected_certification_ids, pdf_path, tracer_links_enabled, sponsor_match_score, sponsor_match_names, discovered_at, processed_at,
     ready_at,
     applied_at, created_at, updated_at
   )
@@ -532,7 +535,7 @@ const migrations = [
     vacancy_count, work_from_home_type, title, employer, employer_url, job_url, application_link, disciplines,
     deadline, salary, location, degree_required, starting, job_description, status, outcome, closed_at,
     suitability_score, suitability_reason, tailored_summary, tailored_headline, tailored_skills,
-    selected_project_ids, pdf_path, tracer_links_enabled, sponsor_match_score, sponsor_match_names, discovered_at, processed_at,
+    selected_project_ids, selected_certification_ids, pdf_path, tracer_links_enabled, sponsor_match_score, sponsor_match_names, discovered_at, processed_at,
     ready_at,
     applied_at, created_at, updated_at
   FROM jobs`,
