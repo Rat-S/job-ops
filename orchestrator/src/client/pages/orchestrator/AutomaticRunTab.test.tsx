@@ -58,6 +58,28 @@ describe("AutomaticRunTab", () => {
     ).toBeInTheDocument();
   });
 
+  it("does not default the country picker to United Kingdom", () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings()}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Select country" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Start run now" }),
+    ).toBeDisabled();
+  });
+
   it("loads persisted country from settings", () => {
     render(
       <AutomaticRunTab
@@ -267,7 +289,7 @@ describe("AutomaticRunTab", () => {
     const glassdoorButton = screen.getByRole("button", { name: "Glassdoor" });
     expect(glassdoorButton).toBeDisabled();
     expect(glassdoorButton.getAttribute("title")).toContain(
-      "Add at least one city in Advanced settings to enable Glassdoor.",
+      "Add at least one city in Location preferences to enable Glassdoor.",
     );
   });
 
@@ -296,7 +318,6 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
     fireEvent.focus(screen.getByLabelText("Cities"));
 
     expect(
@@ -372,8 +393,6 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
-
     const collapsedTokens = screen.getByTestId(
       "city-locations-input-collapsed-tokens",
     );
@@ -414,18 +433,27 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
-
     expect(screen.getByLabelText("Remote")).toBeChecked();
     expect(screen.getByLabelText("Onsite")).toBeChecked();
     expect(screen.getByLabelText("Hybrid")).not.toBeChecked();
   });
 
-  it("requires at least one workplace type", async () => {
+  it("normalizes saved max jobs discovered values below 50 in the UI", () => {
     render(
       <AutomaticRunTab
         open
-        settings={createAppSettings()}
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+          jobspyResultsWanted: {
+            value: 25,
+            default: 200,
+            override: 25,
+          },
+        })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
         onToggleSource={vi.fn()}
@@ -435,7 +463,31 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
+
+    expect(screen.getByLabelText("Max jobs discovered")).toHaveValue(50);
+  });
+
+  it("requires at least one workplace type", async () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
     fireEvent.click(screen.getByLabelText("Remote"));
     fireEvent.click(screen.getByLabelText("Hybrid"));
     fireEvent.click(screen.getByLabelText("Onsite"));
@@ -448,7 +500,7 @@ describe("AutomaticRunTab", () => {
     ).toBeDisabled();
   });
 
-  it("shows JobSpy guidance when non-remote workplace types are selected", () => {
+  it("keeps source-specific warnings out of the location section", () => {
     render(
       <AutomaticRunTab
         open
@@ -468,13 +520,11 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
-
     expect(
-      screen.getByText(
-        /Indeed, LinkedIn, and Glassdoor only support strict remote filtering\./i,
+      screen.queryByText(
+        /Some sources can only apply a strict remote filter\./i,
       ),
-    ).toBeInTheDocument();
+    ).not.toBeInTheDocument();
   });
 
   it("submits workplace types in onSaveAndRun values", async () => {
@@ -483,7 +533,13 @@ describe("AutomaticRunTab", () => {
     render(
       <AutomaticRunTab
         open
-        settings={createAppSettings()}
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+        })}
         enabledSources={["linkedin"]}
         pipelineSources={["linkedin"]}
         onToggleSource={vi.fn()}
@@ -493,7 +549,6 @@ describe("AutomaticRunTab", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Advanced settings" }));
     fireEvent.click(screen.getByLabelText("Hybrid"));
     fireEvent.click(screen.getByLabelText("Onsite"));
     fireEvent.click(screen.getByRole("button", { name: "Start run now" }));
@@ -505,5 +560,96 @@ describe("AutomaticRunTab", () => {
         }),
       );
     });
+  });
+
+  it("clamps max jobs discovered to 50 before submitting", async () => {
+    const onSaveAndRun = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={onSaveAndRun}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Run settings" }));
+    fireEvent.change(screen.getByLabelText("Max jobs discovered"), {
+      target: { value: "10" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Start run now" }));
+
+    await waitFor(() => {
+      expect(onSaveAndRun).toHaveBeenCalledWith(
+        expect.objectContaining({
+          runBudget: 50,
+        }),
+      );
+    });
+  });
+
+  it("shows the new location preference controls and a live summary", () => {
+    render(
+      <AutomaticRunTab
+        open
+        settings={createAppSettings({
+          jobspyCountryIndeed: {
+            value: "croatia",
+            default: "",
+            override: "croatia",
+          },
+          locationSearchScope: {
+            value: "selected_plus_remote_worldwide",
+            default: "selected_only",
+            override: "selected_plus_remote_worldwide",
+          },
+          locationMatchStrictness: {
+            value: "flexible",
+            default: "exact_only",
+            override: "flexible",
+          },
+          searchCities: {
+            value: "Zagreb",
+            default: "",
+            override: "Zagreb",
+          },
+          workplaceTypes: {
+            value: ["remote", "hybrid", "onsite"],
+            default: ["remote", "hybrid", "onsite"],
+            override: ["remote", "hybrid", "onsite"],
+          },
+        })}
+        enabledSources={["linkedin"]}
+        pipelineSources={["linkedin"]}
+        onToggleSource={vi.fn()}
+        onSetPipelineSources={vi.fn()}
+        isPipelineRunning={false}
+        onSaveAndRun={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText("Work arrangement")).toBeInTheDocument();
+    expect(screen.getByText("Location scope")).toBeInTheDocument();
+    expect(screen.getByText("Match strictness")).toBeInTheDocument();
+    expect(
+      screen.getByText("Selected locations + remote worldwide"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Include likely matches")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /You'll get (hybrid and onsite|onsite and hybrid) jobs in Zagreb in Croatia plus remote jobs worldwide\. Likely matches are included\./i,
+      ),
+    ).toBeInTheDocument();
   });
 });

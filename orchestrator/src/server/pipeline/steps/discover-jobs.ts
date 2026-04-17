@@ -5,6 +5,10 @@ import { getAllJobUrls } from "@server/repositories/jobs";
 import * as settingsRepo from "@server/repositories/settings";
 import { asyncPool } from "@server/utils/async-pool";
 import {
+  normalizeLocationMatchStrictness,
+  normalizeLocationSearchScope,
+} from "@shared/location-preferences.js";
+import {
   formatCountryLabel,
   isSourceAllowedForCountry,
   normalizeCountryKey,
@@ -12,6 +16,7 @@ import {
 import { normalizeStringArray } from "@shared/normalize-string-array.js";
 import {
   matchesRequestedCity,
+  matchesRequestedCountry,
   resolveSearchCities,
   shouldApplyStrictCityFilter,
 } from "@shared/search-cities.js";
@@ -57,24 +62,91 @@ function isBlockedEmployer(
   );
 }
 
-function filterJobsByRequestedCities(args: {
+function parseWorkplaceTypes(
+  raw: string | undefined,
+): Array<"remote" | "hybrid" | "onsite"> {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (value): value is "remote" | "hybrid" | "onsite" =>
+        value === "remote" || value === "hybrid" || value === "onsite",
+    );
+  } catch {
+    return [];
+  }
+}
+
+function matchesSelectedLocations(args: {
+  job: CreateJobInput;
+  selectedCountry: string;
+  requestedCities: string[];
+  matchStrictness: "exact_only" | "flexible";
+}): boolean {
+  const { job, selectedCountry, requestedCities, matchStrictness } = args;
+  if (!selectedCountry) return true;
+
+  const countryMatches = matchesRequestedCountry(
+    job.location ?? undefined,
+    selectedCountry,
+  );
+  if (!countryMatches) return false;
+  if (requestedCities.length === 0) return true;
+
+  const cityMatches = requestedCities.some((requestedCity) => {
+    const strict = shouldApplyStrictCityFilter(requestedCity, selectedCountry);
+    if (!strict) return true;
+    return matchesRequestedCity(job.location, requestedCity);
+  });
+
+  if (cityMatches) return true;
+  return matchStrictness === "flexible";
+}
+
+function filterJobsByLocationPreferences(args: {
   jobs: CreateJobInput[];
   selectedCountry: string;
   requestedCities: string[];
+  workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
+  searchScope:
+    | "selected_only"
+    | "selected_plus_remote_worldwide"
+    | "remote_worldwide_prioritize_selected";
+  matchStrictness: "exact_only" | "flexible";
 }): CreateJobInput[] {
-  const { jobs, selectedCountry, requestedCities } = args;
-  if (requestedCities.length === 0) return jobs;
+  const {
+    jobs,
+    selectedCountry,
+    requestedCities,
+    workplaceTypes,
+    searchScope,
+    matchStrictness,
+  } = args;
 
-  return jobs.filter((job) =>
-    requestedCities.some((requestedCity) => {
-      const strict = shouldApplyStrictCityFilter(
-        requestedCity,
+  if (!selectedCountry) return jobs;
+
+  const allowRemoteWorldwide =
+    workplaceTypes.includes("remote") && searchScope !== "selected_only";
+
+  return jobs.filter((job) => {
+    if (
+      matchesSelectedLocations({
+        job,
         selectedCountry,
-      );
-      if (!strict) return true;
-      return matchesRequestedCity(job.location, requestedCity);
-    }),
-  );
+        requestedCities,
+        matchStrictness,
+      })
+    ) {
+      return true;
+    }
+
+    if (allowRemoteWorldwide && job.isRemote) {
+      return true;
+    }
+
+    return false;
+  });
 }
 
 export async function discoverJobsStep(args: {
@@ -107,14 +179,20 @@ export async function discoverJobsStep(args: {
   }
 
   const selectedCountry = normalizeCountryKey(
-    settings.jobspyCountryIndeed ??
-      settings.searchCities ??
-      settings.jobspyLocation ??
-      "united kingdom",
+    settings.jobspyCountryIndeed ?? "",
   );
-  const compatibleSources = args.mergedConfig.sources.filter((source) =>
-    isSourceAllowedForCountry(source, selectedCountry),
+  const workplaceTypes = parseWorkplaceTypes(settings.workplaceTypes);
+  const searchScope = normalizeLocationSearchScope(
+    settings.locationSearchScope,
   );
+  const matchStrictness = normalizeLocationMatchStrictness(
+    settings.locationMatchStrictness,
+  );
+  const compatibleSources = selectedCountry
+    ? args.mergedConfig.sources.filter((source) =>
+        isSourceAllowedForCountry(source, selectedCountry),
+      )
+    : args.mergedConfig.sources;
   let existingJobUrlsPromise: Promise<string[]> | null = null;
   const getExistingJobUrls = (): Promise<string[]> => {
     if (!existingJobUrlsPromise) {
@@ -126,7 +204,7 @@ export async function discoverJobsStep(args: {
     (source) => !compatibleSources.includes(source),
   );
 
-  if (skippedSources.length > 0) {
+  if (selectedCountry && skippedSources.length > 0) {
     logger.info("Skipping incompatible sources for selected country", {
       step: "discover-jobs",
       country: selectedCountry,
@@ -136,7 +214,11 @@ export async function discoverJobsStep(args: {
     });
   }
 
-  if (args.mergedConfig.sources.length > 0 && compatibleSources.length === 0) {
+  if (
+    selectedCountry &&
+    args.mergedConfig.sources.length > 0 &&
+    compatibleSources.length === 0
+  ) {
     throw new Error(
       `No compatible sources for selected country: ${formatCountryLabel(selectedCountry)}`,
     );
@@ -292,20 +374,31 @@ export async function discoverJobsStep(args: {
   const requestedCities = resolveSearchCities({
     single: settings.searchCities ?? settings.jobspyLocation,
   });
-  const cityFilteredJobs = filterJobsByRequestedCities({
+  const locationFilteredJobs = filterJobsByLocationPreferences({
     jobs: discoveredJobs,
     selectedCountry,
     requestedCities,
+    workplaceTypes,
+    searchScope,
+    matchStrictness,
   });
-  const cityFilteredOutCount = discoveredJobs.length - cityFilteredJobs.length;
+  const locationFilteredOutCount =
+    discoveredJobs.length - locationFilteredJobs.length;
 
-  if (cityFilteredOutCount > 0) {
-    logger.info("Dropped discovered jobs that did not match requested cities", {
-      step: "discover-jobs",
-      droppedCount: cityFilteredOutCount,
-      requestedCities,
-      selectedCountry,
-    });
+  if (locationFilteredOutCount > 0) {
+    logger.info(
+      "Dropped discovered jobs that did not satisfy location preferences",
+      {
+        step: "discover-jobs",
+        droppedCount: locationFilteredOutCount,
+        selectedCountry,
+        requestedCities,
+        searchScope,
+        matchStrictness,
+        allowRemoteWorldwide:
+          workplaceTypes.includes("remote") && searchScope !== "selected_only",
+      },
+    );
   }
 
   const blockedCompanyKeywords = parseBlockedCompanyKeywords(
@@ -314,10 +407,11 @@ export async function discoverJobsStep(args: {
   const blockedKeywordsLowerCase = blockedCompanyKeywords.map((value) =>
     value.toLowerCase(),
   );
-  const filteredDiscoveredJobs = cityFilteredJobs.filter(
+  const filteredDiscoveredJobs = locationFilteredJobs.filter(
     (job) => !isBlockedEmployer(job.employer, blockedKeywordsLowerCase),
   );
-  const droppedCount = cityFilteredJobs.length - filteredDiscoveredJobs.length;
+  const droppedCount =
+    locationFilteredJobs.length - filteredDiscoveredJobs.length;
 
   if (droppedCount > 0) {
     const blockedCompanyKeywordsPreview = blockedCompanyKeywords.slice(0, 10);

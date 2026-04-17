@@ -1,4 +1,8 @@
 import { EXTRACTOR_SOURCE_METADATA } from "@shared/extractors";
+import type {
+  LocationMatchStrictness,
+  LocationSearchScope,
+} from "@shared/location-preferences.js";
 import {
   formatCountryLabel,
   isSourceAllowedForCountry,
@@ -20,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -36,11 +41,14 @@ import {
   type AutomaticRunValues,
   calculateAutomaticEstimate,
   loadAutomaticRunMemory,
+  MATCH_STRICTNESS_OPTIONS,
   normalizeWorkplaceTypes,
   parseCityLocationsInput,
   parseCityLocationsSetting,
   parseSearchTermsInput,
+  SEARCH_SCOPE_OPTIONS,
   saveAutomaticRunMemory,
+  summarizeLocationPreferences,
   WORKPLACE_TYPE_OPTIONS,
   type WorkplaceType,
 } from "./automatic-run";
@@ -62,9 +70,11 @@ const DEFAULT_VALUES: AutomaticRunValues = {
   minSuitabilityScore: 50,
   searchTerms: ["web developer"],
   runBudget: 200,
-  country: "united kingdom",
+  country: "",
   cityLocations: [],
   workplaceTypes: ["remote", "hybrid", "onsite"],
+  searchScope: "selected_only",
+  matchStrictness: "exact_only",
 };
 
 interface AutomaticRunFormValues {
@@ -75,6 +85,8 @@ interface AutomaticRunFormValues {
   cityLocations: string[];
   cityLocationDraft: string;
   workplaceTypes: WorkplaceType[];
+  searchScope: LocationSearchScope;
+  matchStrictness: LocationMatchStrictness;
   searchTerms: string[];
   searchTermDraft: string;
 }
@@ -84,8 +96,10 @@ type AutomaticPresetSelection = AutomaticPresetId | "custom";
 const GLASSDOOR_COUNTRY_REASON =
   "Glassdoor is not available for the selected country.";
 const GLASSDOOR_LOCATION_REASON =
-  "Add at least one city in Advanced settings to enable Glassdoor.";
+  "Add at least one city in Location preferences to enable Glassdoor.";
 const HIDDEN_COUNTRY_KEYS = new Set(["usa/ca"]);
+const MIN_RUN_BUDGET = 50;
+const MAX_RUN_BUDGET = 1000;
 
 function normalizeUiCountryKey(value: string): string {
   const normalized = normalizeCountryKey(value);
@@ -112,6 +126,10 @@ function toNumber(input: string, min: number, max: number, fallback: number) {
   const parsed = Number.parseInt(input, 10);
   if (Number.isNaN(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
+}
+
+function normalizeRunBudget(value: number): number {
+  return Math.min(MAX_RUN_BUDGET, Math.max(MIN_RUN_BUDGET, Math.round(value)));
 }
 
 function formatWorkplaceTypeLabel(workplaceType: WorkplaceType): string {
@@ -171,6 +189,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       cityLocations: [],
       cityLocationDraft: "",
       workplaceTypes: DEFAULT_VALUES.workplaceTypes,
+      searchScope: DEFAULT_VALUES.searchScope,
+      matchStrictness: DEFAULT_VALUES.matchStrictness,
       searchTerms: DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
     },
@@ -183,6 +203,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   const cityLocations = watch("cityLocations");
   const cityLocationDraft = watch("cityLocationDraft");
   const workplaceTypes = watch("workplaceTypes");
+  const searchScope = watch("searchScope");
+  const matchStrictness = watch("matchStrictness");
   const searchTerms = watch("searchTerms");
   const searchTermDraft = watch("searchTermDraft");
 
@@ -193,13 +215,14 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     const minSuitabilityScore =
       memory?.minSuitabilityScore ?? DEFAULT_VALUES.minSuitabilityScore;
 
-    const rememberedRunBudget =
+    const rememberedRunBudget = normalizeRunBudget(
       settings?.jobspyResultsWanted?.value ??
-      settings?.startupjobsMaxJobsPerTerm?.value ??
-      settings?.adzunaMaxJobsPerTerm?.value ??
-      settings?.gradcrackerMaxJobsPerTerm?.value ??
-      settings?.ukvisajobsMaxJobs?.value ??
-      DEFAULT_VALUES.runBudget;
+        settings?.startupjobsMaxJobsPerTerm?.value ??
+        settings?.adzunaMaxJobsPerTerm?.value ??
+        settings?.gradcrackerMaxJobsPerTerm?.value ??
+        settings?.ukvisajobsMaxJobs?.value ??
+        DEFAULT_VALUES.runBudget,
+    );
     const hasExplicitLocationOverride = Boolean(
       settings?.jobspyCountryIndeed?.override ||
         settings?.searchCities?.override,
@@ -228,6 +251,11 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     const rememberedWorkplaceTypes = normalizeWorkplaceTypes(
       settings?.workplaceTypes?.value,
     );
+    const rememberedSearchScope =
+      settings?.locationSearchScope?.value ?? DEFAULT_VALUES.searchScope;
+    const rememberedMatchStrictness =
+      settings?.locationMatchStrictness?.value ??
+      DEFAULT_VALUES.matchStrictness;
 
     reset({
       topN: String(topN),
@@ -237,6 +265,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
       cityLocations: rememberedLocations,
       cityLocationDraft: "",
       workplaceTypes: rememberedWorkplaceTypes,
+      searchScope: rememberedSearchScope,
+      matchStrictness: rememberedMatchStrictness,
       searchTerms: settings?.searchTerms?.value ?? DEFAULT_VALUES.searchTerms,
       searchTermDraft: "",
     });
@@ -253,10 +283,17 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         100,
         DEFAULT_VALUES.minSuitabilityScore,
       ),
-      runBudget: toNumber(runBudgetInput, 1, 1000, DEFAULT_VALUES.runBudget),
+      runBudget: toNumber(
+        runBudgetInput,
+        MIN_RUN_BUDGET,
+        MAX_RUN_BUDGET,
+        DEFAULT_VALUES.runBudget,
+      ),
       country: normalizedCountry || DEFAULT_VALUES.country,
       cityLocations,
       workplaceTypes: normalizeWorkplaceTypes(workplaceTypes),
+      searchScope,
+      matchStrictness,
       searchTerms,
     };
   }, [
@@ -266,6 +303,8 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     countryInput,
     cityLocations,
     workplaceTypes,
+    searchScope,
+    matchStrictness,
     searchTerms,
   ]);
 
@@ -291,14 +330,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     [pipelineSources, isSourceAvailableForRun],
   );
 
-  const hasOnlyRemoteWorkplaceType =
-    workplaceTypes.length === 1 && workplaceTypes[0] === "remote";
-  const hasJobSpySourceSelected = compatiblePipelineSources.some(
-    (source) =>
-      source === "indeed" || source === "linkedin" || source === "glassdoor",
-  );
-  const showJobSpyWorkplaceWarning =
-    hasJobSpySourceSelected && !hasOnlyRemoteWorkplaceType;
+  const countrySelectionInvalid = values.country.length === 0;
 
   useEffect(() => {
     const filtered = pipelineSources.filter((source) =>
@@ -332,12 +364,17 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     () => getPresetSelection(values),
     [values],
   );
+  const locationSummary = useMemo(
+    () => summarizeLocationPreferences(values),
+    [values],
+  );
 
   const runDisabled =
     isPipelineRunning ||
     isSaving ||
     compatiblePipelineSources.length === 0 ||
     values.searchTerms.length === 0 ||
+    countrySelectionInvalid ||
     workplaceTypeSelectionInvalid;
 
   const toggleWorkplaceType = (
@@ -388,7 +425,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
         <Card>
-          <CardContent className="space-y-4 pt-6">
+          <CardContent className="space-y-6 pt-6">
             <div className="grid items-center gap-3 md:grid-cols-[120px_1fr]">
               <Label className="text-base font-semibold">Preset</Label>
               <div className="flex flex-wrap gap-2">
@@ -425,25 +462,182 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                 </Button>
               </div>
             </div>
-
-            <div className="grid items-center gap-3 md:grid-cols-[120px_1fr]">
-              <Label className="text-base font-semibold">Country</Label>
-              <SearchableDropdown
-                value={values.country}
-                options={countryOptions}
-                onValueChange={(country) =>
-                  setValue("country", country, {
-                    shouldDirty: true,
-                  })
-                }
-                placeholder="Select country"
-                searchPlaceholder="Search country..."
-                emptyText="No matching countries."
-                triggerClassName="h-9 w-full md:max-w-xs"
-                ariaLabel={formatCountryLabel(values.country)}
-              />
-            </div>
             <Separator />
+            <section className="space-y-6">
+              <div className="space-y-3">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                  <div className="space-y-2">
+                    <Label className="text-base font-semibold">Country</Label>
+                    <SearchableDropdown
+                      value={values.country}
+                      options={countryOptions}
+                      onValueChange={(country) =>
+                        setValue("country", country, {
+                          shouldDirty: true,
+                        })
+                      }
+                      placeholder="Select country"
+                      searchPlaceholder="Search country..."
+                      emptyText="No matching countries."
+                      triggerClassName="h-10 w-full"
+                      ariaLabel={
+                        values.country
+                          ? formatCountryLabel(values.country)
+                          : "Select country"
+                      }
+                    />
+                    {countrySelectionInvalid ? (
+                      <p className="text-xs text-destructive">
+                        Select a country.
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="city-locations-input"
+                      className="text-base font-semibold"
+                    >
+                      Cities
+                    </Label>
+                    <TokenizedInput
+                      id="city-locations-input"
+                      values={cityLocations}
+                      draft={cityLocationDraft}
+                      parseInput={parseCityLocationsInput}
+                      onDraftChange={(value) =>
+                        setValue("cityLocationDraft", value)
+                      }
+                      onValuesChange={(value) =>
+                        setValue("cityLocations", value, {
+                          shouldDirty: true,
+                        })
+                      }
+                      placeholder='e.g. "London"'
+                      removeLabelPrefix="Remove city"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Work arrangement
+                </p>
+                <div className="flex flex-wrap gap-2 gap-x-4">
+                  {WORKPLACE_TYPE_OPTIONS.map((workplaceType) => {
+                    const checkboxId = `workplace-type-${workplaceType}`;
+                    const checked = workplaceTypes.includes(workplaceType);
+
+                    return (
+                      <label
+                        key={workplaceType}
+                        htmlFor={checkboxId}
+                        className={`flex cursor-pointer items-center gap-3 text-sm transition-colors`}
+                      >
+                        <Checkbox
+                          id={checkboxId}
+                          checked={checked}
+                          onCheckedChange={(nextChecked) => {
+                            toggleWorkplaceType(
+                              workplaceType,
+                              nextChecked === true,
+                            );
+                          }}
+                        />
+                        {formatWorkplaceTypeLabel(workplaceType)}
+                      </label>
+                    );
+                  })}
+                </div>
+                {workplaceTypeSelectionInvalid ? (
+                  <p className="text-xs text-destructive">
+                    Select at least one workplace type.
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Location scope
+                </p>
+                <RadioGroup
+                  value={searchScope}
+                  onValueChange={(value) =>
+                    setValue("searchScope", value as LocationSearchScope, {
+                      shouldDirty: true,
+                    })
+                  }
+                  className="gap-2"
+                >
+                  {SEARCH_SCOPE_OPTIONS.map((option) => {
+                    const id = `search-scope-${option.value}`;
+                    const selected = searchScope === option.value;
+                    return (
+                      <label
+                        key={option.value}
+                        htmlFor={id}
+                        className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition-colors ${
+                          selected
+                            ? "bg-muted text-foreground"
+                            : "text-foreground/80 hover:bg-muted/60"
+                        }`}
+                      >
+                        <RadioGroupItem value={option.value} id={id} />
+                        <span className="text-sm font-medium">
+                          {option.label}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Match strictness
+                </p>
+                <RadioGroup
+                  value={matchStrictness}
+                  onValueChange={(value) =>
+                    setValue(
+                      "matchStrictness",
+                      value as LocationMatchStrictness,
+                      {
+                        shouldDirty: true,
+                      },
+                    )
+                  }
+                  className="flex flex-col gap-2 sm:flex-row"
+                >
+                  {MATCH_STRICTNESS_OPTIONS.map((option) => {
+                    const id = `match-strictness-${option.value}`;
+                    const selected = matchStrictness === option.value;
+                    return (
+                      <label
+                        key={option.value}
+                        htmlFor={id}
+                        className={`flex cursor-pointer items-center gap-3 rounded-full border px-4 py-2.5 text-sm transition-colors ${
+                          selected
+                            ? "border-foreground/25 bg-muted text-foreground"
+                            : "border-border/70 text-foreground/75 hover:border-border hover:text-foreground"
+                        }`}
+                      >
+                        <RadioGroupItem value={option.value} id={id} />
+                        <span className="font-medium">{option.label}</span>
+                      </label>
+                    );
+                  })}
+                </RadioGroup>
+              </div>
+
+              <div className="rounded-2xl bg-muted px-4 py-4">
+                <p className="text-base font-medium leading-6 text-foreground">
+                  {locationSummary}
+                </p>
+              </div>
+            </section>
+
             <Accordion
               type="single"
               collapsible
@@ -452,7 +646,7 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
             >
               <AccordionItem value="advanced" className="border-b-0">
                 <AccordionTrigger className="py-0 text-base font-semibold hover:no-underline">
-                  Advanced settings
+                  Run settings
                 </AccordionTrigger>
                 <AccordionContent className="pt-4">
                   <div className="grid gap-4 md:grid-cols-3">
@@ -487,82 +681,13 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                       <Input
                         id="jobs-per-term"
                         type="number"
-                        min={1}
-                        max={1000}
+                        min={MIN_RUN_BUDGET}
+                        max={MAX_RUN_BUDGET}
                         value={runBudgetInput}
                         onChange={(event) =>
                           setValue("runBudget", event.target.value)
                         }
                       />
-                    </div>
-                    <div className="space-y-2 md:col-span-3">
-                      <Label htmlFor="city-locations-input">Cities</Label>
-                      <TokenizedInput
-                        id="city-locations-input"
-                        values={cityLocations}
-                        draft={cityLocationDraft}
-                        parseInput={parseCityLocationsInput}
-                        onDraftChange={(value) =>
-                          setValue("cityLocationDraft", value)
-                        }
-                        onValuesChange={(value) =>
-                          setValue("cityLocations", value, {
-                            shouldDirty: true,
-                          })
-                        }
-                        placeholder='e.g. "London"'
-                        helperText="Optional for all sources, required when Glassdoor is selected."
-                        removeLabelPrefix="Remove city"
-                      />
-                    </div>
-                    <div className="space-y-2 md:col-span-3">
-                      <Label>Workplace type</Label>
-                      <div className="flex flex-wrap gap-4">
-                        {WORKPLACE_TYPE_OPTIONS.map((workplaceType) => {
-                          const checkboxId = `workplace-type-${workplaceType}`;
-                          const checked =
-                            workplaceTypes.includes(workplaceType);
-                          return (
-                            <div
-                              key={workplaceType}
-                              className="flex items-center gap-2"
-                            >
-                              <Checkbox
-                                id={checkboxId}
-                                checked={checked}
-                                onCheckedChange={(nextChecked) => {
-                                  toggleWorkplaceType(
-                                    workplaceType,
-                                    nextChecked === true,
-                                  );
-                                }}
-                              />
-                              <label
-                                htmlFor={checkboxId}
-                                className="cursor-pointer text-sm font-medium"
-                              >
-                                {formatWorkplaceTypeLabel(workplaceType)}
-                              </label>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Applies globally to all search terms and locations in
-                        this run.
-                      </p>
-                      {workplaceTypeSelectionInvalid ? (
-                        <p className="text-xs text-destructive">
-                          Select at least one workplace type.
-                        </p>
-                      ) : null}
-                      {showJobSpyWorkplaceWarning ? (
-                        <p className="text-xs text-amber-600 dark:text-amber-400">
-                          Indeed, LinkedIn, and Glassdoor only support strict
-                          remote filtering. Hybrid or Onsite selections will
-                          broaden those source results.
-                        </p>
-                      ) : null}
                     </div>
                   </div>
                 </AccordionContent>

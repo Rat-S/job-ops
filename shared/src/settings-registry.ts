@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  LOCATION_MATCH_STRICTNESS_VALUES,
+  LOCATION_SEARCH_SCOPE_VALUES,
+} from "./location-preferences";
 import { getDefaultPromptTemplate } from "./prompt-template-definitions";
 import {
   CHAT_STYLE_LANGUAGE_MODE_VALUES,
@@ -43,6 +47,7 @@ function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
 
 export const DEFAULT_GEMINI_MODEL = "google/gemini-3-flash-preview";
 export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
+export const DEFAULT_CODEX_MODEL = "";
 
 export function getDefaultModelForProvider(
   provider: string | null | undefined,
@@ -61,6 +66,10 @@ export function getDefaultModelForProvider(
 
   if (normalizedProvider === "gemini") {
     return DEFAULT_GEMINI_MODEL;
+  }
+
+  if (normalizedProvider === "codex") {
+    return DEFAULT_CODEX_MODEL;
   }
   return DEFAULT_GEMINI_MODEL;
 }
@@ -133,6 +142,12 @@ const parsePdfRendererOrNull = createEnumParser(PDF_RENDERER_VALUES);
 
 const WORKPLACE_TYPE_VALUES = ["remote", "hybrid", "onsite"] as const;
 const parseWorkplaceTypesOrNull = createEnumArrayParser(WORKPLACE_TYPE_VALUES);
+const parseLocationSearchScopeOrNull = createEnumParser(
+  LOCATION_SEARCH_SCOPE_VALUES,
+);
+const parseLocationMatchStrictnessOrNull = createEnumParser(
+  LOCATION_MATCH_STRICTNESS_VALUES,
+);
 
 export const resumeProjectsSchema = z.object({
   maxProjects: z.number().int().min(0).max(100),
@@ -169,6 +184,7 @@ export const settingsRegistry = {
           "openai",
           "openai_compatible",
           "gemini",
+          "codex",
         ])
         .nullable(),
     ),
@@ -361,6 +377,22 @@ export const settingsRegistry = {
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
+  locationSearchScope: {
+    kind: "typed" as const,
+    schema: z.enum(LOCATION_SEARCH_SCOPE_VALUES),
+    default: () => "selected_only" as const,
+    parse: parseLocationSearchScopeOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  locationMatchStrictness: {
+    kind: "typed" as const,
+    schema: z.enum(LOCATION_MATCH_STRICTNESS_VALUES),
+    default: () => "exact_only" as const,
+    parse: parseLocationMatchStrictnessOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
   jobspyResultsWanted: {
     kind: "typed" as const,
     schema: z.number().int().min(1).max(1000),
@@ -379,8 +411,8 @@ export const settingsRegistry = {
     schema: z.string().trim().max(100),
     default: (): string =>
       typeof process !== "undefined"
-        ? process.env.JOBSPY_COUNTRY_INDEED || "UK"
-        : "UK",
+        ? process.env.JOBSPY_COUNTRY_INDEED || ""
+        : "",
     parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,

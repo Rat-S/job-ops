@@ -134,7 +134,7 @@ export async function runPipeline(
       });
 
       ensureNotCancelled();
-      const jobsToProcess = selectJobsStep({
+      const jobsToProcess = await selectJobsStep({
         scoredJobs,
         mergedConfig,
       });

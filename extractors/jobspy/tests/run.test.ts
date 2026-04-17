@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { deriveIsRemoteFlag, parseJobSpyProgressLine } from "../src/run";
+import {
+  deriveIsRemoteFlag,
+  parseJobSpyProgressLine,
+  resolveJobSpyCountryIndeed,
+  resolveJobSpyLocations,
+  resolveJobSpySiteLocations,
+} from "../src/run";
 
 describe("parseJobSpyProgressLine", () => {
   it("parses term_start progress lines", () => {
@@ -47,5 +53,41 @@ describe("parseJobSpyProgressLine", () => {
     expect(deriveIsRemoteFlag(["onsite"])).toBeUndefined();
     expect(deriveIsRemoteFlag(["remote", "hybrid"])).toBeUndefined();
     expect(deriveIsRemoteFlag(["remote", "hybrid", "onsite"])).toBeUndefined();
+  });
+
+  it("runs a country-only search when no city locations are configured", () => {
+    expect(resolveJobSpyLocations({ location: null, locations: [] })).toEqual([
+      null,
+    ]);
+  });
+
+  it("does not fall back country_indeed to UK when none is configured", () => {
+    expect(resolveJobSpyCountryIndeed({ countryIndeed: null })).toBeNull();
+  });
+
+  it("uses the selected country as LinkedIn's location for country-only runs", () => {
+    expect(
+      resolveJobSpySiteLocations({
+        location: null,
+        countryIndeed: "croatia",
+      }),
+    ).toEqual({
+      linkedinLocation: "croatia",
+      indeedLocation: null,
+      glassdoorLocation: null,
+    });
+  });
+
+  it("keeps explicit locations for all JobSpy sites when a city is set", () => {
+    expect(
+      resolveJobSpySiteLocations({
+        location: "Zagreb",
+        countryIndeed: "croatia",
+      }),
+    ).toEqual({
+      linkedinLocation: "Zagreb",
+      indeedLocation: "Zagreb",
+      glassdoorLocation: "Zagreb",
+    });
   });
 });
