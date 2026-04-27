@@ -109,6 +109,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   ghostwriterSystemPromptTemplate: "",
   tailoringPromptTemplate: "",
   scoringPromptTemplate: "",
+  jsonResumeTailoringPromptTemplate: "",
 };
 
 type LlmProviderValue = LlmProviderId | null;
@@ -298,6 +299,7 @@ const SECTION_FIELD_MAP: Record<
     "ghostwriterSystemPromptTemplate",
     "tailoringPromptTemplate",
     "scoringPromptTemplate",
+    "jsonResumeTailoringPromptTemplate",
   ],
   scoring: [
     "penalizeMissingSalary",
@@ -403,6 +405,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   ghostwriterSystemPromptTemplate: null,
   tailoringPromptTemplate: null,
   scoringPromptTemplate: null,
+  jsonResumeTailoringPromptTemplate: null,
 };
 
 const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
@@ -454,6 +457,8 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
     data.ghostwriterSystemPromptTemplate.value ?? "",
   tailoringPromptTemplate: data.tailoringPromptTemplate.value ?? "",
   scoringPromptTemplate: data.scoringPromptTemplate.value ?? "",
+  jsonResumeTailoringPromptTemplate:
+    data.jsonResumeTailoringPromptTemplate.value ?? "",
 });
 
 const normalizeString = (value: string | null | undefined) => {
@@ -649,6 +654,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       scoringPromptTemplate: {
         effective: settings?.scoringPromptTemplate?.value ?? "",
         default: settings?.scoringPromptTemplate?.default ?? "",
+      },
+      jsonResumeTailoringPromptTemplate: {
+        effective: settings?.jsonResumeTailoringPromptTemplate?.value ?? "",
+        default: settings?.jsonResumeTailoringPromptTemplate?.default ?? "",
       },
     },
   };
@@ -1395,7 +1404,9 @@ export const SettingsPage: React.FC = () => {
           promptTemplates.tailoringPromptTemplate.effective !==
             promptTemplates.tailoringPromptTemplate.default ||
           promptTemplates.scoringPromptTemplate.effective !==
-            promptTemplates.scoringPromptTemplate.default
+            promptTemplates.scoringPromptTemplate.default ||
+          promptTemplates.jsonResumeTailoringPromptTemplate.effective !==
+            promptTemplates.jsonResumeTailoringPromptTemplate.default
           ? { label: "Customized", variant: "outline" as const }
           : { label: "Using defaults", variant: "secondary" as const };
       case "scoring":

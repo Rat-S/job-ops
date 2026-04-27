@@ -3,8 +3,9 @@
  * falling back to the configured Reactive Resume base resume otherwise.
  */
 
+import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { access, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
@@ -47,6 +48,7 @@ export interface GeneratePdfOptions {
   tracerLinksEnabled?: boolean;
   requestOrigin?: string | null;
   tracerCompanyName?: string | null;
+  tailoredResumeJson?: string | null; // Complete JSON Resume for resumed renderer
 }
 
 async function ensureOutputDir(): Promise<void> {
@@ -85,6 +87,109 @@ async function downloadRxResumePdf(
 
   const bytes = new Uint8Array(await response.arrayBuffer());
   await writeFile(outputPath, bytes);
+}
+
+async function renderResumedPdf(args: {
+  resumeJson: Record<string, unknown>;
+  outputPath: string;
+  jobId: string;
+  theme?: string;
+}): Promise<void> {
+  const { resumeJson, outputPath, jobId, theme } = args;
+  const { mkdtemp } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+
+  const tempDir = await mkdtemp(join(tmpdir(), `job-ops-resumed-${jobId}-`));
+  const jsonPath = join(tempDir, "resume.json");
+
+  try {
+    // Write JSON resume to temp file
+    await writeFile(jsonPath, JSON.stringify(resumeJson, null, 2), "utf8");
+
+    // Build resumed CLI arguments - use export command for PDF generation
+    const resumedArgs = [
+      "export",
+      jsonPath,
+      "-o",
+      outputPath,
+    ];
+    if (theme) {
+      resumedArgs.push("-t", theme);
+    }
+
+    // Run resumed CLI to generate PDF
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn("resumed", resumedArgs, {
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      let stdout = "";
+      let stderr = "";
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        child.kill("SIGKILL");
+        reject(new Error("resumed CLI timed out after 120s"));
+      }, 120_000);
+
+      child.stdout.on("data", (chunk: Buffer | string) => {
+        stdout += chunk.toString();
+      });
+      child.stderr.on("data", (chunk: Buffer | string) => {
+        stderr += chunk.toString();
+      });
+
+      child.on("error", (error) => {
+        clearTimeout(timer);
+        if (settled) return;
+        settled = true;
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+          reject(
+            new Error(
+              "resumed CLI not found. Install with: npm install -g resumed",
+            ),
+          );
+          return;
+        }
+        reject(error);
+      });
+
+      child.on("close", (code) => {
+        clearTimeout(timer);
+        if (settled) return;
+        settled = true;
+        if (code === 0) {
+          resolve();
+          return;
+        }
+        reject(
+          new Error(
+            `resumed CLI failed with exit code ${code}. ${stderr || stdout}`,
+          ),
+        );
+      });
+    });
+
+    logger.info("Rendered PDF via resumed CLI", { jobId, theme, outputPath });
+  } catch (error) {
+    logger.error("Failed to render PDF via resumed CLI", {
+      jobId,
+      theme,
+      error,
+    });
+    throw error;
+  } finally {
+    await rm(tempDir, { recursive: true, force: true }).catch(
+      (cleanupError) => {
+        logger.warn("Failed to cleanup temporary resumed render directory", {
+          jobId,
+          tempDir,
+          error: cleanupError,
+        });
+      },
+    );
+  }
 }
 
 async function renderRxResumePdf(args: {
@@ -307,6 +412,29 @@ export async function generatePdf(
         resumeJson: preparedResume.data,
         outputPath,
         jobId,
+      });
+    } else if (renderer === "resumed") {
+      const themeValue = await getSetting("jsonResumeTheme");
+      const theme =
+        settingsRegistry.jsonResumeTheme.parse(themeValue ?? undefined) ??
+        settingsRegistry.jsonResumeTheme.default();
+      
+      // Use complete tailoredResumeJson if available, otherwise use prepared resume
+      let resumeJson = preparedResume.data;
+      if (options?.tailoredResumeJson) {
+        try {
+          resumeJson = JSON.parse(options.tailoredResumeJson) as Record<string, unknown>;
+          logger.info("Using complete tailoredResumeJson for resumed renderer", { jobId });
+        } catch (error) {
+          logger.warn("Failed to parse tailoredResumeJson, using prepared resume", { jobId, error });
+        }
+      }
+      
+      await renderResumedPdf({
+        resumeJson,
+        outputPath,
+        jobId,
+        theme,
       });
     } else {
       await renderRxResumePdf({

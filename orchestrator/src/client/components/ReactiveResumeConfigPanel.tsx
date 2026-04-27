@@ -6,6 +6,8 @@ import {
 } from "@client/pages/settings/resume-projects-state";
 import type { ResumeProjectsSettingsInput } from "@shared/settings-schema.js";
 import {
+  JSON_RESUME_THEME_LABELS,
+  type JsonResumeTheme,
   PDF_RENDERER_LABELS,
   type PdfRenderer,
   type ResumeProjectCatalogItem,
@@ -81,6 +83,8 @@ type ReactiveResumeConfigPanelProps = {
     baseUrlPlaceholder?: string;
   };
   projectSelection?: ProjectSelectionConfig;
+  jsonResumeTheme?: JsonResumeTheme;
+  onJsonResumeThemeChange?: (theme: JsonResumeTheme) => void;
 };
 
 function renderStatusPill(label: string, state: VersionValidationState) {
@@ -127,6 +131,8 @@ export const ReactiveResumeConfigPanel: React.FC<
   shared,
   v5,
   projectSelection,
+  jsonResumeTheme,
+  onJsonResumeThemeChange,
 }) => {
   const canShowProjectSelection = Boolean(
     projectSelection && hasRxResumeAccess,
@@ -142,6 +148,7 @@ export const ReactiveResumeConfigPanel: React.FC<
     isAvailabilityWarning(selectedValidationStatus);
 
   const latexSelected = pdfRenderer === "latex";
+  const resumedSelected = pdfRenderer === "resumed";
 
   return (
     <div className="space-y-4">
@@ -160,9 +167,7 @@ export const ReactiveResumeConfigPanel: React.FC<
         </label>
         <Select
           value={pdfRenderer}
-          onValueChange={(value) =>
-            onPdfRendererChange(value === "latex" ? "latex" : "rxresume")
-          }
+          onValueChange={(value) => onPdfRendererChange(value as PdfRenderer)}
           disabled={disabled}
         >
           <SelectTrigger id="pdfRenderer">
@@ -173,6 +178,9 @@ export const ReactiveResumeConfigPanel: React.FC<
               {PDF_RENDERER_LABELS.rxresume}
             </SelectItem>
             <SelectItem value="latex">{PDF_RENDERER_LABELS.latex}</SelectItem>
+            <SelectItem value="resumed">
+              {PDF_RENDERER_LABELS.resumed}
+            </SelectItem>
           </SelectContent>
         </Select>
         {pdfRendererError ? (
@@ -181,9 +189,43 @@ export const ReactiveResumeConfigPanel: React.FC<
         <p className="text-xs text-muted-foreground">
           {latexSelected
             ? "LaTeX renders PDFs locally with Jake's template and requires tectonic on the JobOps host."
-            : "RxResume export uses the upstream print/export endpoint for the final PDF."}
+            : resumedSelected
+              ? "JSON Resume (resumed CLI) renders PDFs locally with customizable themes."
+              : "RxResume export uses the upstream print/export endpoint for the final PDF."}
         </p>
       </div>
+
+      {resumedSelected && onJsonResumeThemeChange ? (
+        <div className="space-y-2">
+          <label htmlFor="jsonResumeTheme" className="text-sm font-medium">
+            JSON Resume theme
+          </label>
+          <Select
+            value={jsonResumeTheme ?? "jsonresume-theme-even"}
+            onValueChange={(value) =>
+              onJsonResumeThemeChange(value as JsonResumeTheme)
+            }
+            disabled={disabled}
+          >
+            <SelectTrigger id="jsonResumeTheme">
+              <SelectValue placeholder="Choose theme" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(JSON_RESUME_THEME_LABELS).map(
+                ([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ),
+              )}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Select a theme for your JSON Resume. Themes control the visual style
+            and layout.
+          </p>
+        </div>
+      ) : null}
 
       {showValidationStatus && selectedValidationStatus ? (
         <div className="flex flex-wrap items-center gap-2 text-xs w-full justify-between">

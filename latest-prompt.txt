@@ -1,0 +1,292 @@
+You are an expert resume writer generating core sections of a tailored JSON Resume for a specific job application.
+Return ONLY: basics, summary, work.
+
+JOB DESCRIPTION (JD):
+**Minimum qualifications:**
+
+* Bachelor's degree or equivalent practical experience.
+* 5 years of experience in product management.
+
+**Preferred qualifications:**
+
+* Experience in building large scale consumer facing apps.
+* Ability to think long term and build multi-year roadmaps.
+* Ability to grow in ambiguous, fast-paced and dynamic environment.
+
+**About The Job**
+At Google, we put our users first. The world is always changing, so we need Product Managers who are continuously adapting and excited to work on products that affect millions of people every day.
+  
+  
+In this role, you will work cross-functionally to guide products from conception to launch by connecting the technical and business worlds. You can break down complex problems into steps that drive product development.
+  
+  
+One of the many reasons Google consistently brings innovative, world-changing products to market is because of the collaborative work we do in Product Management. Our team works closely with creative engineers, designers, marketers, etc. to help design and develop technologies that improve access to the world's information. We're responsible for guiding products throughout the execution cycle, focusing specifically on analyzing, positioning, packaging, promoting, and tailoring our solutions to our users.
+  
+  
+As a Product Manager, you will define strategy and build the core app experience for Google Pay in India. You will lead the core app experience for Google Pay India. You will understand the users across India - all with different needs and attitudes towards money. You will work with the engineering and cross-functional team to bring ideas to life.
+  
+  
+Whether it is paying online with Autofill, using tap and pay in stores, or using the Google Pay app, the Payments team at Google is focused on making payments simple, seamless, and secure. In addition to consumer payment technologies, the Payments team also powers the money movement between Google and its consumers and businesses.
+  
+  
+**Responsibilities**
+
+* Define the product goal, roadmap and success metrics for the team and use that to inform product strategy and day-to-day decisions.
+* Provide cross-functional leadership to a team of analysts, operations, legal, policy, public relations, privacy and work with external partners like banks, merchants,etc.
+* Be scrappy and resourceful in rallying troops behind a common goal building strong relationships across the board.
+* Have the aptitude to work on large scale consumer product teams and leverage AI to deliver industry leading user experience.
+* Be articulate and confident in communication.
+
+Google is proud to be an equal opportunity workplace and is an affirmative action employer. We are committed to equal employment opportunity regardless of race, color, ancestry, religion, sex, national origin, sexual orientation, age, citizenship, marital status, disability, gender identity or Veteran status. We also consider qualified applicants regardless of criminal histories, consistent with legal requirements. See also Google's EEO Policy and EEO is the Law. If you have a disability or special need that requires accommodation, please let us know by completing our Accommodations for Applicants form .
+
+MY MASTER RESUME:
+{
+  "basics": {
+    "name": "Jaiyabharat S",
+    "label": "Product & Technology Leader",
+    "email": "jay.s@covai.org",
+    "phone": "+91 986 528 2692",
+    "location": {
+      "city": "Bangalore",
+      "countryCode": "IN"
+    },
+    "profiles": [
+      {
+        "network": "LinkedIn",
+        "username": "deadrat",
+        "url": "https://www.linkedin.com/in/deadrat/"
+      }
+    ],
+    "summary": "Technology & Product Leader with 12+ years of experience bridging the gap between Complex Enterprise Engineering and Business Strategy. Expert in Open-Source Enterprise Stacks, RegTech/Tax Compliance, and AI-Native Product Development. Proven track record of architecting scalable platforms for regulated markets and driving cost-efficient delivery through open-source adoption. Unique ability to lead cross-functional teams while writing hands-on prototypes (Python/LLMs) to accelerate decision-making and reduce engineering discovery time. Experienced in zero-to-one launches, international market expansion, and transforming legacy systems into modern revenue-generating platforms."
+  },
+  "summary": "",
+  "work": [
+    {
+      "company": "Covai Labs",
+      "position": "Principal Product Manager",
+      "startDate": "2023-08",
+      "endDate": "present",
+      "summary": "Skyvera and Amsum were executed as client contracts under my sole-proprietorship, Covai Labs — used for accuracy and background verification purposes.",
+      "highlights": [
+        "Client: Skyvera (US Contract) - July 2024 – September 2025: Spearheaded the technical strategy, product execution, and modernization for a telecom AI suite, revitalizing a legacy portfolio",
+        "Legacy System Lifecycle Management: Formulated and executed a version deprecation strategy for an SMS center product suite, seamlessly migrating clients to a single, supported latest version while operating within existing SLAs and contract constraints",
+        "AI Feature Ideation & Strategy: Ideated and defined requirements for AI-focused capabilities. Conceptualized Kandy Notetaker (UCaaS integration for call transcription, diarization, and AI-driven insights/summaries) and Lithium Defender (LLM-based phishing detection layer for the SMS center)",
+        "AI-Native Product Launch: Architected and launched AI-native products (including Kandy Notetaker for meeting intelligence & Lithium Defender for spam detection), extending the lifecycle of legacy UCaaS systems and opening new revenue streams",
+        "Platform Strategy: Defined unified product vision to consolidate 11 fragmented software versions, reducing technical debt by 85% and enabling faster feature iteration",
+        "Technical Roadmap Ownership: Championed infrastructure modernization initiative from Oracle to PostgreSQL, eliminating $2M+ annual licensing costs to reinvest in customer-facing innovation while maintaining 99.9% uptime",
+        "Product Discovery: Accelerated time-to-market by 60% by prototyping LLM concepts (Claude Code, Cursor) to validate user value before engineering commitment",
+        "Customer Experience: Designed and launched self-service portals with embedded RAG AI agents, which automated release note distribution and deflected support tickets",
+        "Cross-Functional Leadership: Operated as the central technical liaison coordinating between engineering, DevOps, commercial, and customer support teams, authoring detailed technical specifications that prioritized API scalability",
+        "Client: Amsum Technologies (Contract) - November 2023 – May 2024: Managed the end-to-end development lifecycle for two MVP products: a Live Shopping application and a Garage Management Portal"
+      ]
+    },
+    {
+      "company": "Taxilla IT Solutions",
+      "position": "Product Manager",
+      "startDate": "2021-07",
+      "endDate": "2023-07",
+      "summary": "Owned the product lifecycle for a Fintech/RegTech SaaS platform, driving international expansion and compliance.",
+      "highlights": [
+        "RegTech Strategy & Global Expansion: Led the product roadmap for entering stringent international markets (KSA, UAE), ensuring the platform met complex data sovereignty and cryptographic signing requirements",
+        "Platform Scalability: Collaborated with architects to redesign a core high-throughput transaction engine for reconciliation across Banking, Insurance, and E-commerce, supporting a 350% increase in volume",
+        "Customer Success & MVP: Built MVP solutions for each industry use-case, personally conducting capability demos for prospective leads and onboarding key accounts for initial User Acceptance Testing (UAT)",
+        "User Adoption & Growth: Achieved an 80% increase in platform adoption and a 350% increase in web traffic by conducting user research to identify friction points and redesigning the onboarding flow",
+        "Cross-Functional Enablement: Reduced internal team ramp-up time by 50% by establishing a structured knowledge framework that aligned Inside Sales, Support, Development, and QA teams",
+        "GTM & Sales Enablement: Spearheaded marketing initiatives, lead generation, and conducted technical sales presentations and POC demos, accelerating the enterprise sales cycle"
+      ]
+    },
+    {
+      "company": "ValueLabs",
+      "position": "Growth Product Manager",
+      "startDate": "2019-04",
+      "endDate": "2021-01",
+      "summary": "Led a zero-to-one digital transformation initiative, validating the concept through pilots and securing 3 enterprise contracts before General Availability (GA).",
+      "highlights": [
+        "New Product Development: Led a zero-to-one digital transformation initiative, validating the concept through pilots and securing 3 enterprise contracts before General Availability (GA)",
+        "Cloud Solution Design: Collaborated with technical architects to define cloud-based solutions (AWS) that addressed complex business challenges, ensuring technical feasibility matched business goals",
+        "Conversion Optimization: Partnered with design and engineering to implement ML-driven user flows, resulting in a 10% increase in conversion rates for client platforms",
+        "Presales & Marketing: Led marketing efforts and cross-functional presales activities, delivering tailored sales presentations and technical product demos to secure enterprise contracts"
+      ]
+    },
+    {
+      "company": "IBM",
+      "position": "Senior Consultant",
+      "startDate": "2015-08",
+      "endDate": "2017-06",
+      "summary": "Developed and deployed Python/Bash automation scripts that reduced service desk ticket resolution time by 30%, directly improving SLA adherence.",
+      "highlights": [
+        "Process Automation: Developed and deployed Python/Bash automation scripts that reduced service desk ticket resolution time by 30%, directly improving SLA adherence",
+        "Knowledge Management: Architected a centralized knowledge repository for the team, streamlining daily operations, standardizing edge-case handling, and reducing onboarding time by 40%"
+      ]
+    },
+    {
+      "company": "LightMass",
+      "position": "Senior Manager",
+      "startDate": "2014-01",
+      "endDate": "2015-07",
+      "summary": "Initiated and executed a company-wide migration from unlicensed Windows environments to CentOS Linux, LibreOffice, and other OSS.",
+      "highlights": [
+        "Open Source Infrastructure Initiative: Initiated and executed a company-wide migration from unlicensed Windows environments to CentOS Linux, LibreOffice, and other OSS. This eliminated legal compliance risk, saved $50k+ in licensing fees, and reduced malware incidents to zero",
+        "Performance Leadership: Managed a team of 18 agents, improving Service Level Agreement (SLA) delivery by 35% through rigorous data-driven performance metrics"
+      ]
+    },
+    {
+      "company": "Sutherland",
+      "position": "Consultant",
+      "startDate": "2012-06",
+      "endDate": "2013-09",
+      "summary": "Diagnosed and removed complex rootkits and ransomware from compromised Windows endpoints, gathering critical threat signature data to refine McAfee's detection algorithms.",
+      "highlights": [
+        "Security Specialization: Diagnosed and removed complex rootkits and ransomware from compromised Windows endpoints, gathering critical threat signature data to refine McAfee's detection algorithms",
+        "Performance Excellence: Exceeded performance targets by 120% for a major U.S. credit bureau client, maintaining high customer retention rates"
+      ]
+    }
+  ],
+  "education": [
+    {
+      "institution": "IIM Trichy",
+      "area": "Business Strategy & Management Information Systems",
+      "studyType": "MBA",
+      "startDate": "2017-06",
+      "endDate": "2019-04",
+      "courses": [
+        "Process Engineering: Formalized placement operations by drafting a 'constitution' of SOPs",
+        "Strategic Initiative: Established the 'Corporate Readiness' club to separate training delivery from recruitment operations"
+      ]
+    },
+    {
+      "institution": "RVS CET (Anna University)",
+      "area": "Aeronautical Engineering",
+      "studyType": "Bachelor of Engineering",
+      "startDate": "2008-08",
+      "endDate": "2012-04",
+      "courses": [
+        "Project Excellence: Project rated 'Excellent' by HAL",
+        "Leadership: Founding member and coordinator of the Department Club; organized symposiums and technical summits"
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "kannukutty.com",
+      "description": "Digital platform helping marginal farmers establish an online presence and diversify into value-added products",
+      "startDate": "2010",
+      "endDate": "2012",
+      "roles": [
+        "Founder"
+      ],
+      "url": "https://kannukutty.com"
+    },
+    {
+      "name": "Kalvi GNU/Linux",
+      "description": "Education-focused Linux distro for K-12 students, an alternative to EduBoss. Reached 250+ active beta testers across various GLUGs",
+      "startDate": "2011",
+      "endDate": "2013",
+      "roles": [
+        "Maintainer"
+      ]
+    }
+  ],
+  "skills": [
+    {
+      "name": "Product Strategy",
+      "keywords": [
+        "Product Vision",
+        "Roadmap Planning",
+        "Go-to-Market (GTM)",
+        "Zero-to-One Launches",
+        "Stakeholder Alignment",
+        "RegTech & Compliance"
+      ]
+    },
+    {
+      "name": "Product Execution",
+      "keywords": [
+        "PRD/Technical Spec Authoring",
+        "User Stories",
+        "Prioritization Frameworks (RICE/MoSCoW)",
+        "Backlog Management",
+        "Agile/Scrum Transformation"
+      ]
+    },
+    {
+      "name": "Metrics & Process",
+      "keywords": [
+        "OKRs",
+        "KPI Definition",
+        "NPS",
+        "Activation Rate",
+        "Retention",
+        "ARR/MRR",
+        "Product Discovery",
+        "User Research",
+        "Competitive Analysis",
+        "Behavioral Analytics",
+        "A/B Testing",
+        "Product-Led Growth",
+        "Conversion Optimization"
+      ]
+    },
+    {
+      "name": "Technical Fluency",
+      "keywords": [
+        "GenAI & LLMs (RAG, Agents, Local Deployment - Llama/Qwen/IBM Granite)",
+        "Python/Bash Scripting",
+        "Agentic Frameworks (LangGraph, Autogen)",
+        "Agentic Development Tools (Cursor, RooCode, OpenHands)",
+        "API Integration",
+        "WebRTC",
+        "Cloud Architecture (AWS/GCP)",
+        "Legacy Modernization"
+      ]
+    },
+    {
+      "name": "Leadership",
+      "keywords": [
+        "Open Source Strategy",
+        "Remote Team Leadership",
+        "Cost Optimization",
+        "Process Engineering"
+      ]
+    }
+  ],
+  "certifications": []
+}
+
+INSTRUCTIONS:
+
+1. "basics" (Object):
+   - Keep name, email, phone, url, location from master resume
+   - Set "label" to match the Job Title from JD exactly (critical for ATS)
+   - Do NOT translate or paraphrase the headline
+
+2. "summary" (String):
+   - Tailor it for the company's "About You" / requirements section
+   - Keep it concise, warm, and confident
+   - Write in English
+   - Do NOT invent experience
+
+3. "work" (Array):
+   - Reorder work experience by relevance to this job
+   - Tailor summary and highlights for each position
+   - Emphasize achievements matching JD requirements
+   - Keep all dates and company names accurate
+
+WRITING STYLE PREFERENCES:
+- Tone: professional
+- Formality: medium
+- Output language: English
+
+
+
+ATS SAFETY:
+- Keep "basics.label" in exact job-title wording from JD
+- Use exact technology names and acronyms from JD
+- Max 2 pages - optimize content density
+
+OUTPUT FORMAT (JSON Resume schema):
+{
+  "basics": { ... },
+  "summary": "...",
+  "work": [ ... ]
+}

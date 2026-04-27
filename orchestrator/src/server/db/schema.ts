@@ -97,6 +97,7 @@ export const jobs = sqliteTable("jobs", {
   tailoredSummary: text("tailored_summary"),
   tailoredHeadline: text("tailored_headline"),
   tailoredSkills: text("tailored_skills"),
+  tailoredResumeJson: text("tailored_resume_json"),
   selectedProjectIds: text("selected_project_ids"),
   pdfPath: text("pdf_path"),
   tracerLinksEnabled: integer("tracer_links_enabled", { mode: "boolean" })

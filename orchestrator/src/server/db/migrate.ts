@@ -450,6 +450,9 @@ const migrations = [
   `ALTER TABLE jobs ADD COLUMN sponsor_match_score REAL`,
   `ALTER TABLE jobs ADD COLUMN sponsor_match_names TEXT`,
 
+  // Add tailored_resume_json column for JSON Resume tailoring
+  `ALTER TABLE jobs ADD COLUMN tailored_resume_json TEXT`,
+
   // Add application tracking columns
   `ALTER TABLE jobs ADD COLUMN outcome TEXT`,
   `ALTER TABLE jobs ADD COLUMN closed_at INTEGER`,

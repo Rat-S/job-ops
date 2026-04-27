@@ -28,6 +28,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Codex CLI for local app-server based inference.
 RUN npm install -g @openai/codex@${CODEX_CLI_VERSION}
 
+# Install resumed CLI for JSON Resume rendering with Puppeteer for PDF generation.
+RUN npm install -g resumed puppeteer
+
+# Install JSON Resume themes
+RUN npm install -g \
+    jsonresume-theme-even \
+    jsonresume-theme-community-garden \
+    jsonresume-theme-californian-warm
+
 WORKDIR /app
 
 FROM runtime-base AS build-base

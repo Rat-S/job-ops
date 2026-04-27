@@ -7,8 +7,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      secrets:
-        - github_token
     image: ghcr.io/dakheera47/job-ops:latest
     container_name: job-ops
     ports:
@@ -16,6 +14,8 @@ services:
     volumes:
       # Persist database and generated PDFs
       - ./data:/app/data
+      # Persist master resume JSON for JSON Resume tailoring
+      - ./master-resume.json:/app/data/master-resume.json
       # Persist Codex login/session data for app-server provider
       - codex-home:/app/codex-home
     environment:

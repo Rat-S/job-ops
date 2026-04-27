@@ -1,7 +1,11 @@
 import { ReactiveResumeConfigPanel } from "@client/components/ReactiveResumeConfigPanel";
 import { SettingsSectionFrame } from "@client/pages/settings/components/SettingsSectionFrame";
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
-import type { PdfRenderer, ResumeProjectCatalogItem } from "@shared/types.js";
+import type {
+  JsonResumeTheme,
+  PdfRenderer,
+  ResumeProjectCatalogItem,
+} from "@shared/types.js";
 import type React from "react";
 import {
   type Path,
@@ -56,6 +60,10 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
     control,
     name: "pdfRenderer",
   }) ?? "rxresume") as PdfRenderer;
+  const jsonResumeThemeValue = (useWatch({
+    control,
+    name: "jsonResumeTheme",
+  }) ?? "jsonresume-theme-even") as JsonResumeTheme;
   const rxresumeApiKeyValue =
     useWatch({ control, name: "rxresumeApiKey" }) ?? "";
   const rxresumeUrlValue = useWatch({ control, name: "rxresumeUrl" }) ?? "";
@@ -90,6 +98,10 @@ export const ReactiveResumeSection: React.FC<ReactiveResumeSectionProps> = ({
         hasRxResumeAccess={hasRxResumeAccess}
         showValidationStatus={Boolean(validationStatus)}
         validationStatus={validationStatus}
+        jsonResumeTheme={jsonResumeThemeValue}
+        onJsonResumeThemeChange={(value) =>
+          setDirtyTouchedValue("jsonResumeTheme", value)
+        }
         shared={{
           baseUrl: rxresumeUrlValue,
           onBaseUrlChange: (value) => {

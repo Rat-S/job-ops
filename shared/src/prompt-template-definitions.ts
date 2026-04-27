@@ -141,6 +141,145 @@ EXAMPLE VALID RESPONSE:
 {"score": 75, "reason": "Strong skills match with React and TypeScript requirements, but position requires 3+ years experience."}
 `.trim(),
   },
+  jsonResumeTailoringPromptTemplate: {
+    label: "JSON Resume tailoring prompt (core sections)",
+    description:
+      "Controls how core JSON Resume sections (basics, summary, work) are tailored for a job.",
+    placeholders: [
+      "jobDescription",
+      "masterResumeJson",
+      "outputLanguage",
+      "tone",
+      "formality",
+      "maxPages",
+      "targetKeywords",
+      "constraintsBullet",
+      "avoidTermsBullet",
+    ] as const,
+    defaultTemplate: `
+You are an expert resume writer generating core sections of a tailored JSON Resume for a specific job application.
+Return ONLY: basics, summary, work.
+
+JOB DESCRIPTION (JD):
+{{jobDescription}}
+
+MY MASTER RESUME:
+{{masterResumeJson}}
+
+INSTRUCTIONS:
+
+1. "basics" (Object):
+   - Keep name, email, phone, url, location from master resume
+   - Set "label" to match the Job Title from JD exactly (critical for ATS)
+   - Do NOT translate or paraphrase the headline
+
+2. "summary" (String):
+   - Tailor it for the company's "About You" / requirements section
+   - Keep it concise, warm, and confident
+   - Write in {{outputLanguage}}
+   - Do NOT invent experience
+
+3. "work" (Array):
+   - Include ONLY top 3-4 most relevant positions
+   - Tailor summary (max 2 sentences, ~40 words) and highlights (max 3 bullets, ~15 words each)
+   - Keep dates and company names accurate
+   - Be concise to fit within output token limits
+
+WRITING STYLE PREFERENCES:
+- Tone: {{tone}}
+- Formality: {{formality}}
+- Output language: {{outputLanguage}}
+{{constraintsBullet}}
+{{avoidTermsBullet}}
+
+ATS SAFETY:
+- Keep "basics.label" in exact job-title wording from JD
+- Use exact technology names and acronyms from JD
+- Max {{maxPages}} pages - optimize content density
+
+OUTPUT FORMAT (JSON Resume schema):
+{
+  "basics": { ... },
+  "summary": "...",
+  "work": [ ... ]
+}
+`.trim(),
+  },
+  jsonResumeTailoringSupportingPromptTemplate: {
+    label: "JSON Resume tailoring prompt (supporting sections)",
+    description:
+      "Controls how supporting JSON Resume sections (education, projects, skills, certifications) are tailored for a job.",
+    placeholders: [
+      "jobDescription",
+      "masterResumeJson",
+      "outputLanguage",
+      "tone",
+      "formality",
+      "maxPages",
+      "targetKeywords",
+      "constraintsBullet",
+      "avoidTermsBullet",
+    ] as const,
+    defaultTemplate: `
+You are an expert resume writer generating supporting sections of a tailored JSON Resume for a specific job application.
+Return ONLY: education, projects, skills, certifications.
+
+JOB DESCRIPTION (JD):
+{{jobDescription}}
+
+MY MASTER RESUME:
+{{masterResumeJson}}
+
+INSTRUCTIONS:
+
+1. "education" (Array):
+   - Include education entries (College and above)
+   - Keep all details accurate
+
+2. "projects" (Array):
+   - Select 3-5 most relevant projects for this role
+   - Tailor descriptions to highlight relevant skills
+   - Include keywords from {{targetKeywords}}
+
+3. "skills" (Array):
+   - For top 5 skills from JD, add "proofPoint" field with 1-sentence evidence from work history
+   - Keyword matching: swap synonyms to match JD exactly
+   - Keep original skill categories, just reorder and rename keywords
+   - Structure: { "name": "Category", "keywords": [...], "proofPoint": "..." }
+
+4. "certifications" (Array):
+   - Include only the relevant certifications
+   - Prioritize those mentioned in JD
+
+5. "metadata" (Object):
+   - "pageCount": {{maxPages}} (2 or 3 based on content density)
+   - "selectedSkills": top 5 skills selected for this role
+
+WRITING STYLE PREFERENCES:
+- Tone: {{tone}}
+- Formality: {{formality}}
+- Output language: {{outputLanguage}}
+{{constraintsBullet}}
+{{avoidTermsBullet}}
+
+ATS SAFETY:
+- Keep "basics.label" in exact job-title wording from JD
+- Use exact technology names and acronyms from JD
+- Max {{maxPages}} pages - optimize content density
+
+OUTPUT FORMAT (JSON Resume schema):
+{
+  "basics": { ... },
+  "summary": "...",
+  "work": [ ... ],
+  "education": [ ... ],
+  "projects": [ ... ],
+  "skills": [ ... ],
+  "certifications": [ ... ],
+  "metadata": { "pageCount": {{maxPages}}, "selectedSkills": [...] }
+}
+`.trim(),
+  },
 } as const;
 
 export type PromptTemplateSettingKey = keyof typeof PROMPT_TEMPLATE_DEFINITIONS;

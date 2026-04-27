@@ -7,6 +7,7 @@
  * 3. Leave all jobs in "discovered" for manual processing
  */
 
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
@@ -17,6 +18,7 @@ import { getDataDir } from "../config/dataDir";
 import * as jobsRepo from "../repositories/jobs";
 import * as pipelineRepo from "../repositories/pipeline";
 import * as settingsRepo from "../repositories/settings";
+import { generateJsonResumeTailoring } from "../services/json-resume-tailoring";
 import { generatePdf } from "../services/pdf";
 import { getProfile } from "../services/profile";
 import { pickProjectIdsForJob } from "../services/projectSelection";
@@ -24,7 +26,6 @@ import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
 } from "../services/resumeProjects";
-import { generateTailoring } from "../services/summary";
 import { progressHelpers, resetProgress } from "./progress";
 import {
   buildPipelineRunSavedDetails,
@@ -350,26 +351,46 @@ export async function summarizeJob(
 
       const profile = await getProfile();
 
-      // 1. Generate Summary & Tailoring
-      let tailoredSummary = job.tailoredSummary;
-      let tailoredHeadline = job.tailoredHeadline;
-      let tailoredSkills = job.tailoredSkills;
+      // 1. Generate Complete JSON Resume Tailoring
+      let tailoredResumeJson = job.tailoredResumeJson;
 
-      if (!tailoredSummary || !tailoredHeadline || options?.force) {
-        jobLogger.info("Generating tailoring content");
-        const tailoringResult = await generateTailoring(
-          job.jobDescription || "",
-          profile,
-        );
-        if (tailoringResult.success && tailoringResult.data) {
-          tailoredSummary = tailoringResult.data.summary;
-          tailoredHeadline = tailoringResult.data.headline;
-          tailoredSkills = JSON.stringify(tailoringResult.data.skills);
-        } else if (options?.force || !tailoredSummary || !tailoredHeadline) {
-          return {
-            success: false,
-            error: `Tailoring failed: ${tailoringResult.error || "unknown error"}`,
-          };
+      if (!tailoredResumeJson || options?.force) {
+        jobLogger.info("Generating complete JSON Resume tailoring");
+        try {
+          const dataDir = getDataDir();
+          const masterResumePath = join(dataDir, "master-resume.json");
+          const masterResumeContent = await readFile(masterResumePath, "utf8");
+          const masterResume = JSON.parse(masterResumeContent) as Record<
+            string,
+            unknown
+          >;
+
+          const tailoringResult = await generateJsonResumeTailoring(
+            {
+              masterResumeJson: masterResume,
+              jobDescription: job.jobDescription || "",
+            },
+            { jobId },
+          );
+
+          if (tailoringResult.success && tailoringResult.data) {
+            tailoredResumeJson = JSON.stringify(
+              tailoringResult.data.tailoredResumeJson,
+            );
+          } else if (options?.force || !tailoredResumeJson) {
+            return {
+              success: false,
+              error: `JSON Resume tailoring failed: ${tailoringResult.error || "unknown error"}`,
+            };
+          }
+        } catch (error) {
+          jobLogger.error("Failed to generate JSON Resume tailoring", error);
+          if (options?.force || !tailoredResumeJson) {
+            return {
+              success: false,
+              error: `JSON Resume tailoring failed: ${error instanceof Error ? error.message : "unknown error"}`,
+            };
+          }
         }
       }
 
@@ -410,10 +431,11 @@ export async function summarizeJob(
       }
 
       await jobsRepo.updateJob(job.id, {
-        tailoredSummary: tailoredSummary ?? undefined,
-        tailoredHeadline: tailoredHeadline ?? undefined,
-        tailoredSkills: tailoredSkills ?? undefined,
+        tailoredSummary: undefined, // Deprecated field - using tailoredResumeJson instead
+        tailoredHeadline: undefined, // Deprecated field - using tailoredResumeJson instead
+        tailoredSkills: undefined, // Deprecated field - using tailoredResumeJson instead
         selectedProjectIds: selectedProjectIds ?? undefined,
+        tailoredResumeJson: tailoredResumeJson ?? undefined,
       });
 
       return { success: true };
@@ -445,13 +467,45 @@ export async function generateFinalPdf(
       // Mark as processing
       await jobsRepo.updateJob(job.id, { status: "processing" });
 
-      const pdfResult = await generatePdf(
-        job.id,
-        {
+      // Use tailoredResumeJson if available, otherwise fall back to legacy fields
+      let tailoredContent: { summary: string; headline: string; skills: Array<{ name: string; keywords: string[] }> };
+      if (job.tailoredResumeJson) {
+        try {
+          const jsonResume = JSON.parse(job.tailoredResumeJson) as Record<string, unknown>;
+          const summary = typeof jsonResume.summary === "string" ? jsonResume.summary : "";
+          const headline = typeof jsonResume.basics === "object" && jsonResume.basics !== null
+            ? (jsonResume.basics as Record<string, unknown>).label as string
+            : "";
+          
+          // Transform JSON Resume skills to PDF content format
+          let skills: Array<{ name: string; keywords: string[] }> = [];
+          if (Array.isArray(jsonResume.skills)) {
+            skills = (jsonResume.skills as Array<Record<string, unknown>>).map((skill) => ({
+              name: typeof skill.name === "string" ? skill.name : "",
+              keywords: Array.isArray(skill.keywords) ? skill.keywords as string[] : [],
+            }));
+          }
+          
+          tailoredContent = { summary, headline, skills };
+        } catch (error) {
+          jobLogger.warn("Failed to parse tailoredResumeJson, falling back to legacy fields", { error });
+          tailoredContent = {
+            summary: job.tailoredSummary || "",
+            headline: job.tailoredHeadline || "",
+            skills: job.tailoredSkills ? JSON.parse(job.tailoredSkills) : [],
+          };
+        }
+      } else {
+        tailoredContent = {
           summary: job.tailoredSummary || "",
           headline: job.tailoredHeadline || "",
           skills: job.tailoredSkills ? JSON.parse(job.tailoredSkills) : [],
-        },
+        };
+      }
+
+      const pdfResult = await generatePdf(
+        job.id,
+        tailoredContent,
         job.jobDescription || "",
         undefined, // deprecated baseResumePath parameter
         job.selectedProjectIds,
@@ -459,6 +513,7 @@ export async function generateFinalPdf(
           tracerLinksEnabled: job.tracerLinksEnabled,
           requestOrigin: options?.requestOrigin ?? null,
           tracerCompanyName: job.employer ?? null,
+          tailoredResumeJson: job.tailoredResumeJson,
         },
       );
 

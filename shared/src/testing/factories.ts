@@ -37,6 +37,7 @@ export const createJob = (overrides: Partial<Job> = {}): Job => ({
   tailoredHeadline: null,
   tailoredSkills: null,
   selectedProjectIds: null,
+  tailoredResumeJson: null,
   pdfPath: null,
   tracerLinksEnabled: false,
   sponsorMatchScore: null,
@@ -197,6 +198,11 @@ export const createAppSettings = (
   scoringPromptTemplate: {
     value: getDefaultPromptTemplate("scoringPromptTemplate"),
     default: getDefaultPromptTemplate("scoringPromptTemplate"),
+    override: null,
+  },
+  jsonResumeTailoringPromptTemplate: {
+    value: getDefaultPromptTemplate("jsonResumeTailoringPromptTemplate"),
+    default: getDefaultPromptTemplate("jsonResumeTailoringPromptTemplate"),
     override: null,
   },
   searchCities: {

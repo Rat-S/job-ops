@@ -629,6 +629,7 @@ function mapRowToJob(row: typeof jobs.$inferSelect): Job {
     tailoredHeadline: row.tailoredHeadline ?? null,
     tailoredSkills: row.tailoredSkills ?? null,
     selectedProjectIds: row.selectedProjectIds ?? null,
+    tailoredResumeJson: row.tailoredResumeJson ?? null,
     pdfPath: row.pdfPath,
     tracerLinksEnabled: row.tracerLinksEnabled ?? false,
     sponsorMatchScore: row.sponsorMatchScore ?? null,

@@ -12,6 +12,7 @@ const PromptTemplatesHarness = () => {
       ghostwriterSystemPromptTemplate: "Custom Ghostwriter",
       tailoringPromptTemplate: "Custom Tailoring",
       scoringPromptTemplate: "Custom Scoring",
+      jsonResumeTailoringPromptTemplate: "Custom JSON Resume Tailoring",
     },
   });
 
@@ -33,6 +34,12 @@ const PromptTemplatesHarness = () => {
             scoringPromptTemplate: {
               effective: "Custom Scoring",
               default: getDefaultPromptTemplate("scoringPromptTemplate"),
+            },
+            jsonResumeTailoringPromptTemplate: {
+              effective: "Custom JSON Resume Tailoring",
+              default: getDefaultPromptTemplate(
+                "jsonResumeTailoringPromptTemplate",
+              ),
             },
           }}
           isLoading={false}
@@ -75,8 +82,13 @@ describe("PromptTemplatesSection", () => {
     expect(screen.getByLabelText(/ghostwriter system prompt/i)).toHaveValue(
       getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
     );
-    expect(screen.getByLabelText(/resume tailoring prompt/i)).toHaveValue(
+    // Both tailoring prompts exist now - check by getting all and picking the right one
+    const tailoringLabels = screen.getAllByLabelText(/tailoring prompt/i);
+    expect(tailoringLabels[0]).toHaveValue(
       getDefaultPromptTemplate("tailoringPromptTemplate"),
+    );
+    expect(tailoringLabels[1]).toHaveValue(
+      getDefaultPromptTemplate("jsonResumeTailoringPromptTemplate"),
     );
     expect(screen.getByLabelText(/job scoring prompt/i)).toHaveValue(
       getDefaultPromptTemplate("scoringPromptTemplate"),

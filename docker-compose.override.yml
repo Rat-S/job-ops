@@ -1,0 +1,10 @@
+# =============================================================================
+# Docker Compose Override for Local Development
+# =============================================================================
+# This file overrides the base docker-compose.yml for local development
+# with the resumed CLI and themes. Use with: podman-compose up
+# =============================================================================
+
+services:
+  job-ops:
+    image: job-ops:local
