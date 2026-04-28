@@ -412,8 +412,8 @@ INSTRUCTIONS:
 
 2. "projects" (Array):
    - Select 3-5 most relevant projects for this role
-   - For selected projects, generate: description (tailored) and keywords (relevant skills)
-   - Do NOT include name, startDate, endDate, url - these are static
+   - For selected projects, include: name (must match master resume exactly), description (tailored), and keywords (relevant skills)
+   - Do NOT include startDate, endDate, url - these are static
 
 3. "skills" (Array):
    - Select top 5 skills from JD

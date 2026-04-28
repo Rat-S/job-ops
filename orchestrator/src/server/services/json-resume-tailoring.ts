@@ -114,6 +114,7 @@ const JSON_RESUME_TAILORING_SEQUENTIAL_SUPPORTING_SCHEMA: JsonSchemaDefinition =
         items: {
           type: "object",
           properties: {
+            name: { type: "string", description: "Project name (must match master resume exactly)" },
             description: { type: "string", description: "Tailored project description" },
             keywords: {
               type: "array",
@@ -632,8 +633,9 @@ export async function generateJsonResumeTailoring(
 
   // Call 1: Generate summary
   try {
-    const summaryPrompt = await renderPromptTemplate(
-      "jsonResumeTailoringSequentialSummary",
+    const summaryTemplate = await getEffectivePromptTemplate("jsonResumeTailoringSequentialSummary");
+    const summaryPrompt = renderPromptTemplate(
+      summaryTemplate,
       {
         jobDescription: input.jobDescription,
         masterResumeJson: convertToCompactFormat(input.masterResumeJson),
@@ -695,8 +697,9 @@ export async function generateJsonResumeTailoring(
 
   // Call 2: Generate work (with summary context)
   try {
-    const workPrompt = await renderPromptTemplate(
-      "jsonResumeTailoringSequentialWork",
+    const workTemplate = await getEffectivePromptTemplate("jsonResumeTailoringSequentialWork");
+    const workPrompt = renderPromptTemplate(
+      workTemplate,
       {
         jobDescription: input.jobDescription,
         masterResumeJson: convertToCompactFormat(input.masterResumeJson),
@@ -759,8 +762,9 @@ export async function generateJsonResumeTailoring(
 
   // Call 3: Generate supporting sections (with summary + work context)
   try {
-    const supportingPrompt = await renderPromptTemplate(
-      "jsonResumeTailoringSequentialSupporting",
+    const supportingTemplate = await getEffectivePromptTemplate("jsonResumeTailoringSequentialSupporting");
+    const supportingPrompt = renderPromptTemplate(
+      supportingTemplate,
       {
         jobDescription: input.jobDescription,
         masterResumeJson: convertToCompactFormat(input.masterResumeJson),
