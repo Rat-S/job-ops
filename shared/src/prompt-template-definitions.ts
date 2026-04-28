@@ -245,6 +245,9 @@ INSTRUCTIONS:
 2. "work" (Array):
    - Keep work entries in chronological order (do NOT reorder)
    - For each entry, generate ONLY: summary (max 2 sentences, ~40 words) and highlights (max 3 bullets, ~15 words each)
+   - CRITICAL: Work summary MUST be concise. Do NOT ramble. Do NOT repeat phrases. Stop at 2 sentences maximum.
+   - BAD example: "Managed the end-to-end SDLC and product strategy for diverse portfolios, including the launch of AI-native products and a consumer-facing Live Shopping MVP application. Collaborated closely with cross-functional engineering, analytics, and business teams to ship high-impact features and client releases within strict SLAs constraint factors and tight schedules, translating requirements into scalable technical roadmaps that consistently achieved business metrics targets..." (TOO LONG, RAMBLING)
+   - GOOD example: "Led product strategy for AI-native telecom products and consumer-facing MVPs. Collaborated with cross-functional teams to ship high-impact features within SLAs." (2 sentences, ~25 words)
    - Do NOT include company, position, startDate, endDate - these are static
 
 3. "education" (Array):

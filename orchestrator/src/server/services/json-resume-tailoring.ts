@@ -617,7 +617,7 @@ async function buildJsonResumeTailoringPrompt(
         education: (masterResumeJson.education as any) || [],
         projects: (masterResumeJson.projects as any) || [],
         skills: (masterResumeJson.skills as any) || [],
-        certifications: (masterResumeJson.certifications as any) || [],
+        certifications: (masterResumeJson.certifications as any) || (masterResumeJson.awards as any) || [],
       }
     : sectionType === "supporting"
       ? {
