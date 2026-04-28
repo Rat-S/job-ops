@@ -498,25 +498,43 @@ function mergeStaticAndDynamic(
   }
 
   // Merge work: preserve static fields, replace dynamic fields
+  // Work entries must stay in chronological order (master resume order)
   if (masterResume.work && Array.isArray(masterResume.work) && dynamicData.work && Array.isArray(dynamicData.work)) {
-    result.work = (masterResume.work as Array<Record<string, unknown>>).map((staticWork, index) => {
-      const dynamicWork = (dynamicData.work as Array<Record<string, unknown>>)[index];
-      return {
-        ...staticWork, // Preserve company, position, startDate, endDate
-        summary: dynamicWork?.summary,
-        highlights: dynamicWork?.highlights,
-      };
+    const staticWork = masterResume.work as Array<Record<string, unknown>>;
+    const dynamicWork = dynamicData.work as Array<Record<string, unknown>>;
+    
+    // LLM should return same number of entries as master resume (chronological order)
+    // If counts differ, use min to avoid index errors
+    const mergeCount = Math.min(staticWork.length, dynamicWork.length);
+    
+    result.work = staticWork.map((staticEntry, index) => {
+      if (index < mergeCount) {
+        return {
+          ...staticEntry, // Preserve company, position, startDate, endDate, url
+          summary: dynamicWork[index]?.summary,
+          highlights: dynamicWork[index]?.highlights,
+        };
+      }
+      // If LLM returned fewer entries, keep original static entry
+      return staticEntry;
     });
   }
 
   // Merge education: preserve static fields, replace dynamic courses
   if (masterResume.education && Array.isArray(masterResume.education) && dynamicData.education && Array.isArray(dynamicData.education)) {
-    result.education = (masterResume.education as Array<Record<string, unknown>>).map((staticEdu, index) => {
-      const dynamicEdu = (dynamicData.education as Array<Record<string, unknown>>)[index];
-      return {
-        ...staticEdu, // Preserve institution, area, studyType, startDate, endDate
-        courses: dynamicEdu?.courses,
-      };
+    const staticEdu = masterResume.education as Array<Record<string, unknown>>;
+    const dynamicEdu = dynamicData.education as Array<Record<string, unknown>>;
+    
+    const mergeCount = Math.min(staticEdu.length, dynamicEdu.length);
+    
+    result.education = staticEdu.map((staticEntry, index) => {
+      if (index < mergeCount) {
+        return {
+          ...staticEntry, // Preserve institution, area, studyType, startDate, endDate, url
+          courses: dynamicEdu[index]?.courses,
+        };
+      }
+      return staticEntry;
     });
   }
 
