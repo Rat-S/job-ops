@@ -390,33 +390,6 @@ export const settingsRegistry = {
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
   },
-  jsonResumeTailoringPromptTemplate: {
-    kind: "typed" as const,
-    schema: z.string().trim().max(12000),
-    default: (): string =>
-      getDefaultPromptTemplate("jsonResumeTailoringPromptTemplate"),
-    parse: parseNonEmptyStringOrNull,
-    serialize: (value: string | null | undefined): string | null =>
-      value ?? null,
-  },
-  jsonResumeTailoringGranularPromptTemplate: {
-    kind: "typed" as const,
-    schema: z.string().trim().max(12000),
-    default: (): string =>
-      getDefaultPromptTemplate("jsonResumeTailoringGranularPromptTemplate"),
-    parse: parseNonEmptyStringOrNull,
-    serialize: (value: string | null | undefined): string | null =>
-      value ?? null,
-  },
-  jsonResumeTailoringSupportingPromptTemplate: {
-    kind: "typed" as const,
-    schema: z.string().trim().max(12000),
-    default: (): string =>
-      getDefaultPromptTemplate("jsonResumeTailoringSupportingPromptTemplate"),
-    parse: parseNonEmptyStringOrNull,
-    serialize: (value: string | null | undefined): string | null =>
-      value ?? null,
-  },
   jsonResumeTailoringSequentialSummary: {
     kind: "typed" as const,
     schema: z.string().trim().max(12000),
