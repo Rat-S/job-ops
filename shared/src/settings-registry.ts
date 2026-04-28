@@ -267,7 +267,7 @@ export const settingsRegistry = {
   jsonResumeTheme: {
     kind: "typed" as const,
     schema: z.enum(JSON_RESUME_THEME_VALUES),
-    default: (): JsonResumeTheme => "jsonresume-theme-even",
+    default: (): JsonResumeTheme => "jsonresume-theme-stackoverflow",
     parse: parseJsonResumeThemeOrNull,
     serialize: (value: JsonResumeTheme | null | undefined): string | null =>
       value ?? null,

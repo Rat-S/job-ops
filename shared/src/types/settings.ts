@@ -29,12 +29,14 @@ export const JSON_RESUME_THEME_VALUES = [
   "jsonresume-theme-even",
   "jsonresume-theme-community-garden",
   "jsonresume-theme-californian-warm",
+  "jsonresume-theme-stackoverflow",
 ] as const;
 export type JsonResumeTheme = (typeof JSON_RESUME_THEME_VALUES)[number];
 export const JSON_RESUME_THEME_LABELS: Record<JsonResumeTheme, string> = {
   "jsonresume-theme-even": "Even (Clean)",
   "jsonresume-theme-community-garden": "Community Garden",
   "jsonresume-theme-californian-warm": "Californian Warm",
+  "jsonresume-theme-stackoverflow": "Stack Overflow",
 };
 
 export const CHAT_STYLE_LANGUAGE_MODE_VALUES = [
