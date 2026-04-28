@@ -47,52 +47,103 @@ export interface TailoringResult {
   error?: string;
 }
 
-/** JSON schema for core JSON Resume sections (basics, summary, work) */
-const JSON_RESUME_TAILORING_CORE_SCHEMA: JsonSchemaDefinition = {
-  name: "json_resume_tailoring_core",
+/** JSON schema for granular tailoring - only dynamic fields (static fields preserved from master resume) */
+const JSON_RESUME_TAILORING_GRANULAR_SCHEMA: JsonSchemaDefinition = {
+  name: "json_resume_tailoring_granular",
   schema: {
     type: "object",
     properties: {
-      basics: {
-        type: "object",
-        properties: {
-          name: { type: "string" },
-          label: { type: "string", description: "Job title/headline" },
-          email: { type: "string" },
-          phone: { type: "string" },
-          url: { type: "string" },
-          location: { type: "object" },
-          profiles: {
-            type: "array",
-            items: { type: "object" },
-          },
-        },
-      },
       summary: {
         type: "string",
         description: "Tailored resume summary paragraph",
       },
       work: {
         type: "array",
-        description:
-          "Work experience entries, tailored and reordered for relevance",
+        description: "Work experience with tailored bullet points (company, position, dates are static from master resume)",
         items: {
           type: "object",
           properties: {
-            company: { type: "string" },
-            position: { type: "string" },
-            startDate: { type: "string" },
-            endDate: { type: "string" },
-            summary: { type: "string" },
+            summary: { type: "string", description: "Job summary paragraph" },
             highlights: {
               type: "array",
-              items: { type: "string" },
+              items: { type: "string", description: "Tailored bullet points for this role" },
             },
           },
         },
       },
+      education: {
+        type: "array",
+        description: "Education with tailored courses (institution, area, dates are static from master resume)",
+        items: {
+          type: "object",
+          properties: {
+            courses: {
+              type: "array",
+              items: { type: "string", description: "Tailored coursework bullet points" },
+            },
+          },
+        },
+      },
+      projects: {
+        type: "array",
+        description: "Selected and tailored projects (names, dates are static from master resume)",
+        items: {
+          type: "object",
+          properties: {
+            description: { type: "string", description: "Tailored project description" },
+            keywords: {
+              type: "array",
+              items: { type: "string", description: "Relevant keywords for this project" },
+            },
+          },
+        },
+      },
+      skills: {
+        type: "array",
+        description: "Selected skills with proof points",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Skill category name" },
+            keywords: {
+              type: "array",
+              items: { type: "string", description: "Selected skills in this category" },
+            },
+            proofPoint: {
+              type: "string",
+              description: "1-sentence evidence demonstrating this skill from work history",
+            },
+          },
+        },
+      },
+      certifications: {
+        type: "array",
+        description: "Selected certifications (name, issuer, date are static from master resume)",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Certification name (must match master resume exactly)" },
+            issuer: { type: "string", description: "Issuer name (must match master resume exactly)" },
+            date: { type: "string", description: "Certification date (must match master resume exactly)" },
+          },
+        },
+      },
+      metadata: {
+        type: "object",
+        properties: {
+          pageCount: {
+            type: "number",
+            description: "Estimated page count (2 or 3)",
+          },
+          selectedSkills: {
+            type: "array",
+            items: { type: "string" },
+            description: "Top 5 skills selected for this role",
+          },
+        },
+      },
     },
-    required: ["basics", "summary", "work"],
+    required: ["summary", "work", "skills"],
     additionalProperties: false,
   },
 };
@@ -190,9 +241,136 @@ const JSON_RESUME_TAILORING_SUPPORTING_SCHEMA: JsonSchemaDefinition = {
 };
 
 /**
+ * Convert JSON resume data to compact markdown format for token efficiency.
+ * This reduces token overhead from JSON syntax (~20-30% savings).
+ */
+function convertToCompactFormat(data: Record<string, unknown>): string {
+  const lines: string[] = [];
+
+  // Handle basics (static fields)
+  if (data.basics && typeof data.basics === "object") {
+    const basics = data.basics as Record<string, unknown>;
+    lines.push("## Basics");
+    if (basics.name) lines.push(`Name: ${basics.name}`);
+    if (basics.email) lines.push(`Email: ${basics.email}`);
+    if (basics.phone) lines.push(`Phone: ${basics.phone}`);
+    if (basics.url) lines.push(`Website: ${basics.url}`);
+    if (basics.location && typeof basics.location === "object") {
+      const loc = basics.location as Record<string, unknown>;
+      if (loc.city || loc.countryCode) {
+        lines.push(`Location: ${[loc.city, loc.countryCode].filter(Boolean).join(", ")}`);
+      }
+    }
+    if (basics.profiles && Array.isArray(basics.profiles)) {
+      lines.push("Profiles:");
+      (basics.profiles as Array<Record<string, unknown>>).forEach((p) => {
+        if (p.network && p.username) {
+          lines.push(`  - ${p.network}: ${p.username}`);
+        }
+      });
+    }
+    lines.push("");
+  }
+
+  // Handle summary
+  if (data.summary && typeof data.summary === "string") {
+    lines.push("## Summary");
+    lines.push(data.summary);
+    lines.push("");
+  }
+
+  // Handle work experience
+  if (data.work && Array.isArray(data.work)) {
+    lines.push("## Work Experience");
+    (data.work as Array<Record<string, unknown>>).forEach((w) => {
+      const parts = [];
+      if (w.company) parts.push(w.company);
+      if (w.position) parts.push(`- ${w.position}`);
+      if (w.startDate || w.endDate) parts.push(`(${w.startDate} - ${w.endDate})`);
+      lines.push(parts.join(" "));
+      if (w.summary && typeof w.summary === "string") {
+        lines.push(`  ${w.summary}`);
+      }
+      if (w.highlights && Array.isArray(w.highlights)) {
+        (w.highlights as string[]).forEach((h) => {
+          lines.push(`  - ${h}`);
+        });
+      }
+      lines.push("");
+    });
+  }
+
+  // Handle education
+  if (data.education && Array.isArray(data.education)) {
+    lines.push("## Education");
+    (data.education as Array<Record<string, unknown>>).forEach((e) => {
+      const parts = [];
+      if (e.institution) parts.push(e.institution);
+      if (e.area) parts.push(`- ${e.area}`);
+      if (e.studyType) parts.push(`(${e.studyType})`);
+      if (e.startDate || e.endDate) parts.push(`(${e.startDate} - ${e.endDate})`);
+      lines.push(parts.join(" "));
+      if (e.courses && Array.isArray(e.courses)) {
+        lines.push("  Courses:");
+        (e.courses as string[]).forEach((c) => {
+          lines.push(`    - ${c}`);
+        });
+      }
+      lines.push("");
+    });
+  }
+
+  // Handle projects
+  if (data.projects && Array.isArray(data.projects)) {
+    lines.push("## Projects");
+    (data.projects as Array<Record<string, unknown>>).forEach((p) => {
+      const parts = [];
+      if (p.name) parts.push(p.name);
+      if (p.startDate || p.endDate) parts.push(`(${p.startDate} - ${p.endDate})`);
+      lines.push(parts.join(" "));
+      if (p.description && typeof p.description === "string") {
+        lines.push(`  ${p.description}`);
+      }
+      if (p.keywords && Array.isArray(p.keywords)) {
+        lines.push(`  Keywords: ${(p.keywords as string[]).join(", ")}`);
+      }
+      lines.push("");
+    });
+  }
+
+  // Handle skills
+  if (data.skills && Array.isArray(data.skills)) {
+    lines.push("## Skills");
+    (data.skills as Array<Record<string, unknown>>).forEach((s) => {
+      const parts = [];
+      if (s.name) parts.push(s.name);
+      if (s.keywords && Array.isArray(s.keywords)) {
+        parts.push(`: ${(s.keywords as string[]).join(", ")}`);
+      }
+      lines.push(parts.join(""));
+    });
+    lines.push("");
+  }
+
+  // Handle certifications
+  if (data.certifications && Array.isArray(data.certifications)) {
+    lines.push("## Certifications");
+    (data.certifications as Array<Record<string, unknown>>).forEach((c) => {
+      const parts = [];
+      if (c.name) parts.push(c.name);
+      if (c.issuer) parts.push(`- ${c.issuer}`);
+      if (c.date) parts.push(`(${c.date})`);
+      lines.push(parts.join(" "));
+    });
+  }
+
+  return lines.join("\n");
+}
+
+/**
  * Generate complete tailored JSON Resume for a job using LLM.
- * Makes two sequential calls: one for core sections (basics, summary, work),
- * one for supporting sections (education, projects, skills, certifications, metadata).
+ * Uses single granular call: only dynamic fields (summary, work highlights, education courses, projects, skills, certifications).
+ * Static fields (basics, work company/position/dates, education institution/dates) are preserved from master resume.
  */
 export async function generateJsonResumeTailoring(
   input: JsonResumeTailoringInput,
@@ -206,44 +384,44 @@ export async function generateJsonResumeTailoring(
   const llm = new LlmService();
   const startTime = Date.now();
 
-  // Call 1: Generate core sections (basics, summary, work)
-  const corePrompt = await buildJsonResumeTailoringPrompt(
+  // Single call: Generate all dynamic sections using granular schema
+  const prompt = await buildJsonResumeTailoringPrompt(
     input.masterResumeJson,
     input.jobDescription,
     writingStyle,
     input.constraints,
-    "core",
+    "granular",
   );
 
-  if (!JSON_RESUME_TAILORING_CORE_SCHEMA || !JSON_RESUME_TAILORING_CORE_SCHEMA.schema) {
-    return { success: false, error: "Core JSON schema or its schema property is undefined" };
+  if (!JSON_RESUME_TAILORING_GRANULAR_SCHEMA || !JSON_RESUME_TAILORING_GRANULAR_SCHEMA.schema) {
+    return { success: false, error: "Granular JSON schema or its schema property is undefined" };
   }
 
-  const coreResult = await llm.callJson<Record<string, unknown>>({
+  const result = await llm.callJson<Record<string, unknown>>({
     model,
-    messages: [{ role: "user", content: corePrompt }],
-    jsonSchema: JSON_RESUME_TAILORING_CORE_SCHEMA,
+    messages: [{ role: "user", content: prompt }],
+    jsonSchema: JSON_RESUME_TAILORING_GRANULAR_SCHEMA,
   });
 
-  // Log core call
+  // Log call
   await logLlmCall(
     createLlmLogEntry({
       model,
       context: {
         jobId: context?.jobId,
         pipelineRunId: context?.pipelineRunId,
-        operation: "jsonResumeTailoring_core",
+        operation: "jsonResumeTailoring_granular",
       },
       request: {
-        prompt: corePrompt,
-        schema: JSON_RESUME_TAILORING_CORE_SCHEMA,
+        prompt,
+        schema: JSON_RESUME_TAILORING_GRANULAR_SCHEMA,
         jobDescriptionLength: input.jobDescription.length,
         masterResumeSize: JSON.stringify(input.masterResumeJson).length,
       },
       response: {
-        success: coreResult.success,
-        data: coreResult.success ? coreResult.data : undefined,
-        error: coreResult.success ? undefined : coreResult.error,
+        success: result.success,
+        data: result.success ? result.data : undefined,
+        error: result.success ? undefined : result.error,
       },
       metadata: {
         duration: Date.now() - startTime,
@@ -251,92 +429,24 @@ export async function generateJsonResumeTailoring(
     }),
   );
 
-  if (!coreResult.success) {
+  if (!result.success) {
     const contextStr = `provider=${llm.getProvider()} baseUrl=${llm.getBaseUrl()}`;
-    if (coreResult.error.toLowerCase().includes("api key")) {
+    if (result.error.toLowerCase().includes("api key")) {
       const message = `LLM API key not set, cannot generate tailoring. (${contextStr})`;
       logger.warn(message);
       return { success: false, error: message };
     }
     return {
       success: false,
-      error: `Core tailoring failed: ${coreResult.error} (${contextStr})`,
+      error: `Granular tailoring failed: ${result.error} (${contextStr})`,
     };
   }
 
-  // Call 2: Generate supporting sections (education, projects, skills, certifications, metadata)
-  logger.info("Building supporting prompt", { jobId: context?.jobId });
-  const supportingPrompt = await buildJsonResumeTailoringPrompt(
+  // Merge dynamic LLM output with static master resume data
+  const tailoredResumeJson = mergeStaticAndDynamic(
     input.masterResumeJson,
-    input.jobDescription,
-    writingStyle,
-    input.constraints,
-    "supporting",
+    result.data as Record<string, unknown>,
   );
-
-  if (!JSON_RESUME_TAILORING_SUPPORTING_SCHEMA || !JSON_RESUME_TAILORING_SUPPORTING_SCHEMA.schema) {
-    return { success: false, error: "Supporting JSON schema or its schema property is undefined" };
-  }
-
-  logger.info("Calling LLM for supporting sections", { jobId: context?.jobId });
-  let supportingResult;
-  try {
-    supportingResult = await llm.callJson<Record<string, unknown>>({
-      model,
-      messages: [{ role: "user", content: supportingPrompt }],
-      jsonSchema: JSON_RESUME_TAILORING_SUPPORTING_SCHEMA,
-    });
-  } catch (error) {
-    logger.error("LLM call for supporting sections failed", {
-      jobId: context?.jobId,
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-    return {
-      success: false,
-      error: `Supporting LLM call failed: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
-
-  // Log supporting call
-  await logLlmCall(
-    createLlmLogEntry({
-      model,
-      context: {
-        jobId: context?.jobId,
-        pipelineRunId: context?.pipelineRunId,
-        operation: "jsonResumeTailoring_supporting",
-      },
-      request: {
-        prompt: supportingPrompt,
-        schema: JSON_RESUME_TAILORING_SUPPORTING_SCHEMA,
-        jobDescriptionLength: input.jobDescription.length,
-        masterResumeSize: JSON.stringify(input.masterResumeJson).length,
-      },
-      response: {
-        success: supportingResult.success,
-        data: supportingResult.success ? supportingResult.data : undefined,
-        error: supportingResult.success ? undefined : supportingResult.error,
-      },
-      metadata: {
-        duration: Date.now() - startTime,
-      },
-    }),
-  );
-
-  if (!supportingResult.success) {
-    const contextStr = `provider=${llm.getProvider()} baseUrl=${llm.getBaseUrl()}`;
-    return {
-      success: false,
-      error: `Supporting tailoring failed: ${supportingResult.error} (${contextStr})`,
-    };
-  }
-
-  // Merge results
-  const tailoredResumeJson = {
-    ...coreResult.data,
-    ...supportingResult.data,
-  };
 
   // Extract metadata
   const metadata = tailoredResumeJson.metadata as
@@ -368,12 +478,100 @@ export async function generateJsonResumeTailoring(
   };
 }
 
+/**
+ * Merge static master resume data with dynamic LLM-generated data.
+ * Static fields (basics, work company/position/dates, education institution/dates) are preserved.
+ * Dynamic fields (summary, work highlights, education courses, projects, skills, certifications) come from LLM.
+ */
+function mergeStaticAndDynamic(
+  masterResume: Record<string, unknown>,
+  dynamicData: Record<string, unknown>,
+): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...masterResume };
+
+  // Preserve static basics
+  result.basics = masterResume.basics;
+
+  // Replace with dynamic summary
+  if (dynamicData.summary) {
+    result.summary = dynamicData.summary;
+  }
+
+  // Merge work: preserve static fields, replace dynamic fields
+  if (masterResume.work && Array.isArray(masterResume.work) && dynamicData.work && Array.isArray(dynamicData.work)) {
+    result.work = (masterResume.work as Array<Record<string, unknown>>).map((staticWork, index) => {
+      const dynamicWork = (dynamicData.work as Array<Record<string, unknown>>)[index];
+      return {
+        ...staticWork, // Preserve company, position, startDate, endDate
+        summary: dynamicWork?.summary,
+        highlights: dynamicWork?.highlights,
+      };
+    });
+  }
+
+  // Merge education: preserve static fields, replace dynamic courses
+  if (masterResume.education && Array.isArray(masterResume.education) && dynamicData.education && Array.isArray(dynamicData.education)) {
+    result.education = (masterResume.education as Array<Record<string, unknown>>).map((staticEdu, index) => {
+      const dynamicEdu = (dynamicData.education as Array<Record<string, unknown>>)[index];
+      return {
+        ...staticEdu, // Preserve institution, area, studyType, startDate, endDate
+        courses: dynamicEdu?.courses,
+      };
+    });
+  }
+
+  // Merge projects: preserve static fields, replace dynamic fields
+  if (masterResume.projects && Array.isArray(masterResume.projects) && dynamicData.projects && Array.isArray(dynamicData.projects)) {
+    // For projects, LLM selects which ones to include, so we need to match by name
+    const dynamicProjectsMap = new Map(
+      (dynamicData.projects as Array<Record<string, unknown>>).map((p) => [String(p.name), p])
+    );
+    result.projects = (masterResume.projects as Array<Record<string, unknown>>)
+      .filter((p) => dynamicProjectsMap.has(String(p.name)))
+      .map((staticProject) => {
+        const dynamicProject = dynamicProjectsMap.get(String(staticProject.name));
+        return {
+          ...staticProject, // Preserve name, startDate, endDate, url
+          description: dynamicProject?.description,
+          keywords: dynamicProject?.keywords,
+        };
+      });
+  }
+
+  // Replace skills entirely (LLM selects and tailors)
+  if (dynamicData.skills) {
+    result.skills = dynamicData.skills;
+  }
+
+  // Merge certifications: preserve static fields, LLM selects which ones
+  if (masterResume.certifications && Array.isArray(masterResume.certifications) && dynamicData.certifications && Array.isArray(dynamicData.certifications)) {
+    const dynamicCertsMap = new Map(
+      (dynamicData.certifications as Array<Record<string, unknown>>).map((c) => [String(c.name), c])
+    );
+    result.certifications = (masterResume.certifications as Array<Record<string, unknown>>)
+      .filter((c) => dynamicCertsMap.has(String(c.name)))
+      .map((staticCert) => {
+        const dynamicCert = dynamicCertsMap.get(String(staticCert.name));
+        return {
+          ...staticCert, // Preserve name, issuer, date
+        };
+      });
+  }
+
+  // Add metadata from LLM
+  if (dynamicData.metadata) {
+    result.metadata = dynamicData.metadata;
+  }
+
+  return result;
+}
+
 async function buildJsonResumeTailoringPrompt(
   masterResumeJson: Record<string, unknown>,
   jd: string,
   writingStyle: Awaited<ReturnType<typeof getWritingStyle>>,
   constraints?: JsonResumeTailoringInput["constraints"],
-  sectionType?: "core" | "supporting",
+  sectionType?: "core" | "supporting" | "granular",
 ): Promise<string> {
   logger.info("Building JSON resume tailoring prompt", { sectionType });
   try {
@@ -390,31 +588,46 @@ async function buildJsonResumeTailoringPrompt(
     }
 
   // Extract relevant sections from master resume to save tokens
-  const relevantProfile = sectionType === "supporting"
+  const relevantProfile = sectionType === "granular"
     ? {
+        basics: (masterResumeJson.basics as any) || {},
+        summary: (masterResumeJson.summary as any) || "",
+        work: (masterResumeJson.work as any) || [],
         education: (masterResumeJson.education as any) || [],
         projects: (masterResumeJson.projects as any) || [],
         skills: (masterResumeJson.skills as any) || [],
         certifications: (masterResumeJson.certifications as any) || [],
       }
-    : {
-        basics: (masterResumeJson.basics as any) || {},
-        summary: (masterResumeJson.summary as any) || "",
-        work: (masterResumeJson.work as any) || [],
-      };
+    : sectionType === "supporting"
+      ? {
+          education: (masterResumeJson.education as any) || [],
+          projects: (masterResumeJson.projects as any) || [],
+          skills: (masterResumeJson.skills as any) || [],
+          certifications: (masterResumeJson.certifications as any) || [],
+        }
+      : {
+          basics: (masterResumeJson.basics as any) || {},
+          summary: (masterResumeJson.summary as any) || "",
+          work: (masterResumeJson.work as any) || [],
+        };
 
   const maxPages = constraints?.maxPages ?? 2;
   const targetKeywords = constraints?.targetKeywords?.join(", ") || "";
 
-  const templateKey = sectionType === "supporting"
-    ? "jsonResumeTailoringSupportingPromptTemplate"
-    : "jsonResumeTailoringPromptTemplate";
+  const templateKey = sectionType === "granular"
+    ? "jsonResumeTailoringGranularPromptTemplate"
+    : sectionType === "supporting"
+      ? "jsonResumeTailoringSupportingPromptTemplate"
+      : "jsonResumeTailoringPromptTemplate";
 
   const template = await getEffectivePromptTemplate(templateKey);
 
+  // Use compact format for token efficiency
+  const compactResume = convertToCompactFormat(relevantProfile);
+
   return renderPromptTemplate(template, {
     jobDescription: jd,
-    masterResumeJson: JSON.stringify(relevantProfile, null, 2),
+    masterResumeJson: compactResume,
     outputLanguage,
     tone: writingStyle.tone,
     formality: writingStyle.formality,
