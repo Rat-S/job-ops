@@ -21,7 +21,6 @@ import * as settingsRepo from "../repositories/settings";
 import { generateJsonResumeTailoring } from "../services/json-resume-tailoring";
 import { generatePdf } from "../services/pdf";
 import { getProfile } from "../services/profile";
-import { pickProjectIdsForJob } from "../services/projectSelection";
 import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
@@ -394,39 +393,27 @@ export async function summarizeJob(
         }
       }
 
-      // 2. Suggest Projects
+      // Project selection is now handled by granular LLM tailoring
+      // Extract selected project IDs from tailoredResumeJson
       let selectedProjectIds = job.selectedProjectIds;
-      if (!selectedProjectIds || options?.force) {
-        jobLogger.info("Selecting projects");
+      if (tailoredResumeJson) {
         try {
-          const { catalog, selectionItems } =
-            extractProjectsFromProfile(profile);
-          const overrideResumeProjectsRaw =
-            await settingsRepo.getSetting("resumeProjects");
-          const { resumeProjects } = resolveResumeProjectsSettings({
-            catalog,
-            overrideRaw: overrideResumeProjectsRaw,
-          });
-
-          const locked = resumeProjects.lockedProjectIds;
-          const desiredCount = Math.max(
-            0,
-            resumeProjects.maxProjects - locked.length,
-          );
-          const eligibleSet = new Set(resumeProjects.aiSelectableProjectIds);
-          const eligibleProjects = selectionItems.filter((p) =>
-            eligibleSet.has(p.id),
-          );
-
-          const picked = await pickProjectIdsForJob({
-            jobDescription: job.jobDescription || "",
-            eligibleProjects,
-            desiredCount,
-          });
-
-          selectedProjectIds = [...locked, ...picked].join(",");
+          const jsonResume = JSON.parse(tailoredResumeJson) as Record<string, unknown>;
+          if (Array.isArray(jsonResume.projects)) {
+            const projectNames = (jsonResume.projects as Array<Record<string, unknown>>)
+              .map((p) => p.name)
+              .filter(Boolean) as string[];
+            
+            // Map project names to IDs from profile
+            const { catalog } = extractProjectsFromProfile(profile);
+            const selectedIds = catalog
+              .filter((p) => projectNames.includes(p.name))
+              .map((p) => p.id);
+            
+            selectedProjectIds = selectedIds.join(",");
+          }
         } catch (error) {
-          jobLogger.warn("Failed to suggest projects", error);
+          jobLogger.warn("Failed to extract project IDs from tailoredResumeJson", error);
         }
       }
 

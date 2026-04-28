@@ -352,13 +352,16 @@ function convertToCompactFormat(data: Record<string, unknown>): string {
     lines.push("");
   }
 
-  // Handle certifications
-  if (data.certifications && Array.isArray(data.certifications)) {
+  // Handle certifications (or awards - master resume uses awards)
+  const certifications = (data.certifications || data.awards) as Array<Record<string, unknown>> | undefined;
+  if (certifications && Array.isArray(certifications)) {
     lines.push("## Certifications");
-    (data.certifications as Array<Record<string, unknown>>).forEach((c) => {
+    certifications.forEach((c) => {
       const parts = [];
-      if (c.name) parts.push(c.name);
-      if (c.issuer) parts.push(`- ${c.issuer}`);
+      const name = c.name || c.title; // awards uses "title", certifications uses "name"
+      const issuer = c.issuer || c.awarder; // awards uses "awarder", certifications uses "issuer"
+      if (name) parts.push(name);
+      if (issuer) parts.push(`- ${issuer}`);
       if (c.date) parts.push(`(${c.date})`);
       lines.push(parts.join(" "));
     });
