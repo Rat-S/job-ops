@@ -47,6 +47,131 @@ export interface TailoringResult {
   error?: string;
 }
 
+/** JSON schema for sequential tailoring - call 1: summary only */
+const JSON_RESUME_TAILORING_SEQUENTIAL_SUMMARY_SCHEMA: JsonSchemaDefinition = {
+  name: "json_resume_tailoring_sequential_summary",
+  schema: {
+    type: "object",
+    properties: {
+      summary: {
+        type: "string",
+        description: "Tailored resume summary paragraph (max 3 sentences, ~60 words)",
+      },
+    },
+    required: ["summary"],
+    additionalProperties: false,
+  },
+};
+
+/** JSON schema for sequential tailoring - call 2: work only */
+const JSON_RESUME_TAILORING_SEQUENTIAL_WORK_SCHEMA: JsonSchemaDefinition = {
+  name: "json_resume_tailoring_sequential_work",
+  schema: {
+    type: "object",
+    properties: {
+      work: {
+        type: "array",
+        description: "Work experience with tailored bullet points (company, position, dates are static from master resume)",
+        items: {
+          type: "object",
+          properties: {
+            summary: { type: "string", description: "Job summary paragraph (max 2 sentences, ~40 words)" },
+            highlights: {
+              type: "array",
+              items: { type: "string", description: "Tailored bullet points for this role (max 3 bullets, ~15 words each)" },
+            },
+          },
+        },
+      },
+    },
+    required: ["work"],
+    additionalProperties: false,
+  },
+};
+
+/** JSON schema for sequential tailoring - call 3: supporting sections */
+const JSON_RESUME_TAILORING_SEQUENTIAL_SUPPORTING_SCHEMA: JsonSchemaDefinition = {
+  name: "json_resume_tailoring_sequential_supporting",
+  schema: {
+    type: "object",
+    properties: {
+      education: {
+        type: "array",
+        description: "Education with tailored courses (institution, area, dates are static from master resume)",
+        items: {
+          type: "object",
+          properties: {
+            courses: {
+              type: "array",
+              items: { type: "string", description: "Tailored coursework bullet points" },
+            },
+          },
+        },
+      },
+      projects: {
+        type: "array",
+        description: "Selected and tailored projects (names, dates are static from master resume)",
+        items: {
+          type: "object",
+          properties: {
+            description: { type: "string", description: "Tailored project description" },
+            keywords: {
+              type: "array",
+              items: { type: "string", description: "Relevant keywords for this project" },
+            },
+          },
+        },
+      },
+      skills: {
+        type: "array",
+        description: "Selected skills with proof points",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Skill category name" },
+            keywords: {
+              type: "array",
+              items: { type: "string", description: "Selected skills in this category" },
+            },
+            proofPoint: {
+              type: "string",
+              description: "1-sentence evidence demonstrating this skill from work history",
+            },
+          },
+        },
+      },
+      certifications: {
+        type: "array",
+        description: "Selected certifications (name, issuer, date are static from master resume)",
+        items: {
+          type: "object",
+          properties: {
+            name: { type: "string", description: "Certification name (must match master resume exactly)" },
+            issuer: { type: "string", description: "Issuer name (must match master resume exactly)" },
+            date: { type: "string", description: "Certification date (must match master resume exactly)" },
+          },
+        },
+      },
+      metadata: {
+        type: "object",
+        properties: {
+          pageCount: {
+            type: "number",
+            description: "Estimated page count (2 or 3)",
+          },
+          selectedSkills: {
+            type: "array",
+            items: { type: "string" },
+            description: "Top 5 skills selected for this role",
+          },
+        },
+      },
+    },
+    required: ["metadata"],
+    additionalProperties: false,
+  },
+};
+
 /** JSON schema for granular tailoring - only dynamic fields (static fields preserved from master resume) */
 const JSON_RESUME_TAILORING_GRANULAR_SCHEMA: JsonSchemaDefinition = {
   name: "json_resume_tailoring_granular",
@@ -375,7 +500,7 @@ function convertToCompactFormat(data: Record<string, unknown>): string {
  * Uses single granular call: only dynamic fields (summary, work highlights, education courses, projects, skills, certifications).
  * Static fields (basics, work company/position/dates, education institution/dates) are preserved from master resume.
  */
-export async function generateJsonResumeTailoring(
+export async function generateJsonResumeTailoringGranularLegacy(
   input: JsonResumeTailoringInput,
   context?: { jobId?: string; pipelineRunId?: string },
 ): Promise<TailoringResult> {
@@ -467,6 +592,271 @@ export async function generateJsonResumeTailoring(
       proofPoints[skill.name] = skill.proofPoint;
     }
   });
+
+  return {
+    success: true,
+    data: {
+      tailoredResumeJson,
+      metadata: {
+        pageCount: metadata?.pageCount ?? 2,
+        selectedSkills: metadata?.selectedSkills ?? [],
+        proofPoints,
+      },
+    },
+  };
+}
+
+/**
+ * Generate complete tailored JSON Resume for a job using sequential LLM calls.
+ * Uses 3 sequential calls with context propagation for improved reliability:
+ * 1. Summary
+ * 2. Work (with summary context)
+ * 3. Supporting sections (with summary + work context)
+ * Falls back to master resume data if any call fails.
+ */
+export async function generateJsonResumeTailoring(
+  input: JsonResumeTailoringInput,
+  context?: { jobId?: string; pipelineRunId?: string },
+): Promise<TailoringResult> {
+  const [model, writingStyle] = await Promise.all([
+    resolveLlmModel("tailoring"),
+    getWritingStyle(),
+  ]);
+
+  const llm = new LlmService();
+  const startTime = Date.now();
+
+  // Collect all dynamic data from sequential calls
+  const dynamicData: Record<string, unknown> = {};
+  let hasErrors = false;
+
+  // Call 1: Generate summary
+  try {
+    const summaryPrompt = await renderPromptTemplate(
+      "jsonResumeTailoringSequentialSummary",
+      {
+        jobDescription: input.jobDescription,
+        masterResumeJson: convertToCompactFormat(input.masterResumeJson),
+        outputLanguage: writingStyle.manualLanguage,
+        tone: writingStyle.tone,
+        formality: writingStyle.formality,
+      },
+    );
+
+    if (!JSON_RESUME_TAILORING_SEQUENTIAL_SUMMARY_SCHEMA || !JSON_RESUME_TAILORING_SEQUENTIAL_SUMMARY_SCHEMA.schema) {
+      return { success: false, error: "Sequential summary schema is undefined" };
+    }
+
+    const summaryResult = await llm.callJson<Record<string, unknown>>({
+      model,
+      messages: [{ role: "user", content: summaryPrompt }],
+      jsonSchema: JSON_RESUME_TAILORING_SEQUENTIAL_SUMMARY_SCHEMA,
+    });
+
+    await logLlmCall(
+      createLlmLogEntry({
+        model,
+        context: {
+          jobId: context?.jobId,
+          pipelineRunId: context?.pipelineRunId,
+          operation: "jsonResumeTailoring_sequential_summary",
+        },
+        request: {
+          prompt: summaryPrompt,
+          schema: JSON_RESUME_TAILORING_SEQUENTIAL_SUMMARY_SCHEMA,
+          jobDescriptionLength: input.jobDescription.length,
+          masterResumeSize: JSON.stringify(input.masterResumeJson).length,
+        },
+        response: {
+          success: summaryResult.success,
+          data: summaryResult.success ? summaryResult.data : undefined,
+          error: summaryResult.success ? undefined : (summaryResult as any).error,
+        },
+        metadata: { duration: Date.now() - startTime },
+      }),
+    );
+
+    if (summaryResult.success && summaryResult.data) {
+      dynamicData.summary = (summaryResult.data as Record<string, unknown>).summary;
+    } else {
+      logger.warn("Sequential summary call failed, using master resume summary", {
+        jobId: context?.jobId,
+        error: (summaryResult as any).error,
+      });
+      hasErrors = true;
+    }
+  } catch (error) {
+    logger.warn("Sequential summary call threw error, using master resume summary", {
+      jobId: context?.jobId,
+      error,
+    });
+    hasErrors = true;
+  }
+
+  // Call 2: Generate work (with summary context)
+  try {
+    const workPrompt = await renderPromptTemplate(
+      "jsonResumeTailoringSequentialWork",
+      {
+        jobDescription: input.jobDescription,
+        masterResumeJson: convertToCompactFormat(input.masterResumeJson),
+        generatedSummary: dynamicData.summary as string || "",
+        outputLanguage: writingStyle.manualLanguage,
+        tone: writingStyle.tone,
+        formality: writingStyle.formality,
+      },
+    );
+
+    if (!JSON_RESUME_TAILORING_SEQUENTIAL_WORK_SCHEMA || !JSON_RESUME_TAILORING_SEQUENTIAL_WORK_SCHEMA.schema) {
+      return { success: false, error: "Sequential work schema is undefined" };
+    }
+
+    const workResult = await llm.callJson<Record<string, unknown>>({
+      model,
+      messages: [{ role: "user", content: workPrompt }],
+      jsonSchema: JSON_RESUME_TAILORING_SEQUENTIAL_WORK_SCHEMA,
+    });
+
+    await logLlmCall(
+      createLlmLogEntry({
+        model,
+        context: {
+          jobId: context?.jobId,
+          pipelineRunId: context?.pipelineRunId,
+          operation: "jsonResumeTailoring_sequential_work",
+        },
+        request: {
+          prompt: workPrompt,
+          schema: JSON_RESUME_TAILORING_SEQUENTIAL_WORK_SCHEMA,
+          jobDescriptionLength: input.jobDescription.length,
+          masterResumeSize: JSON.stringify(input.masterResumeJson).length,
+        },
+        response: {
+          success: workResult.success,
+          data: workResult.success ? workResult.data : undefined,
+          error: workResult.success ? undefined : (workResult as any).error,
+        },
+        metadata: { duration: Date.now() - startTime },
+      }),
+    );
+
+    if (workResult.success && workResult.data) {
+      dynamicData.work = (workResult.data as Record<string, unknown>).work;
+    } else {
+      logger.warn("Sequential work call failed, using master resume work", {
+        jobId: context?.jobId,
+        error: (workResult as any).error,
+      });
+      hasErrors = true;
+    }
+  } catch (error) {
+    logger.warn("Sequential work call threw error, using master resume work", {
+      jobId: context?.jobId,
+      error,
+    });
+    hasErrors = true;
+  }
+
+  // Call 3: Generate supporting sections (with summary + work context)
+  try {
+    const supportingPrompt = await renderPromptTemplate(
+      "jsonResumeTailoringSequentialSupporting",
+      {
+        jobDescription: input.jobDescription,
+        masterResumeJson: convertToCompactFormat(input.masterResumeJson),
+        generatedSummary: dynamicData.summary as string || "",
+        generatedWork: JSON.stringify(dynamicData.work || []),
+        outputLanguage: writingStyle.manualLanguage,
+        tone: writingStyle.tone,
+        formality: writingStyle.formality,
+        maxPages: input.constraints?.maxPages ?? 2,
+        targetKeywords: input.constraints?.targetKeywords?.join(", ") || "",
+      },
+    );
+
+    if (!JSON_RESUME_TAILORING_SEQUENTIAL_SUPPORTING_SCHEMA || !JSON_RESUME_TAILORING_SEQUENTIAL_SUPPORTING_SCHEMA.schema) {
+      return { success: false, error: "Sequential supporting schema is undefined" };
+    }
+
+    const supportingResult = await llm.callJson<Record<string, unknown>>({
+      model,
+      messages: [{ role: "user", content: supportingPrompt }],
+      jsonSchema: JSON_RESUME_TAILORING_SEQUENTIAL_SUPPORTING_SCHEMA,
+    });
+
+    await logLlmCall(
+      createLlmLogEntry({
+        model,
+        context: {
+          jobId: context?.jobId,
+          pipelineRunId: context?.pipelineRunId,
+          operation: "jsonResumeTailoring_sequential_supporting",
+        },
+        request: {
+          prompt: supportingPrompt,
+          schema: JSON_RESUME_TAILORING_SEQUENTIAL_SUPPORTING_SCHEMA,
+          jobDescriptionLength: input.jobDescription.length,
+          masterResumeSize: JSON.stringify(input.masterResumeJson).length,
+        },
+        response: {
+          success: supportingResult.success,
+          data: supportingResult.success ? supportingResult.data : undefined,
+          error: supportingResult.success ? undefined : (supportingResult as any).error,
+        },
+        metadata: { duration: Date.now() - startTime },
+      }),
+    );
+
+    if (supportingResult.success && supportingResult.data) {
+      const data = supportingResult.data as Record<string, unknown>;
+      dynamicData.education = data.education;
+      dynamicData.projects = data.projects;
+      dynamicData.skills = data.skills;
+      dynamicData.certifications = data.certifications;
+      dynamicData.metadata = data.metadata;
+    } else {
+      logger.warn("Sequential supporting call failed, using master resume supporting sections", {
+        jobId: context?.jobId,
+        error: (supportingResult as any).error,
+      });
+      hasErrors = true;
+    }
+  } catch (error) {
+    logger.warn("Sequential supporting call threw error, using master resume supporting sections", {
+      jobId: context?.jobId,
+      error,
+    });
+    hasErrors = true;
+  }
+
+  // Merge dynamic LLM output with static master resume data
+  const tailoredResumeJson = mergeStaticAndDynamic(
+    input.masterResumeJson,
+    dynamicData,
+  );
+
+  // Extract metadata
+  const metadata = tailoredResumeJson.metadata as
+    | { pageCount: number; selectedSkills: string[] }
+    | undefined;
+
+  // Extract proof points from skills
+  const skills = tailoredResumeJson.skills as Array<{
+    name: string;
+    proofPoint?: string;
+  }>;
+  const proofPoints: Record<string, string> = {};
+  skills.forEach((skill) => {
+    if (skill.proofPoint) {
+      proofPoints[skill.name] = skill.proofPoint;
+    }
+  });
+
+  if (hasErrors) {
+    logger.info("Sequential tailoring completed with some errors, fell back to master resume data for failed sections", {
+      jobId: context?.jobId,
+    });
+  }
 
   return {
     success: true,

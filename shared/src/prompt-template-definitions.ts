@@ -296,6 +296,154 @@ OUTPUT FORMAT (granular JSON schema):
 }
 `.trim(),
   },
+  jsonResumeTailoringSequentialSummary: {
+    label: "JSON Resume tailoring prompt (sequential - summary)",
+    description: "First call in sequential tailoring: generates only the resume summary paragraph.",
+    placeholders: [
+      "jobDescription",
+      "masterResumeJson",
+      "outputLanguage",
+      "tone",
+      "formality",
+    ] as const,
+    defaultTemplate: `
+You are an expert resume writer generating a tailored resume summary for a specific job application.
+
+JOB DESCRIPTION (JD):
+{{jobDescription}}
+
+MY MASTER RESUME (compact format):
+{{masterResumeJson}}
+
+INSTRUCTIONS:
+- Generate a concise summary paragraph (max 3 sentences, ~60 words)
+- Tailor it for the company's "About You" / requirements section
+- Keep it warm, confident, and professional
+- Write in {{outputLanguage}}
+- Do NOT invent experience
+- Focus on relevant skills and experience from the master resume
+
+WRITING STYLE:
+- Tone: {{tone}}
+- Formality: {{formality}}
+- Output language: {{outputLanguage}}
+
+OUTPUT FORMAT:
+{
+  "summary": "..."
+}
+`.trim(),
+  },
+  jsonResumeTailoringSequentialWork: {
+    label: "JSON Resume tailoring prompt (sequential - work)",
+    description: "Second call in sequential tailoring: generates work summaries and highlights, with context from previous summary.",
+    placeholders: [
+      "jobDescription",
+      "masterResumeJson",
+      "generatedSummary",
+      "outputLanguage",
+      "tone",
+      "formality",
+    ] as const,
+    defaultTemplate: `
+You are an expert resume writer generating tailored work experience for a specific job application.
+
+JOB DESCRIPTION (JD):
+{{jobDescription}}
+
+MY MASTER RESUME (compact format):
+{{masterResumeJson}}
+
+PREVIOUSLY GENERATED SUMMARY:
+{{generatedSummary}}
+
+INSTRUCTIONS:
+- Keep work entries in chronological order (do NOT reorder)
+- For each entry, generate ONLY: summary (max 2 sentences, ~40 words) and highlights (max 3 bullets, ~15 words each)
+- CRITICAL: Work summary MUST be concise. Do NOT ramble. Do NOT repeat phrases. Stop at 2 sentences maximum.
+- BAD example: "Managed the end-to-end SDLC and product strategy for diverse portfolios, including the launch of AI-native products and a consumer-facing Live Shopping MVP application. Collaborated closely with cross-functional engineering, analytics, and business teams to ship high-impact features and client releases within strict SLAs constraint factors and tight schedules, translating requirements into scalable technical roadmaps that consistently achieved business metrics targets..." (TOO LONG, RAMBLING)
+- GOOD example: "Led product strategy for AI-native telecom products and consumer-facing MVPs. Collaborated with cross-functional teams to ship high-impact features within SLAs." (2 sentences, ~25 words)
+- Do NOT include company, position, startDate, endDate - these are static (preserved from master resume)
+- Ensure consistency with the previously generated summary
+
+WRITING STYLE:
+- Tone: {{tone}}
+- Formality: {{formality}}
+- Output language: {{outputLanguage}}
+
+OUTPUT FORMAT:
+{
+  "work": [ { "summary": "...", "highlights": [...] } ]
+}
+`.trim(),
+  },
+  jsonResumeTailoringSequentialSupporting: {
+    label: "JSON Resume tailoring prompt (sequential - supporting sections)",
+    description: "Third call in sequential tailoring: generates education, projects, skills, certifications with context from previous calls.",
+    placeholders: [
+      "jobDescription",
+      "masterResumeJson",
+      "generatedSummary",
+      "generatedWork",
+      "outputLanguage",
+      "tone",
+      "formality",
+      "maxPages",
+      "targetKeywords",
+    ] as const,
+    defaultTemplate: `
+You are an expert resume writer generating supporting sections of a tailored JSON Resume for a specific job application.
+
+JOB DESCRIPTION (JD):
+{{jobDescription}}
+
+MY MASTER RESUME (compact format):
+{{masterResumeJson}}
+
+PREVIOUSLY GENERATED CONTENT:
+Summary: {{generatedSummary}}
+Work: {{generatedWork}}
+
+INSTRUCTIONS:
+
+1. "education" (Array):
+   - For each entry, generate ONLY: courses (tailored coursework bullet points)
+   - Do NOT include institution, area, studyType, startDate, endDate - these are static
+
+2. "projects" (Array):
+   - Select 3-5 most relevant projects for this role
+   - For selected projects, generate: description (tailored) and keywords (relevant skills)
+   - Do NOT include name, startDate, endDate, url - these are static
+
+3. "skills" (Array):
+   - Select top 5 skills from JD
+   - For each skill category, generate: keywords (selected skills) and proofPoint (1-sentence evidence from work history)
+   - Keyword matching: swap synonyms to match JD exactly
+
+4. "certifications" (Array):
+   - Select only relevant certifications
+   - For selected certifications, include: name, issuer, date (must match master resume exactly)
+   - Do NOT invent new certifications
+
+5. "metadata" (Object):
+   - "pageCount": {{maxPages}} (2 or 3 based on content density)
+   - "selectedSkills": top 5 skills selected for this role
+
+WRITING STYLE:
+- Tone: {{tone}}
+- Formality: {{formality}}
+- Output language: {{outputLanguage}}
+
+OUTPUT FORMAT:
+{
+  "education": [ { "courses": [...] } ],
+  "projects": [ { "description": "...", "keywords": [...] } ],
+  "skills": [ { "name": "...", "keywords": [...], "proofPoint": "..." } ],
+  "certifications": [ { "name": "...", "issuer": "...", "date": "..." } ],
+  "metadata": { "pageCount": 2, "selectedSkills": [...] }
+}
+`.trim(),
+  },
   jsonResumeTailoringSupportingPromptTemplate: {
     label: "JSON Resume tailoring prompt (supporting sections)",
     description:
