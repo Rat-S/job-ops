@@ -1,27 +1,27 @@
 {
-  "capturedAt": "2026-04-26T15:39:22.369Z",
+  "capturedAt": "2026-04-28T10:00:15.750Z",
   "cookieCount": 3,
   "cookies": [
-    {
-      "domain": "startup.jobs",
-      "name": "ahoy_visit",
-      "path": "/",
-      "secure": true,
-      "value": "22e0e684-33fb-47bf-998a-66053a6a95d3"
-    },
     {
       "domain": "startup.jobs",
       "name": "ahoy_visitor",
       "path": "/",
       "secure": true,
-      "value": "44c893a7-5c17-4b8f-b331-eb31d5578a1e"
+      "value": "4d2d6ac8-df90-47fe-a1a8-be72fef99ee9"
+    },
+    {
+      "domain": "startup.jobs",
+      "name": "ahoy_visit",
+      "path": "/",
+      "secure": true,
+      "value": "86941fc8-4092-471e-a1db-0cf62357a7f3"
     },
     {
       "domain": "startup.jobs",
       "name": "_startupjobs_session",
       "path": "/",
       "secure": true,
-      "value": "WcbmtvMgoab%2F1AKyIMg4eKTWgNopCB0tD8aRz8u06uzZ5v%2BXdgFj9VO480JIb31OfI9OXcCDUSxzwQMOfGr6ywXGPCqqzDCQ2NWbBtQsuVICTLlvrLvtzIwGm8hJwyp2fLgN8Al2rekC1UuCwjtvRvjcOlu6UPpy4%2FIFCRzqtgPOBSiGV%2FXDyGio8H5TCP8q8fRyVLE890xZh7xDVRYgxkKhdk8rxi0%2BmuCRL0EzpHPN4zDe3AWSe9vug%2FnA%2FbBsklEn44leZ0dVpjD%2FR7SJbe2FsAhaUjJtQpWJtF2p%2B2X%2B3rCQiAme6lmamCrMZFcfq5c%3D--tKe9NI1t33MhSmxm--mE9lyaqNsqw5X9u6KqhlUg%3D%3D"
+      "value": "fndn%2FlSTywTYqjwNdUV0RWgHWEkilllCbBGtMZW%2FZc1wbyUsNJupeMyg%2BA0e%2B75G5FNUbVWvwx%2Fl9SsLBY8U8JdUyf6VwjJa4GerI4wynahOiBhnFvoac55bnkj3OK2%2BgyeIyyFXMX099kRX9QBuK0b%2FHsdMRcp6hXcmm9zMG%2BRULgot%2BOHgLabWac0YeGsCi0PBacTW7cHq6jIE597o%2F47VIQYryc%2BQS%2BWcdrGY%2Fey8crRJM64vID4C0lwhavapcC5sjAa0vUnedfZDMyiE%2Bn9eQUQ9T86UxWdggFIz07wfg2sajzo7MfnvX5TImTpjhIs%3D--fFLvLwYdK2zc%2F3yX--nRhSNVEX66roXjwaMPr0mw%3D%3D"
     }
   ],
   "url": "https://startup.jobs/?loc=Preston%2C+Lancashire%2C+United+Kingdom&q=Software&latlng=53.759%2C-2.699&since=30d&page=2"

@@ -403,11 +403,16 @@ export async function generateJsonResumeTailoring(
   // Call 2: Generate work (with summary context)
   try {
     const workTemplate = await getEffectivePromptTemplate("jsonResumeTailoringSequentialWork");
+    // Filter master resume to only include work experience for this call
+    const workOnlyResume = {
+      basics: (input.masterResumeJson as Record<string, unknown>).basics,
+      work: (input.masterResumeJson as Record<string, unknown>).work,
+    };
     const workPrompt = renderPromptTemplate(
       workTemplate,
       {
         jobDescription: input.jobDescription,
-        masterResumeJson: convertToCompactFormat(input.masterResumeJson),
+        masterResumeJson: convertToCompactFormat(workOnlyResume),
         generatedSummary: dynamicData.summary as string || "",
         outputLanguage: writingStyle.manualLanguage,
         tone: writingStyle.tone,
@@ -490,11 +495,19 @@ export async function generateJsonResumeTailoring(
   // Call 3: Generate supporting sections (with summary + work context)
   try {
     const supportingTemplate = await getEffectivePromptTemplate("jsonResumeTailoringSequentialSupporting");
+    // Filter master resume to only include relevant sections for this call
+    const supportingOnlyResume = {
+      basics: (input.masterResumeJson as Record<string, unknown>).basics,
+      education: (input.masterResumeJson as Record<string, unknown>).education,
+      projects: (input.masterResumeJson as Record<string, unknown>).projects,
+      skills: (input.masterResumeJson as Record<string, unknown>).skills,
+      certifications: (input.masterResumeJson as Record<string, unknown>).certifications,
+    };
     const supportingPrompt = renderPromptTemplate(
       supportingTemplate,
       {
         jobDescription: input.jobDescription,
-        masterResumeJson: convertToCompactFormat(input.masterResumeJson),
+        masterResumeJson: convertToCompactFormat(supportingOnlyResume),
         generatedSummary: dynamicData.summary as string || "",
         generatedWork: JSON.stringify(dynamicData.work || []),
         outputLanguage: writingStyle.manualLanguage,
