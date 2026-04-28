@@ -7,9 +7,21 @@
  * 3. Leave all jobs in "discovered" for manual processing
  */
 
+import { appendFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { logger } from "@infra/logger";
+
+// Detailed logging to file for debugging
+const ORCHESTRATOR_LOG = `./logs/orchestrator_${Date.now()}.jsonl`;
+function logOrchestrator(entry: Record<string, unknown>) {
+  try {
+    const line = JSON.stringify({ ...entry, _loggedAt: new Date().toISOString() }) + "\n";
+    appendFileSync(ORCHESTRATOR_LOG, line);
+  } catch {
+    // Silent fail
+  }
+}
 import { trackServerProductEvent } from "@infra/product-analytics";
 import { runWithRequestContext } from "@infra/request-context";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-domain.js";
@@ -417,6 +429,22 @@ export async function summarizeJob(
         }
       }
 
+      // Log what we're saving to the database
+      const summaryToSave = tailoredResumeJson ? JSON.parse(tailoredResumeJson).summary : "(none)";
+      jobLogger.info("Saving tailoredResumeJson to database", {
+        hasTailoredResumeJson: !!tailoredResumeJson,
+        summaryPreview: typeof summaryToSave === "string" ? summaryToSave.substring(0, 100) : "(none)",
+      });
+      
+      // File log for detailed debugging
+      logOrchestrator({
+        type: "db_save",
+        jobId: job.id,
+        hasTailoredResumeJson: !!tailoredResumeJson,
+        summaryPreview: typeof summaryToSave === "string" ? summaryToSave.substring(0, 500) : "(none)",
+        fullTailoredResumeJson: tailoredResumeJson,
+      });
+      
       await jobsRepo.updateJob(job.id, {
         tailoredSummary: undefined, // Deprecated field - using tailoredResumeJson instead
         tailoredHeadline: undefined, // Deprecated field - using tailoredResumeJson instead
@@ -450,6 +478,22 @@ export async function generateFinalPdf(
     try {
       const job = await jobsRepo.getJobById(jobId);
       if (!job) return { success: false, error: "Job not found" };
+      
+      // Log what we loaded from the database
+      const summaryLoaded = job.tailoredResumeJson ? JSON.parse(job.tailoredResumeJson).summary : "(none)";
+      jobLogger.info("Loaded job for PDF generation", {
+        hasTailoredResumeJson: !!job.tailoredResumeJson,
+        summaryPreview: typeof summaryLoaded === "string" ? summaryLoaded.substring(0, 100) : "(none)",
+      });
+      
+      // File log for detailed debugging
+      logOrchestrator({
+        type: "db_load",
+        jobId: job.id,
+        hasTailoredResumeJson: !!job.tailoredResumeJson,
+        summaryPreview: typeof summaryLoaded === "string" ? summaryLoaded.substring(0, 500) : "(none)",
+        fullTailoredResumeJson: job.tailoredResumeJson,
+      });
 
       // Mark as processing
       await jobsRepo.updateJob(job.id, { status: "processing" });
@@ -500,7 +544,7 @@ export async function generateFinalPdf(
           tracerLinksEnabled: job.tracerLinksEnabled,
           requestOrigin: options?.requestOrigin ?? null,
           tracerCompanyName: job.employer ?? null,
-          tailoredResumeJson: job.tailoredResumeJson,
+          tailoredResumeJson: job.tailoredResumeJson,  // Job reloaded from DB, should have updated value
         },
       );
 

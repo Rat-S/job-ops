@@ -193,7 +193,9 @@ export interface AppSettings {
   ghostwriterSystemPromptTemplate: Resolved<string>;
   tailoringPromptTemplate: Resolved<string>;
   scoringPromptTemplate: Resolved<string>;
-  jsonResumeTailoringPromptTemplate: Resolved<string>;
+  jsonResumeTailoringSequentialSummary: Resolved<string>;
+  jsonResumeTailoringSequentialWork: Resolved<string>;
+  jsonResumeTailoringSequentialSupporting: Resolved<string>;
   searchCities: Resolved<string>;
   locationSearchScope: Resolved<LocationSearchScope>;
   locationMatchStrictness: Resolved<LocationMatchStrictness>;

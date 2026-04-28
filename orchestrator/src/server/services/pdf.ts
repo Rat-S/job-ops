@@ -430,6 +430,21 @@ export async function generatePdf(
         }
       }
       
+      // Ensure JSON Resume schema compatibility for resumed CLI
+      if (Array.isArray(resumeJson.work)) {
+        resumeJson.work = resumeJson.work.map((entry: any) => {
+          if (entry && typeof entry === "object") {
+            if (entry.company && !entry.name) {
+              entry.name = entry.company;
+            }
+            if (typeof entry.endDate === "string" && entry.endDate.toLowerCase() === "present") {
+              entry.endDate = "";
+            }
+          }
+          return entry;
+        });
+      }
+
       await renderResumedPdf({
         resumeJson,
         outputPath,

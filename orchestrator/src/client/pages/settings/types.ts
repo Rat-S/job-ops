@@ -67,5 +67,7 @@ export type PromptTemplatesValues = {
   ghostwriterSystemPromptTemplate: EffectiveDefault<string>;
   tailoringPromptTemplate: EffectiveDefault<string>;
   scoringPromptTemplate: EffectiveDefault<string>;
-  jsonResumeTailoringPromptTemplate: EffectiveDefault<string>;
+  jsonResumeTailoringSequentialSummary: EffectiveDefault<string>;
+  jsonResumeTailoringSequentialWork: EffectiveDefault<string>;
+  jsonResumeTailoringSequentialSupporting: EffectiveDefault<string>;
 };

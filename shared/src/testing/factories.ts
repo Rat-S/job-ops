@@ -200,9 +200,19 @@ export const createAppSettings = (
     default: getDefaultPromptTemplate("scoringPromptTemplate"),
     override: null,
   },
-  jsonResumeTailoringPromptTemplate: {
-    value: getDefaultPromptTemplate("jsonResumeTailoringPromptTemplate"),
-    default: getDefaultPromptTemplate("jsonResumeTailoringPromptTemplate"),
+  jsonResumeTailoringSequentialSummary: {
+    value: getDefaultPromptTemplate("jsonResumeTailoringSequentialSummary"),
+    default: getDefaultPromptTemplate("jsonResumeTailoringSequentialSummary"),
+    override: null,
+  },
+  jsonResumeTailoringSequentialWork: {
+    value: getDefaultPromptTemplate("jsonResumeTailoringSequentialWork"),
+    default: getDefaultPromptTemplate("jsonResumeTailoringSequentialWork"),
+    override: null,
+  },
+  jsonResumeTailoringSequentialSupporting: {
+    value: getDefaultPromptTemplate("jsonResumeTailoringSequentialSupporting"),
+    default: getDefaultPromptTemplate("jsonResumeTailoringSequentialSupporting"),
     override: null,
   },
   searchCities: {
