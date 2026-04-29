@@ -16,10 +16,13 @@ def convert_to_compact_format(resume: dict[str, Any]) -> str:
         lines.append(f"Phone: {basics.get('phone', '')}")
         if basics.get("location"):
             loc = basics["location"]
-            city = loc.get("city", "")
-            country = loc.get("countryCode", "")
-            if city or country:
-                lines.append(f"Location: {city}, {country}")
+            if isinstance(loc, str):
+                lines.append(f"Location: {loc}")
+            else:
+                city = loc.get("city", "")
+                country = loc.get("countryCode", "")
+                if city or country:
+                    lines.append(f"Location: {city}, {country}")
         if basics.get("profiles"):
             lines.append("Profiles:")
             for profile in basics["profiles"]:

@@ -56,6 +56,7 @@ PREVIOUSLY GENERATED SUMMARY:
 
 INSTRUCTIONS:
 - Keep work entries in chronological order (do NOT reorder)
+- You MUST generate an array of work entries that exactly matches the number of entries in the master resume.
 - For EACH work entry, you MUST generate BOTH fields: "summary" AND "highlights"
 - CRITICAL: Every single work entry must have a "summary" string AND a "highlights" array with 2-3 bullet points
 - Summary: max 2 sentences, ~40 words
@@ -121,6 +122,7 @@ INSTRUCTIONS:
 
 4. "certifications" (Array):
    - Select only relevant certifications for this role
+   - CRITICAL: Select a maximum of 25 certifications. Do NOT exceed 15.
    - For selected certifications, include: name, issuer, date (must match master resume exactly)
    - Do NOT invent new certifications
 

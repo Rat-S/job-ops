@@ -12,6 +12,7 @@ docs-site/build/
 
 # Data directory (bind mount in Docker)
 data/
+data.old/
 
 # Extractor storage outputs and cached auth
 extractors/ukvisajobs/storage/
