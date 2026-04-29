@@ -122,8 +122,8 @@ INSTRUCTIONS:
 
 4. "certifications" (Array):
    - Select only relevant certifications for this role
-   - CRITICAL: Select a maximum of 25 certifications. Do NOT exceed 15.
-   - For selected certifications, include: name, issuer, date (must match master resume exactly)
+   - CRITICAL: Select a maximum of 25 certifications. Do NOT exceed 25.
+   - For selected certifications, include: name, issuer
    - Do NOT invent new certifications
 
 5. "metadata" (Object):
@@ -144,6 +144,6 @@ OUTPUT FORMAT:
   "education": [{{"courses": [...]}}],
   "projects": [{{"name": "...", "description": "...", "keywords": [...]}}],
   "skills": [{{"name": "...", "keywords": [...], "proofPoint": "..."}}],
-  "certifications": [{{"name": "...", "issuer": "...", "date": "..."}}],
+  "certifications": [{{"name": "...", "issuer": "..."}}],
   "metadata": {{"pageCount": {max_pages}, "selectedSkills": [...]}}
 }}"""

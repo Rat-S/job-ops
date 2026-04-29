@@ -324,7 +324,17 @@ def merge_with_static(
         result["skills"] = supporting["skills"]
     
     if supporting.get("certifications"):
-        result["certifications"] = supporting["certifications"]
+        result["certificates"] = [
+            {
+                "name": cert.get("name", ""),
+                "issuer": cert.get("issuer", ""),
+                "date": cert.get("date", ""),
+                "url": ""
+            }
+            for cert in supporting["certifications"]
+        ]
+        if "certifications" in result:
+            del result["certifications"]
     
     if supporting.get("metadata"):
         result["metadata"] = supporting["metadata"]

@@ -66,7 +66,7 @@ def convert_rrv4_to_json_resume(input_path, output_path):
         "education": [],
         "skills": [],
         "projects": [],
-        "awards": []
+        "certificates": []
     }
 
     # Fix basics
@@ -151,14 +151,14 @@ def convert_rrv4_to_json_resume(input_path, output_path):
             "url": item.get("website", {}).get("url", "") if isinstance(item.get("website"), dict) else item.get("url", "")
         })
 
-    # Certifications -> Awards
+    # Certifications -> Certificates
     cert_items = sections.get("certifications", {}).get("items", []) + sections.get("awards", {}).get("items", [])
     for item in cert_items:
-        json_resume["awards"].append({
-            "title": item.get("name", "") or item.get("title", ""),
+        json_resume["certificates"].append({
+            "name": item.get("name", "") or item.get("title", ""),
             "date": "", # Removed date as requested
-            "awarder": item.get("issuer", "") or item.get("awarder", ""),
-            "summary": clean_html(item.get("summary", "")) or item.get("url", "")
+            "issuer": item.get("issuer", "") or item.get("awarder", ""),
+            "url": clean_html(item.get("summary", "")) or item.get("url", "")
         })
 
     with open(output_path, 'w') as f:
