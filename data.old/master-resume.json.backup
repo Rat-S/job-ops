@@ -1,0 +1,488 @@
+{
+  "picture": {
+    "hidden": false,
+    "url": "",
+    "size": 80,
+    "rotation": 0,
+    "aspectRatio": 1,
+    "borderRadius": 0,
+    "borderColor": "rgba(0, 0, 0, 0.5)",
+    "borderWidth": 0,
+    "shadowColor": "rgba(0, 0, 0, 0.5)",
+    "shadowWidth": 0
+  },
+  "basics": {
+    "name": "Jay S",
+    "headline": "Product Manager",
+    "email": "jay.s@covai.org",
+    "phone": "+91 986 528 2692",
+    "location": "Bangalore | Willing to relocate",
+    "website": {
+      "url": "https://www.linkedin.com/in/deadrat/",
+      "label": ""
+    },
+    "customFields": [
+      {
+        "id": "ef475ccb-bfa8-4be3-bf47-5ec555b43da0",
+        "icon": "calendar",
+        "text": "Notice: 2 Calendar Weeks",
+        "link": ""
+      }
+    ]
+  },
+  "summary": {
+    "title": "Professional Summary",
+    "columns": 1,
+    "hidden": false,
+    "content": "<p><strong>Technology & Product Leader</strong> with an <strong>MBA from IIM Trichy</strong> and 12+ years of experience bridging the gap between <strong>Engineering Execution</strong> and <strong>Business Strategy</strong>. Expert in launching <strong>AI-Native Products</strong>, designing scalable platforms for regulated markets (RegTech), and driving cost-efficient delivery through open-source adoption. Proven track record of architecting solutions that reduce technical debt by <strong>85%</strong> and accelerating time-to-market by <strong>60%</strong> through hands-on prototyping. Experienced in zero-to-one launches, international expansion strategy, and transforming legacy systems into modern revenue engines.</p>"
+  },
+  "sections": {
+    "skills": {
+      "title": "Product & Technical Expertise",
+      "columns": 1,
+      "hidden": false,
+      "items": [
+        {
+          "id": "77f5f6e5-f7eb-41d3-b58d-4274e1021046",
+          "hidden": false,
+          "icon": "strategy",
+          "name": "Product Strategy",
+          "proficiency": "",
+          "level": 5,
+          "keywords": [
+            "Roadmap Planning",
+            "Go-to-Market (GTM)",
+            "Zero-to-One Launches",
+            "KPI Definition",
+            "Technical Spec Authoring"
+          ]
+        },
+        {
+          "id": "a13c32e3-9d5a-4c0b-a52c-82c782752fdc",
+          "hidden": false,
+          "icon": "code",
+          "name": "Technical Fluency",
+          "proficiency": "",
+          "level": 4,
+          "keywords": [
+            "GenAI & LLMs (RAG, Agents, Local Deployment)",
+            "Agentic Frameworks (LangGraph, Autogen)",
+            "API Integration",
+            "Cloud (AWS/GCP)",
+            "Legacy Modernization"
+          ]
+        },
+        {
+          "id": "a73256c6-7d14-49af-91b8-f01152824b8b",
+          "hidden": false,
+          "icon": "users",
+          "name": "Leadership",
+          "proficiency": "",
+          "level": 4,
+          "keywords": [
+            "Agile/Scrum Transformation",
+            "Stakeholder Management",
+            "Cost Optimization",
+            "Remote Team Leadership"
+          ]
+        },
+        {
+          "id": "aba7607f-0d1f-40a9-901f-de916449befc",
+          "hidden": false,
+          "icon": "chart",
+          "name": "User & Market",
+          "proficiency": "",
+          "level": 4,
+          "keywords": [
+            "User Research",
+            "Behavioral Analytics",
+            "A/B Testing",
+            "Conversion Optimization",
+            "Data Analysis"
+          ]
+        }
+      ]
+    },
+    "experience": {
+      "title": "Professional Experience",
+      "columns": 1,
+      "hidden": false,
+      "items": [
+        {
+          "id": "c67b462d-3270-4e81-9aa7-516e9d600b58",
+          "hidden": false,
+          "company": "Covai Labs",
+          "position": "Principal Product Consultant",
+          "location": "Coimbatore, India",
+          "period": "August 2023 - Present",
+          "website": {
+            "url": "https://covai.org",
+            "label": ""
+          },
+          "description": "<p><em>Spearheaded technical strategy and AI product modernization for <a href='https://updates.skyvera.com/authors/jay/'>Skyvera</a> (US telecom client) and other independent engagements.</em></p><ul><li><strong>Legacy Transformation:</strong> Consolidated 11 fragmented software versions into a single unified platform, reducing technical debt and engineering maintenance overhead by <strong>85%</strong>.</li><li><strong>Database Modernization:</strong> Led a strategic migration from Oracle to PostgreSQL, eliminating <strong>$2M+ in annual licensing costs</strong> while maintaining 99.9% uptime.</li><li><strong>AI-Native Product Launch:</strong> Architected and launched AI-native products (<em>Kandy Notetaker</em> for meeting intelligence & <em>Lithium Defender</em> for spam detection), extending legacy UCaaS lifecycles and opening new revenue streams.</li><li><strong>Accelerated Time-to-Market:</strong> Built functional LLM prototypes (Claude Code, Cursor), reducing engineering discovery time by <strong>60%</strong> and accelerating adoption by 3x.</li><li><strong>Customer Experience:</strong> Designed self-service portals with embedded RAG AI agents, automating release note distribution and deflecting support tickets.</li><li><strong>Cross-Functional Leadership:</strong> Operated as central technical liaison between engineering, DevOps, commercial, and customer support teams, authoring API specifications that prioritized scalability and backward compatibility.</li><li><strong>MVP Delivery (Independent Contracts):</strong> Managed two MVP products end-to-end \u2014 a <strong>Live Shopping</strong> app and a <strong>Garage Management Portal</strong> \u2014 defining technical architecture (React.js, Node.js) and API specifications for rapid market entry.</li></ul>",
+          "roles": []
+        },
+        {
+          "id": "0c47bf61-6215-4dd3-a944-43a072483c2b",
+          "hidden": false,
+          "company": "Taxilla IT Solutions",
+          "position": "Product Manager",
+          "location": "Hyderabad, India",
+          "period": "July 2021 - July 2023",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": "<p><em>Owned the product lifecycle for a RegTech SaaS platform, driving international expansion and compliance.</em></p><ul><li><strong>RegTech Strategy & Global Expansion:</strong> Led the product roadmap for entering stringent international markets (KSA, UAE), ensuring the platform met complex data sovereignty and cryptographic signing requirements.</li><li><strong>Platform Scalability:</strong> Collaborated with architects to redesign a core high-throughput transaction engine for reconciliation across <strong>Banking, Insurance, and E-commerce</strong>, supporting a <strong>350% increase</strong> in volume.</li><li><strong>Customer Success & MVP:</strong> Built MVP solutions for each industry use-case, personally conducting capability demos for prospective leads and onboarding key accounts for initial <strong>User Acceptance Testing (UAT)</strong>.</li><li><strong>User Adoption & Growth:</strong> Achieved an <strong>80% increase in platform adoption</strong> and a <strong>350% increase in web traffic</strong> by conducting user research to identify friction points and redesigning the onboarding flow.</li></ul>",
+          "roles": []
+        },
+        {
+          "id": "d5a11163-1535-41cd-afa5-c16f378e6a80",
+          "hidden": false,
+          "company": "ValueLabs",
+          "position": "Growth Product Manager",
+          "location": "Hyderabad, India",
+          "period": "April 2019 - January 2021",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": "<ul><li><strong>New Product Development:</strong> Led a zero-to-one digital transformation initiative, validating the concept through pilots and securing <strong>3 enterprise contracts</strong> before General Availability (GA).</li><li><strong>Conversion Optimization:</strong> Partnered with design and engineering to implement ML-driven user flows, resulting in a <strong>10% increase in conversion rates</strong> for client platforms.</li></ul>",
+          "roles": []
+        },
+        {
+          "id": "c8e46ed0-cc14-4e84-aed1-43d43b9a87bf",
+          "hidden": false,
+          "company": "IBM",
+          "position": "Senior Consultant",
+          "location": "Bangalore, India",
+          "period": "August 2015 - June 2017",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": "<ul><li><strong>Process Automation:</strong> Developed and deployed Python/Bash automation scripts that reduced service desk ticket resolution time by <strong>30%</strong>, directly improving SLA adherence.</li><li><strong>Knowledge Management:</strong> Architected a centralized knowledge repository for the team, streamlining daily operations and reducing onboarding time by <strong>40%</strong>.</li></ul>",
+          "roles": []
+        },
+        {
+          "id": "37379546-5353-4b59-bca8-41af3bab0944",
+          "hidden": false,
+          "company": "LightMass",
+          "position": "Senior Manager",
+          "location": "Bangalore, India",
+          "period": "January 2014 - July 2015",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": "<ul><li><strong>Open Source Infrastructure Initiative:</strong> Executed a company-wide migration from unlicensed Windows environments to <strong>CentOS Linux</strong> and <strong>LibreOffice</strong>, saving <strong>$50k+ in licensing fees</strong> and eliminating legal compliance risk.</li><li><strong>Performance Leadership:</strong> Managed a team of 18 agents, improving Service Level Agreement (SLA) delivery by <strong>35%</strong> through rigorous data-driven performance metrics.</li></ul>",
+          "roles": []
+        },
+        {
+          "id": "ca7ae081-18ed-489c-ac68-e6f352632303",
+          "hidden": false,
+          "company": "Sutherland",
+          "position": "Consultant",
+          "location": "Kochi, India",
+          "period": "June 2012 - September 2013",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": "<ul><li><strong>Security Specialization:</strong> Diagnosed and removed complex rootkits and ransomware from compromised Windows endpoints, gathering critical threat signature data to refine McAfee's detection algorithms.</li><li><strong>Performance Excellence:</strong> Exceeded performance targets by <strong>120%</strong> for a major U.S. credit bureau client, maintaining high customer retention rates.</li></ul>",
+          "roles": []
+        }
+      ]
+    },
+    "education": {
+      "title": "Education",
+      "columns": 1,
+      "hidden": false,
+      "items": [
+        {
+          "id": "25f83555-6708-4041-8ebb-f1e0697b1f92",
+          "hidden": false,
+          "school": "IIM Trichy",
+          "degree": "MBA in Business Strategy & MIS",
+          "area": "Business Strategy & MIS",
+          "grade": "",
+          "location": "",
+          "period": "2017 - 2019",
+          "website": {
+            "url": "https://www.iimtrichy.ac.in/",
+            "label": ""
+          },
+          "description": "<ul><li><strong>Strategic Initiative:</strong> Established the 'Corporate Readiness' club to separate training delivery from recruitment operations, and formalized placement processes through structured SOPs.</li></ul>"
+        },
+        {
+          "id": "7d6fd00f-1226-40ec-a517-ac4f28c0bcfa",
+          "hidden": false,
+          "school": "RVS CET (Anna University)",
+          "degree": "B.E. in Aeronautical Engineering",
+          "area": "Aeronautical Engineering",
+          "grade": "",
+          "location": "",
+          "period": "2008 - 2012",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": ""
+        }
+      ]
+    },
+    "certifications": {
+      "title": "Certifications",
+      "columns": 1,
+      "hidden": false,
+      "items": [
+        {
+          "id": "4f5196c9-12e1-4ae3-90ad-05d34f354802",
+          "hidden": false,
+          "title": "IBM AI Product Manager Professional Certificate",
+          "issuer": "IBM",
+          "date": "2026-03",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": ""
+        },
+        {
+          "id": "342fe88b-ffd5-4b9b-a389-c123553e1d61",
+          "hidden": false,
+          "title": "Google Generative AI Leader",
+          "issuer": "Google",
+          "date": "2026-03",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": ""
+        },
+        {
+          "id": "8e839241-2ce7-4908-b0f7-a01e5b9146c9",
+          "hidden": false,
+          "title": "Scrum Alliance AI for Product Owners",
+          "issuer": "Scrum Alliance",
+          "date": "2026-03",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": ""
+        },
+        {
+          "id": "5aac9688-3bca-46d1-84e5-c5805f0daf8a",
+          "hidden": false,
+          "title": "Atlassian Agile Project Management Professional Certificate",
+          "issuer": "Atlassian",
+          "date": "2024-01",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": ""
+        },
+        {
+          "id": "b21f55b1-598b-4374-af15-48008e2854e7",
+          "hidden": false,
+          "title": "ITIL 4: Foundations & Framework",
+          "issuer": "Logical Operations",
+          "date": "2026-03",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": ""
+        },
+        {
+          "id": "0083eb9b-00c8-4e43-84cb-9c99d06599f5",
+          "hidden": false,
+          "title": "Scrum Alliance Agile Essentials",
+          "issuer": "Scrum Alliance",
+          "date": "2026-03",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": ""
+        },
+        {
+          "id": "b8aea194-ccbe-460c-ac26-f329b412e65b",
+          "hidden": false,
+          "title": "AWS Cloud Economics",
+          "issuer": "AWS",
+          "date": "2024",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": ""
+        },
+        {
+          "id": "73f61da5-3fcc-4446-9ba1-136f95a2975a",
+          "hidden": false,
+          "title": "IBM Generative AI: Foundation Models & Platforms",
+          "issuer": "IBM",
+          "date": "2026-03",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": ""
+        },
+        {
+          "id": "866f934c-64be-49ac-b043-00b1f8ed084c",
+          "hidden": false,
+          "title": "Digital Transformation Using AI/ML with Google Cloud",
+          "issuer": "Google",
+          "date": "2020-11",
+          "website": {
+            "url": "",
+            "label": ""
+          },
+          "description": ""
+        }
+      ]
+    },
+    "interests": {
+      "title": "Community & Open Source",
+      "columns": 1,
+      "hidden": false,
+      "items": [
+        {
+          "id": "f7f00e73-4904-4716-92f1-c063690ec5f8",
+          "hidden": false,
+          "icon": "heart",
+          "name": "Open Source Involvement",
+          "keywords": [
+            "Mozilla Firefox",
+            "Fedora Project",
+            "Wikimedia",
+            "XFCE Desktop"
+          ]
+        },
+        {
+          "id": "c7a8db90-b43d-4142-9cd8-7caf3dcd3ea9",
+          "hidden": false,
+          "icon": "users",
+          "name": "Community Leadership",
+          "keywords": [
+            "Organized Un-conferences for 200+ students",
+            "FOSS adoption"
+          ]
+        }
+      ]
+    },
+    "profiles": {
+      "title": "Profiles",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "projects": {
+      "title": "Projects",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "languages": {
+      "title": "Languages",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "awards": {
+      "title": "Awards",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "publications": {
+      "title": "Publications",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "volunteer": {
+      "title": "Volunteer",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    },
+    "references": {
+      "title": "References",
+      "columns": 1,
+      "hidden": true,
+      "items": []
+    }
+  },
+  "customSections": [],
+  "metadata": {
+    "template": "onyx",
+    "layout": {
+      "sidebarWidth": 35,
+      "pages": [
+        {
+          "fullWidth": false,
+          "main": [
+            "summary",
+            "experience",
+            "education"
+          ],
+          "sidebar": [
+            "skills",
+            "certifications",
+            "interests"
+          ]
+        }
+      ]
+    },
+    "css": {
+      "enabled": false,
+      "value": ""
+    },
+    "page": {
+      "gapX": 4,
+      "gapY": 6,
+      "marginX": 14,
+      "marginY": 12,
+      "format": "a4",
+      "locale": "en-US",
+      "hideIcons": false
+    },
+    "design": {
+      "colors": {
+        "primary": "rgba(10, 20, 60, 1)",
+        "text": "rgba(0, 0, 0, 1)",
+        "background": "rgba(255, 255, 255, 1)"
+      },
+      "level": {
+        "icon": "star",
+        "type": "circle"
+      }
+    },
+    "typography": {
+      "body": {
+        "fontFamily": "IBM Plex Serif",
+        "fontWeights": [
+          "400",
+          "500"
+        ],
+        "fontSize": 10,
+        "lineHeight": 1.5
+      },
+      "heading": {
+        "fontFamily": "IBM Plex Serif",
+        "fontWeights": [
+          "600",
+          "700"
+        ],
+        "fontSize": 14,
+        "lineHeight": 1.5
+      }
+    },
+    "notes": ""
+  }
+}
