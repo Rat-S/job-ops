@@ -120,10 +120,10 @@ INSTRUCTIONS:
    - For each skill category, generate: keywords (selected skills) and proofPoint (1-sentence evidence from work history)
    - Keyword matching: swap synonyms to match JD exactly
 
-4. "certifications" (Array):
-   - Select only relevant certifications for this role
-   - CRITICAL: Select a maximum of 25 certifications. Do NOT exceed 25.
-   - For selected certifications, include: name, issuer
+4. "certificates" (Array):
+   - Select only relevant certificates for this role
+   - CRITICAL: Select a maximum of 25 certificates. Do NOT exceed 25.
+   - For selected certificates, include: name, issuer
    - Do NOT invent new certifications
 
 5. "metadata" (Object):
@@ -144,6 +144,6 @@ OUTPUT FORMAT:
   "education": [{{"courses": [...]}}],
   "projects": [{{"name": "...", "description": "...", "keywords": [...]}}],
   "skills": [{{"name": "...", "keywords": [...], "proofPoint": "..."}}],
-  "certifications": [{{"name": "...", "issuer": "..."}}],
+  "certificates": [{{"name": "...", "issuer": "..."}}],
   "metadata": {{"pageCount": {max_pages}, "selectedSkills": [...]}}
 }}"""

@@ -149,5 +149,5 @@ class SupportingOutput(BaseModel):
     education: list[EducationEntry] | None = Field(None, description="Education with tailored courses")
     projects: list[Project] | None = Field(None, description="Selected projects with descriptions")
     skills: list[Skill] | None = Field(None, description="Skills with proof points")
-    certifications: list[Certification] | None = Field(None, description="Selected certifications")
+    certificates: list[Certification] | None = Field(None, description="Selected certificates")
     metadata: Metadata | None = Field(None, description="Metadata about the tailoring")

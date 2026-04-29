@@ -175,7 +175,7 @@ async def generate_supporting(
         tone=writing_style.tone,
         formality=writing_style.formality,
         max_pages=constraints.get("maxPages", 2),
-        target_keywords=", ".join(constraints.get("targetKeywords", [])),
+        target_keywords=", ".join(constraints.get("targetKeywords") or []),
     )
     
     # Call LLM
@@ -289,14 +289,18 @@ def merge_with_static(
     
     # Update work (preserve static fields, update dynamic)
     master_work = master_resume.get("work", [])
-    if work and len(work) == len(master_work):
+    print(f"[DEBUG MERGE] master_work len: {len(master_work)}, work len: {len(work) if work else 'None'}", flush=True)
+    if work:
         new_work = []
-        for master_entry, dynamic_entry in zip(master_work, work):
-            entry = {
-                **master_entry,
-                "summary": dynamic_entry.get("summary", ""),
-                "highlights": dynamic_entry.get("highlights", []),
-            }
+        for i, master_entry in enumerate(master_work):
+            entry = dict(master_entry)
+            
+            # Match by index if possible, otherwise fallback to static
+            if i < len(work):
+                dynamic_entry = work[i]
+                entry["summary"] = dynamic_entry.get("summary", "")
+                entry["highlights"] = dynamic_entry.get("highlights", [])
+            
             if "company" in entry and "name" not in entry:
                 entry["name"] = entry["company"]
             if str(entry.get("endDate", "")).lower() == "present":
@@ -323,7 +327,9 @@ def merge_with_static(
     if supporting.get("skills"):
         result["skills"] = supporting["skills"]
     
-    if supporting.get("certifications"):
+    print(f"[DEBUG MERGE] supporting keys: {list(supporting.keys()) if supporting else 'None'}", flush=True)
+    if supporting and supporting.get("certificates"):
+        print(f"[DEBUG MERGE] found {len(supporting['certificates'])} certificates", flush=True)
         result["certificates"] = [
             {
                 "name": cert.get("name", ""),
@@ -331,10 +337,8 @@ def merge_with_static(
                 "date": cert.get("date", ""),
                 "url": ""
             }
-            for cert in supporting["certifications"]
+            for cert in supporting["certificates"]
         ]
-        if "certifications" in result:
-            del result["certifications"]
     
     if supporting.get("metadata"):
         result["metadata"] = supporting["metadata"]
