@@ -99,10 +99,10 @@ def convert_to_compact_format(resume: dict[str, Any]) -> str:
         lines.append("")
     
     # Certifications (from awards field)
-    certifications = resume.get("certifications", []) or resume.get("awards", [])
-    if certifications:
+    certificates = resume.get("certificates", []) or resume.get("certifications", []) or resume.get("awards", [])
+    if certificates:
         lines.append("## Certifications")
-        for cert in certifications:
+        for cert in certificates:
             title = cert.get("title") or cert.get("name", "")
             issuer = cert.get("awarder") or cert.get("issuer", "")
             date = cert.get("date", "")
@@ -130,11 +130,11 @@ def filter_resume_for_work(resume: dict[str, Any]) -> dict[str, Any]:
 
 
 def filter_resume_for_supporting(resume: dict[str, Any]) -> dict[str, Any]:
-    """Filter resume to education + projects + skills + certifications."""
+    """Filter resume to education + projects + skills + certificates."""
     return {
         "basics": resume.get("basics", {}),
         "education": resume.get("education", []),
         "projects": resume.get("projects", []),
         "skills": resume.get("skills", []),
-        "certifications": resume.get("certifications") or resume.get("awards", []),
+        "certificates": resume.get("certificates") or resume.get("certifications") or resume.get("awards", []),
     }

@@ -25,7 +25,7 @@ cache = TailoringCache()
 logger = logging.getLogger("tailoring-service.flows")
 
 
-@task(cache_key_fn=task_input_hash, retries=3, retry_delay_seconds=[2, 4, 8])
+@task(retries=3, retry_delay_seconds=[2, 4, 8])
 async def generate_summary(
     job_description: str,
     master_resume: dict[str, Any],
@@ -83,7 +83,7 @@ async def generate_summary(
     return result.summary
 
 
-@task(cache_key_fn=task_input_hash, retries=3, retry_delay_seconds=[2, 4, 8])
+@task(retries=3, retry_delay_seconds=[2, 4, 8])
 async def generate_work(
     job_description: str,
     master_resume: dict[str, Any],
@@ -126,8 +126,9 @@ async def generate_work(
     # Validate work entries
     valid_work = []
     for entry in work_entries:
-        if isinstance(entry, dict) and "summary" in entry and "highlights" in entry:
-            valid_work.append(entry)
+        e_dict = entry.model_dump() if hasattr(entry, 'model_dump') else entry if isinstance(entry, dict) else None
+        if e_dict and "summary" in e_dict and "highlights" in e_dict:
+            valid_work.append(e_dict)
     
     # Cache result
     cache.set(
@@ -141,7 +142,7 @@ async def generate_work(
     return valid_work
 
 
-@task(cache_key_fn=task_input_hash, retries=3, retry_delay_seconds=[2, 4, 8])
+@task(retries=3, retry_delay_seconds=[2, 4, 8])
 async def generate_supporting(
     job_description: str,
     master_resume: dict[str, Any],
@@ -187,11 +188,11 @@ async def generate_supporting(
     
     # Build result dict
     output = {
-        "education": result.education if result.education else [],
-        "projects": result.projects if result.projects else [],
-        "skills": result.skills if result.skills else [],
-        "certifications": result.certifications if result.certifications else [],
-        "metadata": result.metadata if result.metadata else {},
+        "education": [e.model_dump() if hasattr(e, 'model_dump') else e for e in result.education] if result.education else [],
+        "projects": [p.model_dump() if hasattr(p, 'model_dump') else p for p in result.projects] if result.projects else [],
+        "skills": [s.model_dump() if hasattr(s, 'model_dump') else s for s in result.skills] if result.skills else [],
+        "certificates": [c.model_dump() if hasattr(c, 'model_dump') else c for c in result.certificates] if result.certificates else [],
+        "metadata": result.metadata.model_dump() if hasattr(result.metadata, 'model_dump') else result.metadata if result.metadata else {},
     }
     
     # Cache result
@@ -247,14 +248,14 @@ async def tailor_resume_flow(
     supporting_education = supporting.education if hasattr(supporting, 'education') else supporting.get('education') if isinstance(supporting, dict) else None
     supporting_projects = supporting.projects if hasattr(supporting, 'projects') else supporting.get('projects') if isinstance(supporting, dict) else None
     supporting_skills = supporting.skills if hasattr(supporting, 'skills') else supporting.get('skills') if isinstance(supporting, dict) else None
-    supporting_certifications = supporting.certifications if hasattr(supporting, 'certifications') else supporting.get('certifications') if isinstance(supporting, dict) else None
+    supporting_certificates = supporting.certificates if hasattr(supporting, 'certificates') else supporting.get('certificates') if isinstance(supporting, dict) else None
     supporting_metadata = supporting.metadata if hasattr(supporting, 'metadata') else supporting.get('metadata') if isinstance(supporting, dict) else None
     
     supporting_dict = {
         "education": [e.model_dump() if hasattr(e, 'model_dump') else e for e in supporting_education] if supporting_education else None,
         "projects": [p.model_dump() if hasattr(p, 'model_dump') else p for p in supporting_projects] if supporting_projects else None,
         "skills": [s.model_dump() if hasattr(s, 'model_dump') else s for s in supporting_skills] if supporting_skills else None,
-        "certifications": [c.model_dump() if hasattr(c, 'model_dump') else c for c in supporting_certifications] if supporting_certifications else None,
+        "certificates": [c.model_dump() if hasattr(c, 'model_dump') else c for c in supporting_certificates] if supporting_certificates else None,
         "metadata": supporting_metadata.model_dump() if hasattr(supporting_metadata, 'model_dump') else supporting_metadata,
     }
     

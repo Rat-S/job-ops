@@ -58,13 +58,14 @@ INSTRUCTIONS:
 - Keep work entries in chronological order (do NOT reorder)
 - You MUST generate an array of work entries that exactly matches the number of entries in the master resume.
 - For EACH work entry, you MUST generate BOTH fields: "summary" AND "highlights"
-- CRITICAL: Every single work entry must have a "summary" string AND a "highlights" array with 2-3 bullet points
+- CRITICAL: Every single work entry must have a "summary" string AND a "highlights" array of bullet points.
 - Summary: max 2 sentences, ~40 words
-- Highlights: max 3 bullets, ~15 words each
+- Highlights: For the 3 most recent roles, generate 4-6 bullet points (~15 words each). For all older roles, generate 1-3 bullet points.
 - CRITICAL: Work summary MUST be concise. Do NOT ramble. Do NOT repeat phrases. Stop at 2 sentences maximum.
 - BAD example: "Managed the end-to-end SDLC and product strategy for diverse portfolios, including the launch of AI-native products and a consumer-facing Live Shopping MVP application. Collaborated closely with cross-functional engineering, analytics, and business teams to ship high-impact features and client releases within strict SLAs constraint factors and tight schedules..." (TOO LONG, RAMBLING)
 - GOOD example: "Led product strategy for AI-native telecom products and consumer-facing MVPs. Collaborated with cross-functional teams to ship high-impact features within SLAs." (2 sentences, ~25 words)
 - Do NOT include company, position, startDate, endDate - these are static (preserved from master resume)
+- CRITICAL ANTI-HALLUCINATION: Do NOT invent or fabricate facts, metrics, or achievements. You may rephrase, re-contextualize, and tweak existing points to strongly align with the JD, but all claims MUST be strictly rooted in the facts from the master resume.
 - Ensure consistency with the previously generated summary
 
 WRITING STYLE:

@@ -51,16 +51,6 @@ class TailoringCache:
         operation: str,
     ) -> dict[str, Any] | None:
         """Get cached result if exists."""
-        key = self._hash_inputs(job_description, master_resume, writing_style, operation)
-        
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.execute(
-                "SELECT value FROM cache WHERE key = ?",
-                (key,)
-            )
-            row = cursor.fetchone()
-            if row:
-                return json.loads(row[0])
         return None
 
     def set(
