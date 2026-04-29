@@ -1,0 +1,59 @@
+name: Build and Publish Containers to GHCR
+
+on:
+  push:
+    branches: [ "main", "master", "feat/tailoring" ]
+  # Allow manual trigger
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  # GitHub automatically provides this token!
+  # It uses the repository owner as the namespace.
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Orchestrator
+        id: meta-orch
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-orchestrator
+
+      - name: Build and push Orchestrator image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta-orch.outputs.tags }}
+          labels: ${{ steps.meta-orch.outputs.labels }}
+
+      - name: Extract metadata (tags, labels) for Tailoring Service
+        id: meta-tailor
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-tailoring
+
+      - name: Build and push Tailoring Service image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./tailoring-service
+          push: true
+          tags: ${{ steps.meta-tailor.outputs.tags }}
+          labels: ${{ steps.meta-tailor.outputs.labels }}
