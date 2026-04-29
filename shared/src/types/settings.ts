@@ -17,11 +17,26 @@ export interface ResumeProjectsSettings {
   aiSelectableProjectIds: string[];
 }
 
-export const PDF_RENDERER_VALUES = ["rxresume", "latex"] as const;
+export const PDF_RENDERER_VALUES = ["rxresume", "latex", "resumed"] as const;
 export type PdfRenderer = (typeof PDF_RENDERER_VALUES)[number];
 export const PDF_RENDERER_LABELS: Record<PdfRenderer, string> = {
   rxresume: "RxResume export",
   latex: "Local LaTeX (Jake template)",
+  resumed: "JSON Resume (resumed CLI)",
+};
+
+export const JSON_RESUME_THEME_VALUES = [
+  "jsonresume-theme-even",
+  "jsonresume-theme-community-garden",
+  "jsonresume-theme-californian-warm",
+  "jsonresume-theme-stackoverflow",
+] as const;
+export type JsonResumeTheme = (typeof JSON_RESUME_THEME_VALUES)[number];
+export const JSON_RESUME_THEME_LABELS: Record<JsonResumeTheme, string> = {
+  "jsonresume-theme-even": "Even (Clean)",
+  "jsonresume-theme-community-garden": "Community Garden",
+  "jsonresume-theme-californian-warm": "Californian Warm",
+  "jsonresume-theme-stackoverflow": "Stack Overflow",
 };
 
 export const CHAT_STYLE_LANGUAGE_MODE_VALUES = [
@@ -178,6 +193,9 @@ export interface AppSettings {
   ghostwriterSystemPromptTemplate: Resolved<string>;
   tailoringPromptTemplate: Resolved<string>;
   scoringPromptTemplate: Resolved<string>;
+  jsonResumeTailoringSequentialSummary: Resolved<string>;
+  jsonResumeTailoringSequentialWork: Resolved<string>;
+  jsonResumeTailoringSequentialSupporting: Resolved<string>;
   searchCities: Resolved<string>;
   locationSearchScope: Resolved<LocationSearchScope>;
   locationMatchStrictness: Resolved<LocationMatchStrictness>;

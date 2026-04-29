@@ -9,6 +9,8 @@ import {
   CHAT_STYLE_MANUAL_LANGUAGE_VALUES,
   type ChatStyleLanguageMode,
   type ChatStyleManualLanguage,
+  JSON_RESUME_THEME_VALUES,
+  type JsonResumeTheme,
   PDF_RENDERER_VALUES,
   type PdfRenderer,
   type ResumeProjectsSettings,
@@ -139,6 +141,7 @@ const parseChatStyleManualLanguageOrNull = createEnumParser(
   CHAT_STYLE_MANUAL_LANGUAGE_VALUES,
 );
 const parsePdfRendererOrNull = createEnumParser(PDF_RENDERER_VALUES);
+const parseJsonResumeThemeOrNull = createEnumParser(JSON_RESUME_THEME_VALUES);
 
 const WORKPLACE_TYPE_VALUES = ["remote", "hybrid", "onsite"] as const;
 const parseWorkplaceTypesOrNull = createEnumArrayParser(WORKPLACE_TYPE_VALUES);
@@ -261,6 +264,14 @@ export const settingsRegistry = {
     serialize: (value: PdfRenderer | null | undefined): string | null =>
       value ?? null,
   },
+  jsonResumeTheme: {
+    kind: "typed" as const,
+    schema: z.enum(JSON_RESUME_THEME_VALUES),
+    default: (): JsonResumeTheme => "jsonresume-theme-stackoverflow",
+    parse: parseJsonResumeThemeOrNull,
+    serialize: (value: JsonResumeTheme | null | undefined): string | null =>
+      value ?? null,
+  },
   ukvisajobsMaxJobs: {
     kind: "typed" as const,
     schema: z.number().int().min(1).max(1000),
@@ -375,6 +386,33 @@ export const settingsRegistry = {
     kind: "typed" as const,
     schema: z.string().trim().max(12000),
     default: (): string => getDefaultPromptTemplate("scoringPromptTemplate"),
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  jsonResumeTailoringSequentialSummary: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(12000),
+    default: (): string =>
+      getDefaultPromptTemplate("jsonResumeTailoringSequentialSummary"),
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  jsonResumeTailoringSequentialWork: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(12000),
+    default: (): string =>
+      getDefaultPromptTemplate("jsonResumeTailoringSequentialWork"),
+    parse: parseNonEmptyStringOrNull,
+    serialize: (value: string | null | undefined): string | null =>
+      value ?? null,
+  },
+  jsonResumeTailoringSequentialSupporting: {
+    kind: "typed" as const,
+    schema: z.string().trim().max(12000),
+    default: (): string =>
+      getDefaultPromptTemplate("jsonResumeTailoringSequentialSupporting"),
     parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,

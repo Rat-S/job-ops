@@ -56,11 +56,41 @@ interface TailoringBaseline {
 const normalizeSkillsJson = (value: string | null | undefined) =>
   serializeTailoredSkills(parseTailoredSkills(value));
 
-const toBaselineFromJob = (job: Job): TailoringBaseline => ({
-  summary: job.tailoredSummary ?? "",
-  headline: job.tailoredHeadline ?? "",
-  skillsJson: normalizeSkillsJson(job.tailoredSkills),
-});
+const toBaselineFromJob = (job: Job): TailoringBaseline => {
+  let summary = job.tailoredSummary ?? "";
+  let headline = job.tailoredHeadline ?? "";
+  let skillsJson = normalizeSkillsJson(job.tailoredSkills);
+
+  // If legacy fields are empty, try to extract from tailoredResumeJson
+  if ((!summary || !headline || !skillsJson) && job.tailoredResumeJson) {
+    try {
+      const jsonResume = JSON.parse(job.tailoredResumeJson) as Record<string, unknown>;
+      if (!summary && typeof jsonResume.summary === "string") {
+        summary = jsonResume.summary;
+      }
+      if (!headline && typeof jsonResume.basics === "object" && jsonResume.basics !== null) {
+        const basics = jsonResume.basics as Record<string, unknown>;
+        if (typeof basics.label === "string") {
+          headline = basics.label;
+        }
+      }
+      if (!skillsJson && Array.isArray(jsonResume.skills)) {
+        // Convert JSON Resume skills format to our skills format
+        const skills = jsonResume.skills as Array<Record<string, unknown>>;
+        const skillGroups = skills.map((skill) => ({
+          name: typeof skill.name === "string" ? skill.name : "",
+          keywords: Array.isArray(skill.keywords) ? skill.keywords as string[] : [],
+        }));
+        skillsJson = JSON.stringify(skillGroups);
+      }
+    } catch (error) {
+      // If parsing fails, fall back to legacy fields
+      // Silently ignore to avoid UI disruption
+    }
+  }
+
+  return { summary, headline, skillsJson };
+};
 
 export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   props,
@@ -120,15 +150,12 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   );
 
   useEffect(() => {
-    setAiBaseline({
-      summary: props.job.tailoredSummary ?? "",
-      headline: props.job.tailoredHeadline ?? "",
-      skillsJson: normalizeSkillsJson(props.job.tailoredSkills),
-    });
+    setAiBaseline(toBaselineFromJob(props.job));
   }, [
     props.job.tailoredSummary,
     props.job.tailoredHeadline,
     props.job.tailoredSkills,
+    props.job.tailoredResumeJson,
   ]);
 
   const tracerEnableBlocked =

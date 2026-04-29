@@ -109,6 +109,9 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   ghostwriterSystemPromptTemplate: "",
   tailoringPromptTemplate: "",
   scoringPromptTemplate: "",
+  jsonResumeTailoringSequentialSummary: "",
+  jsonResumeTailoringSequentialWork: "",
+  jsonResumeTailoringSequentialSupporting: "",
 };
 
 type LlmProviderValue = LlmProviderId | null;
@@ -298,6 +301,9 @@ const SECTION_FIELD_MAP: Record<
     "ghostwriterSystemPromptTemplate",
     "tailoringPromptTemplate",
     "scoringPromptTemplate",
+    "jsonResumeTailoringSequentialSummary",
+    "jsonResumeTailoringSequentialWork",
+    "jsonResumeTailoringSequentialSupporting",
   ],
   scoring: [
     "penalizeMissingSalary",
@@ -403,6 +409,9 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   ghostwriterSystemPromptTemplate: null,
   tailoringPromptTemplate: null,
   scoringPromptTemplate: null,
+  jsonResumeTailoringSequentialSummary: null,
+  jsonResumeTailoringSequentialWork: null,
+  jsonResumeTailoringSequentialSupporting: null,
 };
 
 const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
@@ -454,6 +463,12 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
     data.ghostwriterSystemPromptTemplate.value ?? "",
   tailoringPromptTemplate: data.tailoringPromptTemplate.value ?? "",
   scoringPromptTemplate: data.scoringPromptTemplate.value ?? "",
+  jsonResumeTailoringSequentialSummary:
+    data.jsonResumeTailoringSequentialSummary.value ?? "",
+  jsonResumeTailoringSequentialWork:
+    data.jsonResumeTailoringSequentialWork.value ?? "",
+  jsonResumeTailoringSequentialSupporting:
+    data.jsonResumeTailoringSequentialSupporting.value ?? "",
 });
 
 const normalizeString = (value: string | null | undefined) => {
@@ -649,6 +664,18 @@ const getDerivedSettings = (settings: AppSettings | null) => {
       scoringPromptTemplate: {
         effective: settings?.scoringPromptTemplate?.value ?? "",
         default: settings?.scoringPromptTemplate?.default ?? "",
+      },
+      jsonResumeTailoringSequentialSummary: {
+        effective: settings?.jsonResumeTailoringSequentialSummary?.value ?? "",
+        default: settings?.jsonResumeTailoringSequentialSummary?.default ?? "",
+      },
+      jsonResumeTailoringSequentialWork: {
+        effective: settings?.jsonResumeTailoringSequentialWork?.value ?? "",
+        default: settings?.jsonResumeTailoringSequentialWork?.default ?? "",
+      },
+      jsonResumeTailoringSequentialSupporting: {
+        effective: settings?.jsonResumeTailoringSequentialSupporting?.value ?? "",
+        default: settings?.jsonResumeTailoringSequentialSupporting?.default ?? "",
       },
     },
   };
@@ -1395,7 +1422,13 @@ export const SettingsPage: React.FC = () => {
           promptTemplates.tailoringPromptTemplate.effective !==
             promptTemplates.tailoringPromptTemplate.default ||
           promptTemplates.scoringPromptTemplate.effective !==
-            promptTemplates.scoringPromptTemplate.default
+            promptTemplates.scoringPromptTemplate.default ||
+          promptTemplates.jsonResumeTailoringSequentialSummary.effective !==
+            promptTemplates.jsonResumeTailoringSequentialSummary.default ||
+          promptTemplates.jsonResumeTailoringSequentialWork.effective !==
+            promptTemplates.jsonResumeTailoringSequentialWork.default ||
+          promptTemplates.jsonResumeTailoringSequentialSupporting.effective !==
+            promptTemplates.jsonResumeTailoringSequentialSupporting.default
           ? { label: "Customized", variant: "outline" as const }
           : { label: "Using defaults", variant: "secondary" as const };
       case "scoring":

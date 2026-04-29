@@ -22,16 +22,41 @@ const hasSelectionDiff = (current: Set<string>, saved: Set<string>) => {
 };
 
 const parseIncomingDraft = (incomingJob: Job) => {
-  const summary = incomingJob.tailoredSummary || "";
-  const headline = incomingJob.tailoredHeadline || "";
+  let summary = incomingJob.tailoredSummary || "";
+  let headline = incomingJob.tailoredHeadline || "";
+  let skillsJson = incomingJob.tailoredSkills || "";
+
+  // If legacy fields are empty, try to extract from tailoredResumeJson
+  if ((!summary || !headline || !skillsJson) && incomingJob.tailoredResumeJson) {
+    try {
+      const jsonResume = JSON.parse(incomingJob.tailoredResumeJson) as Record<string, unknown>;
+      if (!summary && typeof jsonResume.summary === "string") {
+        summary = jsonResume.summary;
+      }
+      if (!headline && typeof jsonResume.basics === "object" && jsonResume.basics !== null) {
+        const basics = jsonResume.basics as Record<string, unknown>;
+        if (typeof basics.label === "string") {
+          headline = basics.label;
+        }
+      }
+      if (!skillsJson && Array.isArray(jsonResume.skills)) {
+        // Convert JSON Resume skills format to our skills format
+        const skills = jsonResume.skills as Array<Record<string, unknown>>;
+        const skillGroups = skills.map((skill) => ({
+          name: typeof skill.name === "string" ? skill.name : "",
+          keywords: Array.isArray(skill.keywords) ? skill.keywords as string[] : [],
+        }));
+        skillsJson = JSON.stringify(skillGroups);
+      }
+    } catch (error) {
+      // If parsing fails, fall back to legacy fields
+      // Silently ignore to avoid UI disruption
+    }
+  }
+
   const description = incomingJob.jobDescription || "";
   const selectedIds = parseSelectedIds(incomingJob.selectedProjectIds);
-  const skillsDraft = toEditableSkillGroups(
-    parseTailoredSkills(incomingJob.tailoredSkills),
-  );
-  const skillsJson = serializeTailoredSkills(
-    fromEditableSkillGroups(skillsDraft),
-  );
+  const skillsDraft = toEditableSkillGroups(parseTailoredSkills(skillsJson));
   const tracerLinksEnabled = Boolean(incomingJob.tracerLinksEnabled);
 
   return {

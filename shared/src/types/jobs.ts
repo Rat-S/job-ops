@@ -177,6 +177,7 @@ export interface Job {
   tailoredSummary: string | null; // Generated resume summary
   tailoredHeadline: string | null; // Generated resume headline
   tailoredSkills: string | null; // Generated resume skills (JSON)
+  tailoredResumeJson: string | null; // Complete JSON Resume (JSON)
   selectedProjectIds: string | null; // Comma-separated IDs of selected projects
   pdfPath: string | null; // Path to generated PDF
   tracerLinksEnabled: boolean; // Rewrite outbound resume links to tracer links on next PDF generation
@@ -339,6 +340,7 @@ export interface UpdateJobInput {
   tailoredSummary?: string;
   tailoredHeadline?: string;
   tailoredSkills?: string;
+  tailoredResumeJson?: string;
   selectedProjectIds?: string;
   pdfPath?: string;
   tracerLinksEnabled?: boolean;

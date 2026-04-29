@@ -12,6 +12,7 @@ docs-site/build/
 
 # Data directory (bind mount in Docker)
 data/
+data.old/
 
 # Extractor storage outputs and cached auth
 extractors/ukvisajobs/storage/
@@ -25,3 +26,18 @@ tmp/
 
 # Virtual environment for Python
 .venv
+
+# Python artifacts
+**/__pycache__/
+**/*.egg-info/
+**/*.pyc
+**/*.pyo
+
+# Tailoring service logs (runtime output)
+tailoring-service/logs/
+
+# Orchestrator runtime storage and temp files
+orchestrator/storage/
+orchestrator/latest_resume.json
+orchestrator/test_resume.json
+latest-prompt.txt

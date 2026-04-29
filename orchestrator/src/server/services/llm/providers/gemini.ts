@@ -75,7 +75,12 @@ function toGeminiResponseSchema(schema: unknown): unknown {
     // Gemini's responseSchema rejects JSON Schema's additionalProperties.
     // Fix as part of #202.
     if (key === "additionalProperties") continue;
-    out[key] = toGeminiResponseSchema(value);
+    try {
+      out[key] = toGeminiResponseSchema(value);
+    } catch (error) {
+      // Skip problematic properties
+      console.warn(`Failed to transform schema property ${key}:`, error);
+    }
   }
   return out;
 }

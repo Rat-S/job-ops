@@ -12,6 +12,9 @@ const PromptTemplatesHarness = () => {
       ghostwriterSystemPromptTemplate: "Custom Ghostwriter",
       tailoringPromptTemplate: "Custom Tailoring",
       scoringPromptTemplate: "Custom Scoring",
+      jsonResumeTailoringSequentialSummary: "Custom JSON Resume Summary",
+      jsonResumeTailoringSequentialWork: "Custom JSON Resume Work",
+      jsonResumeTailoringSequentialSupporting: "Custom JSON Resume Supporting",
     },
   });
 
@@ -33,6 +36,24 @@ const PromptTemplatesHarness = () => {
             scoringPromptTemplate: {
               effective: "Custom Scoring",
               default: getDefaultPromptTemplate("scoringPromptTemplate"),
+            },
+            jsonResumeTailoringSequentialSummary: {
+              effective: "Custom JSON Resume Summary",
+              default: getDefaultPromptTemplate(
+                "jsonResumeTailoringSequentialSummary",
+              ),
+            },
+            jsonResumeTailoringSequentialWork: {
+              effective: "Custom JSON Resume Work",
+              default: getDefaultPromptTemplate(
+                "jsonResumeTailoringSequentialWork",
+              ),
+            },
+            jsonResumeTailoringSequentialSupporting: {
+              effective: "Custom JSON Resume Supporting",
+              default: getDefaultPromptTemplate(
+                "jsonResumeTailoringSequentialSupporting",
+              ),
             },
           }}
           isLoading={false}
@@ -75,8 +96,13 @@ describe("PromptTemplatesSection", () => {
     expect(screen.getByLabelText(/ghostwriter system prompt/i)).toHaveValue(
       getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
     );
-    expect(screen.getByLabelText(/resume tailoring prompt/i)).toHaveValue(
+    // All tailoring prompts exist now - check by getting all and picking the right ones
+    const tailoringLabels = screen.getAllByLabelText(/tailoring prompt/i);
+    expect(tailoringLabels[0]).toHaveValue(
       getDefaultPromptTemplate("tailoringPromptTemplate"),
+    );
+    expect(tailoringLabels[1]).toHaveValue(
+      getDefaultPromptTemplate("jsonResumeTailoringSequentialSummary"),
     );
     expect(screen.getByLabelText(/job scoring prompt/i)).toHaveValue(
       getDefaultPromptTemplate("scoringPromptTemplate"),
