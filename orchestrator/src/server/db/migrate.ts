@@ -574,6 +574,7 @@ const migrations = [
     tracer_links_enabled INTEGER NOT NULL DEFAULT 0,
     sponsor_match_score REAL,
     sponsor_match_names TEXT,
+    tailored_resume_json TEXT,
     discovered_at TEXT NOT NULL DEFAULT (datetime('now')),
     processed_at TEXT,
     ready_at TEXT,
@@ -589,7 +590,7 @@ const migrations = [
     vacancy_count, work_from_home_type, title, employer, employer_url, job_url, application_link, disciplines,
     deadline, salary, location, location_evidence, degree_required, starting, job_description, status, outcome, closed_at,
     suitability_score, suitability_reason, tailored_summary, tailored_headline, tailored_skills,
-    selected_project_ids, pdf_path, tracer_links_enabled, sponsor_match_score, sponsor_match_names, discovered_at, processed_at,
+    selected_project_ids, pdf_path, tracer_links_enabled, sponsor_match_score, sponsor_match_names, tailored_resume_json, discovered_at, processed_at,
     ready_at,
     applied_at, created_at, updated_at
   )
@@ -601,7 +602,7 @@ const migrations = [
     vacancy_count, work_from_home_type, title, employer, employer_url, job_url, application_link, disciplines,
     deadline, salary, location, location_evidence, degree_required, starting, job_description, status, outcome, closed_at,
     suitability_score, suitability_reason, tailored_summary, tailored_headline, tailored_skills,
-    selected_project_ids, pdf_path, tracer_links_enabled, sponsor_match_score, sponsor_match_names, discovered_at, processed_at,
+    selected_project_ids, pdf_path, tracer_links_enabled, sponsor_match_score, sponsor_match_names, tailored_resume_json, discovered_at, processed_at,
     ready_at,
     applied_at, created_at, updated_at
   FROM jobs`,
