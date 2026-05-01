@@ -16,7 +16,7 @@ RUN pip install --no-cache-dir \
     instructor>=1.6.0 \
     prefect>=3.0.0 \
     pydantic>=2.9.0 \
-    google-generativeai>=0.8.0 \
+    google-genai>=1.0.0 \
     httpx>=0.27.0 \
     python-dotenv>=1.0.0 \
     diskcache>=5.6.0

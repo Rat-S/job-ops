@@ -13,17 +13,15 @@ services:
       - "3005:3001"
     volumes:
       # Persist database and generated PDFs
-      - ./data:/app/data
-      # Persist master resume JSON for JSON Resume tailoring
-      - ./master-resume.json:/app/data/master-resume.json
+      - ./data:/app/data:z
       # Persist Codex login/session data for app-server provider
       - codex-home:/app/codex-home
     environment:
       # Server config
       - NODE_ENV=production
       - PORT=3001
-      - DATA_DIR=/data
-      - MASTER_RESUME_PATH=/data/master-resume.json
+      - DATA_DIR=/app/data
+      - MASTER_RESUME_PATH=/app/data/master-resume.json
       - PYTHON_TAILORING_SERVICE_URL=http://tailoring-service:8000
       # Python path (uses system python in container)
       - PYTHON_PATH=/usr/bin/python3
@@ -89,9 +87,7 @@ services:
       - "8000:8000"
     volumes:
       # Share data directory for cache
-      - ./data:/data
-      # Share master resume
-      - ./master-resume.json:/data/master-resume.json
+      - ./data:/data:z
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - CACHE_PATH=/data/cache.db
