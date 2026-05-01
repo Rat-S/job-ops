@@ -472,6 +472,26 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
             <KbdHint shortcut="a" className="ml-auto" />
           </Button>
         </div>
+
+        {/* Cover Letter download - shown only when available */}
+        {job.coverLetter && (
+          <div className="mt-2">
+            <Button
+              asChild
+              variant="outline"
+              className="h-9 w-full gap-1 px-2 text-xs"
+            >
+              <a
+                href={`/api/jobs/${job.id}/cover-letter/pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <FileText className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">View Cover Letter</span>
+              </a>
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 py-4 space-y-4">

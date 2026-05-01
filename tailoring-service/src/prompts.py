@@ -166,13 +166,18 @@ MY MASTER RESUME:
 {master_resume_json}
 
 INSTRUCTIONS:
-1. Write a compelling 3-4 paragraph cover letter targeting the role described in the JD.
-2. The letter should explicitly draw connections between the JD requirements and the specific experiences/achievements in the master resume.
+1. Write a compelling cover letter targeting the role described in the JD.
+2. Structure the letter as follows:
+   - **Greeting**: A professional salutation (e.g. "Dear Hiring Manager," or "Dear [Team Name] Team,"). Extract the company name from the JD if possible.
+   - **Opening paragraph**: Hook the reader by stating the role you are applying for and the most compelling reason you are the right fit.
+   - **Body (2-3 paragraphs)**: Draw explicit connections between the JD requirements and specific experiences, achievements, and metrics from the resume.
+   - **Closing paragraph**: Reiterate enthusiasm, mention next steps (interview/conversation), and thank the reader.
+   - **Sign-off**: End with "Sincerely," followed by the candidate's full name on the next line (taken from the resume basics).
 3. Keep the language {tone} and {formality}.
-4. Output MUST be purely in markdown format without any extra conversational filler.
-5. Do NOT include placeholder addresses like "[Company Address]". Just start with a professional greeting.
+4. Output MUST be purely in markdown format. Use `**` for bold where appropriate.
+5. Do NOT include any postal addresses or placeholder blocks like "[Company Address]". The header will be added separately.
 6. The letter MUST be written in {output_language}.
-7. You must return ONLY the markdown string inside the JSON structure.
+7. Return ONLY the markdown string — no extra commentary or explanation.
 
 Return the cover letter exactly as requested.
 """

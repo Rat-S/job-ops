@@ -782,6 +782,9 @@ const migrations = [
        ORDER BY se.occurred_at DESC, se.id DESC
        LIMIT 1
      ), 'applied') = 'closed'`,
+
+  // Add cover_letter column for AI-generated cover letter markdown
+  `ALTER TABLE jobs ADD COLUMN cover_letter TEXT`,
 ];
 
 console.log("🔧 Running database migrations...");

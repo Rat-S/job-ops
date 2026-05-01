@@ -174,6 +174,13 @@ export function createAuthGuard() {
     )
       return true;
 
+    // Cover letter PDF download must be accessible via direct link (new tab, no Bearer token).
+    if (
+      normalizedMethod === "GET" &&
+      normalizedPath.endsWith("/cover-letter/pdf")
+    )
+      return true;
+
     return false;
   }
 

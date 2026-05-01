@@ -542,12 +542,51 @@ export function getPdfPath(jobId: string): string {
 /**
  * Generate a Cover Letter PDF from markdown content.
  */
-export async function generateCoverLetterPdf(jobId: string, markdown: string): Promise<PdfResult> {
+interface CoverLetterMeta {
+  candidateName?: string;
+  candidateEmail?: string;
+  candidatePhone?: string;
+  candidateLinkedIn?: string;
+  jobTitle?: string;
+  employer?: string;
+}
+
+export async function generateCoverLetterPdf(
+  jobId: string,
+  markdown: string,
+  meta: CoverLetterMeta = {},
+): Promise<PdfResult> {
   try {
     await ensureOutputDir();
     const outputPath = join(OUTPUT_DIR, `cover_letter_${jobId}.pdf`);
 
     const htmlContent = await marked.parse(markdown);
+
+    const today = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    // Build contact line from available fields
+    const contactParts: string[] = [];
+    if (meta.candidateEmail) contactParts.push(`<a href="mailto:${meta.candidateEmail}">${meta.candidateEmail}</a>`);
+    if (meta.candidatePhone) contactParts.push(meta.candidatePhone);
+    if (meta.candidateLinkedIn) contactParts.push(`<a href="${meta.candidateLinkedIn}">LinkedIn</a>`);
+    const contactLine = contactParts.join(" &nbsp;|&nbsp; ");
+
+    const letterheadHtml = `
+      <div class="letterhead">
+        <div class="candidate-name">${meta.candidateName ?? ""}</div>
+        ${contactLine ? `<div class="contact-line">${contactLine}</div>` : ""}
+        <div class="letter-meta">
+          <span class="date">${today}</span>
+          ${meta.employer ? `<span class="separator"> · </span><span class="employer">${meta.employer}</span>` : ""}
+          ${meta.jobTitle ? `<span class="separator"> · </span><span class="job-title">${meta.jobTitle}</span>` : ""}
+        </div>
+        <hr class="divider" />
+      </div>
+    `;
 
     const fullHtml = `
       <!DOCTYPE html>
@@ -555,25 +594,64 @@ export async function generateCoverLetterPdf(jobId: string, markdown: string): P
         <head>
           <meta charset="utf-8">
           <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
             body {
-              font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+              font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
               font-size: 11pt;
-              line-height: 1.5;
-              color: #333;
+              line-height: 1.6;
+              color: #1a1a1a;
               margin: 0;
               padding: 0;
             }
-            .content {
-              padding: 40px;
-              max-width: 800px;
+            .page {
+              padding: 48px 56px;
+              max-width: 780px;
               margin: 0 auto;
             }
-            p { margin-bottom: 1em; }
+            /* Letterhead */
+            .letterhead { margin-bottom: 28px; }
+            .candidate-name {
+              font-size: 22pt;
+              font-weight: 700;
+              color: #111;
+              letter-spacing: -0.3px;
+              margin-bottom: 4px;
+            }
+            .contact-line {
+              font-size: 9.5pt;
+              color: #555;
+              margin-bottom: 8px;
+            }
+            .contact-line a {
+              color: #2563eb;
+              text-decoration: none;
+            }
+            .letter-meta {
+              font-size: 9.5pt;
+              color: #666;
+              margin-bottom: 12px;
+            }
+            .letter-meta .separator { margin: 0 2px; color: #bbb; }
+            .letter-meta .employer { font-weight: 600; color: #333; }
+            .letter-meta .job-title { color: #444; }
+            .divider {
+              border: none;
+              border-top: 2px solid #e5e7eb;
+              margin: 0 0 24px 0;
+            }
+            /* Body */
+            p { margin: 0 0 14px 0; }
+            strong { font-weight: 600; }
+            h1, h2, h3 { font-weight: 600; margin: 0 0 10px 0; }
+            a { color: #2563eb; text-decoration: none; }
           </style>
         </head>
         <body>
-          <div class="content">
-            ${htmlContent}
+          <div class="page">
+            ${letterheadHtml}
+            <div class="body-content">
+              ${htmlContent}
+            </div>
           </div>
         </body>
       </html>
@@ -581,11 +659,11 @@ export async function generateCoverLetterPdf(jobId: string, markdown: string): P
 
     const browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
     const page = await browser.newPage();
     await page.setContent(fullHtml, { waitUntil: "networkidle0" });
-    
+
     await page.pdf({
       path: outputPath,
       format: "A4",
@@ -595,7 +673,7 @@ export async function generateCoverLetterPdf(jobId: string, markdown: string): P
         right: "20px",
         bottom: "20px",
         left: "20px",
-      }
+      },
     });
 
     await browser.close();

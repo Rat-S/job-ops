@@ -1769,7 +1769,31 @@ jobsRouter.get("/:id/cover-letter/pdf", async (req: Request, res: Response) => {
       return fail(res, badRequest("Cover letter has not been generated for this job"));
     }
 
-    const result = await generateCoverLetterPdf(job.id, job.coverLetter);
+    // Extract candidate basics from tailoredResumeJson for the letterhead
+    let candidateName: string | undefined;
+    let candidateEmail: string | undefined;
+    let candidatePhone: string | undefined;
+    let candidateLinkedIn: string | undefined;
+    if (job.tailoredResumeJson) {
+      try {
+        const resumeJson = JSON.parse(job.tailoredResumeJson) as Record<string, unknown>;
+        const basics = resumeJson.basics as Record<string, unknown> | undefined;
+        candidateName = (basics?.name || basics?.fullName) as string | undefined;
+        candidateEmail = basics?.email as string | undefined;
+        candidatePhone = basics?.phone as string | undefined;
+        const profiles = basics?.profiles as Array<Record<string, string>> | undefined;
+        candidateLinkedIn = profiles?.find(p => p.network?.toLowerCase() === "linkedin")?.url;
+      } catch { /* ignore parse errors */ }
+    }
+
+    const result = await generateCoverLetterPdf(job.id, job.coverLetter, {
+      candidateName,
+      candidateEmail,
+      candidatePhone,
+      candidateLinkedIn,
+      jobTitle: job.title,
+      employer: job.employer,
+    });
 
     if (!result.success || !result.pdfPath) {
       return fail(
