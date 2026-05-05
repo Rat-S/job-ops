@@ -101,6 +101,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    networks:
+      - job-ops-shared
 
 secrets:
   github_token:
@@ -110,3 +112,8 @@ secrets:
 volumes:
   data:
   codex-home:
+
+networks:
+  job-ops-shared:
+    name: job-ops-shared
+    driver: bridge

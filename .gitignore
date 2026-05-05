@@ -1,6 +1,7 @@
 # Environment files
 .env
 *.env.local
+docker-compose.*.yml
 
 # Dependencies
 node_modules/
@@ -13,6 +14,8 @@ docs-site/build/
 # Data directory (bind mount in Docker)
 data/
 data.old/
+data-*/
+data-shared/
 
 # Extractor storage outputs and cached auth
 extractors/ukvisajobs/storage/

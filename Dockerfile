@@ -12,7 +12,7 @@ ENV PYTHON_PATH=/usr/bin/python3
 ENV DATA_DIR=/app/data
 ENV CODEX_HOME=/app/codex-home
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-ENV PATH=/root/.local/bin:${PATH}
+ENV PATH=/app/orchestrator/node_modules/.bin:/usr/local/bin:/root/.local/bin:${PATH}
 ARG CODEX_CLI_VERSION=0.120.0
 
 # Install runtime dependencies shared by build and production stages.
@@ -22,18 +22,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-pip \
     libgtk-3-0 libgtk-3-common \
     libdbus-glib-1-2 libxt6 libx11-xcb1 libasound2 \
+    libnspr4 libnss3 libatk-bridge2.0-0 libdrm2 libgbm1 \
     curl && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Install Codex CLI for local app-server based inference.
 RUN npm install -g @openai/codex@${CODEX_CLI_VERSION}
 
-# Install resumed CLI for JSON Resume rendering with Puppeteer for PDF generation.
-RUN npm install -g resumed puppeteer
-
-# Install JSON Resume themes
-RUN npm install -g \
-    jsonresume-theme-stackoverflow
+# --- Global Tooling ---
+RUN npm install -g resumed@6.1.0 puppeteer jsonresume-theme-stackoverflow
 
 WORKDIR /app
 
@@ -145,14 +142,14 @@ ENV TECTONIC_VERSION=0.15.0
 # Docker's target architecture to the matching release asset explicitly.
 RUN set -eux; \
     case "${TARGETARCH}" in \
-        amd64) tectonic_arch="x86_64-unknown-linux-gnu" ;; \
-        arm64) tectonic_arch="aarch64-unknown-linux-musl" ;; \
-        *) echo "Unsupported TARGETARCH for Tectonic: ${TARGETARCH}" >&2; exit 1 ;; \
+    amd64) tectonic_arch="x86_64-unknown-linux-gnu" ;; \
+    arm64) tectonic_arch="aarch64-unknown-linux-musl" ;; \
+    *) echo "Unsupported TARGETARCH for Tectonic: ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     tectonic_asset="tectonic-${TECTONIC_VERSION}-${tectonic_arch}.tar.gz"; \
     curl --proto '=https' --tlsv1.2 -fsSL \
-        "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/${tectonic_asset}" \
-        -o /tmp/tectonic.tar.gz; \
+    "https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%40${TECTONIC_VERSION}/${tectonic_asset}" \
+    -o /tmp/tectonic.tar.gz; \
     tar -xzf /tmp/tectonic.tar.gz -C /tmp; \
     install -m 0755 "/tmp/tectonic" /usr/local/bin/tectonic; \
     rm -f /tmp/tectonic.tar.gz /tmp/tectonic
@@ -190,7 +187,7 @@ RUN mkdir -p /app/data/pdfs /app/codex-home
 EXPOSE 3001
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3001/health || exit 1
+    CMD curl -f http://localhost:3001/health || exit 1
 
 WORKDIR /app/orchestrator
 CMD ["sh", "-c", "npx tsx src/server/db/migrate.ts && npm run start"]

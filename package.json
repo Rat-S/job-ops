@@ -31,5 +31,8 @@
   },
   "volta": {
     "node": "22.22.1"
+  },
+  "dependencies": {
+    "jsonresume-theme-stackoverflow": "^3.3.0"
   }
 }
