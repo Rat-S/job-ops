@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
+import { getLatexResumeSectionTitles } from "./document";
 import type {
   LatexResumeContactItem,
   LatexResumeDocument,
@@ -134,8 +135,9 @@ function renderProjectEntry(entry: LatexResumeEntry): string {
 
 function renderSummarySection(document: LatexResumeDocument): string {
   if (!document.summary) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   return [
-    "\\section{Summary}",
+    `\\section{${escapeForCommand(titles.summary)}}`,
     " \\begin{itemize}[leftmargin=0.15in, label={}]",
     `    \\small{\\item{${escapeForCommand(document.summary)}}}`,
     " \\end{itemize}",
@@ -157,7 +159,7 @@ function renderEntrySection(args: {
     )
     .join("\n\n");
   return [
-    `\\section{${args.title}}`,
+    `\\section{${escapeForCommand(args.title)}}`,
     "  \\resumeSubHeadingListStart",
     body,
     "  \\resumeSubHeadingListEnd",
@@ -167,6 +169,7 @@ function renderEntrySection(args: {
 
 function renderSkillsSection(document: LatexResumeDocument): string {
   if (document.skillGroups.length === 0) return "";
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const items = document.skillGroups
     .map((group) => {
       const keywords = group.keywords.map((keyword) =>
@@ -177,7 +180,7 @@ function renderSkillsSection(document: LatexResumeDocument): string {
     })
     .join("\n");
   return [
-    "\\section{Technical Skills}",
+    `\\section{${escapeForCommand(titles.skills)}}`,
     " \\begin{itemize}[leftmargin=0.15in, label={}]",
     "    \\small{\\item{",
     items,
@@ -191,10 +194,11 @@ async function loadTemplate(): Promise<string> {
   return await readFile(TEMPLATE_PATH, "utf8");
 }
 
-function buildLatexDocument(
+export function buildLatexDocument(
   document: LatexResumeDocument,
   template: string,
 ): string {
+  const titles = document.sectionTitles ?? getLatexResumeSectionTitles();
   const headlineBlock = document.headline
     ? `    \\small ${escapeForCommand(document.headline)} \\\\ \\vspace{1pt}\n`
     : "";
@@ -205,17 +209,17 @@ function buildLatexDocument(
   const body = [
     renderSummarySection(document),
     renderEntrySection({
-      title: "Experience",
+      title: titles.experience,
       entries: document.experience,
       kind: "subheading",
     }),
     renderEntrySection({
-      title: "Education",
+      title: titles.education,
       entries: document.education,
       kind: "subheading",
     }),
     renderEntrySection({
-      title: "Projects",
+      title: titles.projects,
       entries: document.projects,
       kind: "project",
     }),

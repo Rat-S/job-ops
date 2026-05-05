@@ -1,6 +1,8 @@
 import {
+  getAuthBootstrapStatus,
   hasAuthenticatedSession,
   restoreAuthSessionFromLegacyCredentials,
+  setupFirstAdmin,
   signInWithCredentials,
 } from "@client/api";
 import type { FormEvent } from "react";
@@ -15,6 +17,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  loadRememberedAuthUsers,
+  rememberAuthUser,
+} from "../lib/remembered-auth-users";
 
 function resolveNextPath(rawNext: string | null): string {
   if (!rawNext || !rawNext.startsWith("/")) return "/jobs/ready";
@@ -28,9 +34,14 @@ export function SignInPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
+  const [setupRequired, setSetupRequired] = useState(false);
   const [isBusy, setIsBusy] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [rememberedUsers, setRememberedUsers] = useState(() =>
+    loadRememberedAuthUsers(),
+  );
 
   const nextPath = useMemo(() => {
     const params = new URLSearchParams(location.search);
@@ -38,10 +49,24 @@ export function SignInPage() {
   }, [location.search]);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const rememberedUsername = params.get("user")?.trim();
+    if (rememberedUsername) {
+      setUsername(rememberedUsername);
+      setPassword("");
+    }
+  }, [location.search]);
+
+  useEffect(() => {
     let cancelled = false;
 
     void (async () => {
       try {
+        const bootstrap = await getAuthBootstrapStatus();
+        if (cancelled) return;
+        setSetupRequired(bootstrap.setupRequired);
+        if (bootstrap.setupRequired) return;
+
         const restored = await restoreAuthSessionFromLegacyCredentials();
         if (cancelled) return;
         if (restored || hasAuthenticatedSession()) {
@@ -72,7 +97,26 @@ export function SignInPage() {
     setErrorMessage(null);
 
     try {
-      await signInWithCredentials(normalizedUsername, password);
+      if (setupRequired) {
+        const user = await setupFirstAdmin({
+          username: normalizedUsername,
+          password,
+          displayName: displayName.trim() || normalizedUsername,
+        });
+        setRememberedUsers(
+          rememberAuthUser({
+            username: user.username,
+            displayName: user.displayName,
+          }),
+        );
+      } else {
+        await signInWithCredentials(normalizedUsername, password);
+        setRememberedUsers(
+          rememberAuthUser({
+            username: normalizedUsername,
+          }),
+        );
+      }
       navigate(nextPath, { replace: true });
     } catch (error) {
       setErrorMessage(
@@ -89,12 +133,65 @@ export function SignInPage() {
           <CardHeader className="space-y-2">
             <CardTitle className="text-2xl tracking-tight">Sign in</CardTitle>
             <CardDescription>
-              Enter the application credentials configured for this JobOps
-              instance.
+              {setupRequired
+                ? "Create the first system admin for this JobOps instance."
+                : "Enter your JobOps username and password."}
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {!setupRequired && rememberedUsers.length > 0 ? (
+              <div className="mb-5 space-y-2">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Remembered on this browser
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {rememberedUsers.map((user) => (
+                    <Button
+                      key={user.username}
+                      type="button"
+                      variant={
+                        username.trim() === user.username
+                          ? "secondary"
+                          : "outline"
+                      }
+                      size="sm"
+                      className="h-8 max-w-full px-2.5"
+                      disabled={isBusy}
+                      onClick={() => {
+                        setUsername(user.username);
+                        setPassword("");
+                        setErrorMessage(null);
+                      }}
+                    >
+                      <span className="truncate">
+                        {user.displayName ?? user.username}
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             <form className="space-y-4" onSubmit={handleSubmit}>
+              {setupRequired ? (
+                <div className="space-y-2">
+                  <label
+                    className="text-sm font-medium"
+                    htmlFor="auth-display-name"
+                  >
+                    Name
+                  </label>
+                  <Input
+                    id="auth-display-name"
+                    autoComplete="name"
+                    value={displayName}
+                    onChange={(event) =>
+                      setDisplayName(event.currentTarget.value)
+                    }
+                    placeholder="Your name"
+                    disabled={isBusy}
+                  />
+                </div>
+              ) : null}
               <div className="space-y-2">
                 <label className="text-sm font-medium" htmlFor="auth-username">
                   Username
@@ -128,7 +225,13 @@ export function SignInPage() {
                 </p>
               ) : null}
               <Button className="w-full" type="submit" disabled={isBusy}>
-                {isBusy ? "Signing in..." : "Sign in"}
+                {isBusy
+                  ? setupRequired
+                    ? "Creating account..."
+                    : "Signing in..."
+                  : setupRequired
+                    ? "Create workspace"
+                    : "Sign in"}
               </Button>
             </form>
           </CardContent>

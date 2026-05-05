@@ -202,6 +202,7 @@ describe.sequential("Tracer links routes", () => {
         ok: boolean;
         data?: {
           status: string;
+          isPubliclyAvailable: boolean;
           canEnable: boolean;
           publicBaseUrl: string | null;
         };
@@ -211,6 +212,7 @@ describe.sequential("Tracer links routes", () => {
       expect(body.ok).toBe(true);
       expect(body.meta?.requestId).toBeTruthy();
       expect(body.data?.status).toBe("ready");
+      expect(body.data?.isPubliclyAvailable).toBe(true);
       expect(body.data?.canEnable).toBe(true);
       expect(body.data?.publicBaseUrl).toBe("https://my-jobops.example.com");
     } finally {
@@ -230,11 +232,25 @@ describe.sequential("Tracer links routes", () => {
         BASIC_AUTH_USER: "admin",
         BASIC_AUTH_PASSWORD: "secret",
         JWT_SECRET: "an-explicit-jwt-secret-with-at-least-32-chars",
+        JOBOPS_TEST_AUTH_BYPASS: "0",
       },
     }));
 
+    const { createJob } = await import("@server/repositories/jobs");
+    const job = await createJob({
+      source: "manual",
+      title: "Tracer Auth Role",
+      employer: "Acme",
+      jobUrl: "https://example.com/jobs/tracer-auth-role",
+      jobDescription: "Tracer route auth coverage",
+    });
+
     const unauthorized = await fetch(`${baseUrl}/api/tracer-links/analytics`);
     expect(unauthorized.status).toBe(401);
+    const unauthorizedJobAnalytics = await fetch(
+      `${baseUrl}/api/tracer-links/jobs/${job.id}`,
+    );
+    expect(unauthorizedJobAnalytics.status).toBe(401);
 
     const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
       method: "POST",
@@ -249,5 +265,14 @@ describe.sequential("Tracer links routes", () => {
       },
     });
     expect(authorized.status).toBe(200);
+    const authorizedJobAnalytics = await fetch(
+      `${baseUrl}/api/tracer-links/jobs/${job.id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${loginBody.data.token}`,
+        },
+      },
+    );
+    expect(authorizedJobAnalytics.status).toBe(200);
   });
 });

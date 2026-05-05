@@ -16,6 +16,7 @@ import {
 import type React from "react";
 import { useState } from "react";
 import { Controller, useFormContext, useWatch } from "react-hook-form";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -67,6 +68,7 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
     doNotUse,
     languageMode,
     manualLanguage,
+    stopSlopEnabled,
     summaryMaxWords,
     maxKeywordsPerSkill,
   } = values;
@@ -177,6 +179,39 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
                 )?.description ?? "")}
           </div>
         </div>
+
+        <div className="flex items-start space-x-3">
+          <Controller
+            name="ghostwriterStopSlopEnabled"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                id="ghostwriterStopSlopEnabled"
+                checked={field.value ?? stopSlopEnabled.default}
+                onCheckedChange={(checked) => {
+                  field.onChange(
+                    checked === "indeterminate" ? null : checked === true,
+                  );
+                }}
+                disabled={isLoading || isSaving}
+              />
+            )}
+          />
+          <div className="flex flex-col gap-1.5">
+            <label
+              htmlFor="ghostwriterStopSlopEnabled"
+              className="cursor-pointer text-sm font-medium leading-none"
+            >
+              Use Stop Slop for Ghostwriter
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Applies extra Ghostwriter-only instructions to remove filler,
+              formulaic AI phrasing, passive voice, vague claims, and em dashes.
+            </p>
+          </div>
+        </div>
+
+        <Separator />
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -401,6 +436,13 @@ export const ChatSettingsSection: React.FC<ChatSettingsSectionProps> = ({
               {CHAT_STYLE_MANUAL_LANGUAGE_LABELS[manualLanguage.effective]} |
               Default:{" "}
               {CHAT_STYLE_MANUAL_LANGUAGE_LABELS[manualLanguage.default]}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Stop Slop</div>
+            <div className="break-words font-mono text-xs">
+              Effective: {stopSlopEnabled.effective ? "Enabled" : "Disabled"} |
+              Default: {stopSlopEnabled.default ? "Enabled" : "Disabled"}
             </div>
           </div>
         </div>

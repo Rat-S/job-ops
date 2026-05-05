@@ -38,6 +38,7 @@ import type {
   ManualJobDraft,
   ManualJobFetchResponse,
   ManualJobInferenceResponse,
+  PipelineProgressState,
   PipelineRun,
   PipelineRunInsights,
   PipelineStatusResponse,
@@ -64,6 +65,7 @@ import type {
   VisaSponsorStatusResponse,
 } from "@shared/types";
 import { formatUserFacingError } from "@/client/lib/error-format";
+import { queryClient } from "@/client/lib/queryClient";
 import {
   bucketQueryLength,
   getAnalyticsRequestHeaders,
@@ -105,8 +107,8 @@ type LegacyApiResponse<T> =
 
 type StreamSseInput =
   | JobActionRequest
-  | { content: string; stream: true }
-  | { stream: true };
+  | { content: string; selectedNoteIds?: string[]; stream: true }
+  | { selectedNoteIds?: string[]; stream: true };
 
 export type CodexAuthStatusResponse = {
   authenticated: boolean;
@@ -126,6 +128,22 @@ export type AuthCredentials = {
   password: string;
 };
 
+export type AuthUser = {
+  id: string;
+  username: string;
+  displayName: string | null;
+  isSystemAdmin: boolean;
+  isDisabled: boolean;
+  workspaceId: string;
+  workspaceName: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AuthBootstrapStatus = {
+  setupRequired: boolean;
+};
+
 type StoredLegacyAuthCredentials = AuthCredentials & {
   storedAt?: number;
 };
@@ -134,6 +152,35 @@ const LEGACY_SESSION_AUTH_KEY = "jobops.basicAuthCredentials";
 const LEGACY_SESSION_JWT_KEY = "jobops.jwtToken";
 const SESSION_AUTH_TOKEN_KEY = "jobops.authToken";
 const LEGACY_SESSION_AUTH_TTL_MS = 5 * 60 * 1000;
+
+function decodeBase64UrlJsonSegment(
+  segment: string,
+): Record<string, unknown> | null {
+  try {
+    const normalized = segment.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "=",
+    );
+    const decoded = globalThis.atob(padded);
+    const parsed = JSON.parse(decoded) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function getTenantIdFromAuthToken(token: string | null): string | null {
+  const payloadSegment = token?.split(".")[1];
+  if (!payloadSegment) return null;
+  const payload = decodeBase64UrlJsonSegment(payloadSegment);
+  const tenantId = payload?.tenantId;
+  return typeof tenantId === "string" && tenantId.trim().length > 0
+    ? tenantId.trim()
+    : null;
+}
 
 function loadStoredLegacyCredentials(): AuthCredentials | null {
   try {
@@ -212,12 +259,27 @@ function storeAuthToken(token: string | null): void {
   }
 }
 
+export function getCurrentAuthWorkspaceStorageScope(): string | null {
+  const tenantId = getTenantIdFromAuthToken(loadStoredAuthToken());
+  return tenantId ? `workspace:${tenantId}` : null;
+}
+
+export function getAuthScopedStorageKey(baseKey: string): string {
+  const scope = getCurrentAuthWorkspaceStorageScope();
+  return scope ? `${baseKey}:${scope}` : baseKey;
+}
+
 let cachedLegacyCredentials: AuthCredentials | null =
   loadStoredLegacyCredentials();
 let cachedAuthToken: string | null = loadStoredAuthToken();
 let authMigrationInFlight: Promise<boolean> | null = null;
 
+function clearCachedAppData(): void {
+  queryClient.clear();
+}
+
 export function clearAuthSession(): void {
+  clearCachedAppData();
   cachedLegacyCredentials = null;
   cachedAuthToken = null;
   storeLegacyCredentials(null);
@@ -225,6 +287,7 @@ export function clearAuthSession(): void {
 }
 
 function setAuthenticatedSession(token: string): void {
+  clearCachedAppData();
   cachedAuthToken = token;
   storeAuthToken(token);
   cachedLegacyCredentials = null;
@@ -277,6 +340,46 @@ export async function signInWithCredentials(
   setAuthenticatedSession(token);
 }
 
+export async function getAuthBootstrapStatus(): Promise<AuthBootstrapStatus> {
+  return fetchApi<AuthBootstrapStatus>("/auth/bootstrap-status");
+}
+
+export async function setupFirstAdmin(input: {
+  username: string;
+  password: string;
+  displayName?: string;
+}): Promise<AuthUser> {
+  const res = await fetch("/api/auth/setup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const parsed = await readAuthResponse<{
+    token: string;
+    user: AuthUser;
+  }>(res);
+  if ("ok" in parsed) {
+    if (!parsed.ok) throw toApiError(res, parsed);
+    if (!parsed.data?.token || !parsed.data.user) {
+      throw new Error("Setup response was incomplete");
+    }
+    setAuthenticatedSession(parsed.data.token);
+    return parsed.data.user;
+  }
+  if (!parsed.success) throw toApiError(res, parsed);
+  const data = parsed.data as { token?: string; user?: AuthUser } | undefined;
+  if (!data?.token || !data.user) {
+    throw new Error("Setup response was incomplete");
+  }
+  setAuthenticatedSession(data.token);
+  return data.user;
+}
+
+export async function getCurrentAuthUser(): Promise<AuthUser> {
+  const result = await fetchApi<{ user: AuthUser }>("/auth/me");
+  return result.user;
+}
+
 export async function restoreAuthSessionFromLegacyCredentials(): Promise<boolean> {
   if (cachedAuthToken) return true;
   if (!cachedLegacyCredentials) return false;
@@ -318,7 +421,9 @@ export async function recoverAuthHeaderAfterUnauthorized(): Promise<
   return recoverAuthSessionFromUnauthorized();
 }
 
-export async function logout(): Promise<void> {
+export async function logout(
+  options: { redirect?: boolean } = {},
+): Promise<void> {
   if (cachedAuthToken) {
     try {
       await fetch("/api/auth/logout", {
@@ -330,7 +435,9 @@ export async function logout(): Promise<void> {
     }
   }
   clearAuthSession();
-  redirectToSignIn();
+  if (options.redirect ?? true) {
+    redirectToSignIn();
+  }
 }
 
 export function getCachedAuthHeader(): string | undefined {
@@ -339,6 +446,58 @@ export function getCachedAuthHeader(): string | undefined {
 
 export function hasAuthenticatedSession(): boolean {
   return Boolean(cachedAuthToken);
+}
+
+export async function listWorkspaceUsers(): Promise<AuthUser[]> {
+  const result = await fetchApi<{ users: AuthUser[] }>("/workspaces/users");
+  return result.users;
+}
+
+export async function createWorkspaceUser(input: {
+  username: string;
+  password: string;
+  displayName?: string;
+  isSystemAdmin?: boolean;
+}): Promise<AuthUser> {
+  const result = await fetchApi<{ user: AuthUser }>("/workspaces/users", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return result.user;
+}
+
+export async function setWorkspaceUserDisabled(
+  userId: string,
+  isDisabled: boolean,
+): Promise<AuthUser> {
+  const result = await fetchApi<{ user: AuthUser }>(
+    `/workspaces/users/${encodeURIComponent(userId)}/disabled`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ isDisabled }),
+    },
+  );
+  return result.user;
+}
+
+export async function resetWorkspaceUserPassword(
+  userId: string,
+  password: string,
+): Promise<void> {
+  await fetchApi<{ userId: string }>(
+    `/workspaces/users/${encodeURIComponent(userId)}/reset-password`,
+    {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    },
+  );
+}
+
+export async function changeOwnPassword(password: string): Promise<void> {
+  await fetchApi<{ userId: string }>("/workspaces/me/password", {
+    method: "POST",
+    body: JSON.stringify({ password }),
+  });
 }
 
 export function __resetApiClientAuthForTests(): void {
@@ -567,6 +726,42 @@ async function fetchApi<T>(
   }
 }
 
+async function fetchBlobApi(
+  endpoint: string,
+  options?: RequestInit,
+): Promise<Blob> {
+  let authHeader = getAuthHeader();
+  let authAttempt = 0;
+
+  while (true) {
+    const headers: Record<string, string> = {
+      ...getAnalyticsRequestHeaders(),
+      ...normalizeHeaders(options?.headers),
+    };
+    if (authHeader) headers.Authorization = authHeader;
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+    });
+
+    if (response.status === 401 && authAttempt < 1) {
+      const recoveredAuthHeader = await recoverAuthSessionFromUnauthorized();
+      if (recoveredAuthHeader) {
+        authHeader = recoveredAuthHeader;
+        authAttempt += 1;
+        continue;
+      }
+    }
+
+    if (!response.ok) {
+      const parsed = await readAuthResponse<never>(response);
+      throw toApiError(response, parsed);
+    }
+
+    return response.blob();
+  }
+}
+
 // Jobs API
 export function getJobs(): Promise<JobsListResponse<JobListItem>>;
 export function getJobs(options: {
@@ -663,6 +858,10 @@ export async function uploadJobPdf(
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export async function getJobPdfBlob(id: string): Promise<Blob> {
+  return fetchBlobApi(`/jobs/${encodeURIComponent(id)}/pdf`);
 }
 
 export async function getTracerAnalytics(options?: {
@@ -844,7 +1043,11 @@ export async function listJobChatThreads(jobId: string): Promise<{
 export async function listJobGhostwriterMessages(
   jobId: string,
   options?: { limit?: number; offset?: number },
-): Promise<{ messages: JobChatMessage[]; branches: BranchInfo[] }> {
+): Promise<{
+  messages: JobChatMessage[];
+  branches: BranchInfo[];
+  selectedNoteIds: string[];
+}> {
   const params = new URLSearchParams();
   if (typeof options?.limit === "number") {
     params.set("limit", String(options.limit));
@@ -853,8 +1056,23 @@ export async function listJobGhostwriterMessages(
     params.set("offset", String(options.offset));
   }
   const query = params.toString();
-  return fetchApi<{ messages: JobChatMessage[]; branches: BranchInfo[] }>(
-    `/jobs/${jobId}/chat/messages${query ? `?${query}` : ""}`,
+  return fetchApi<{
+    messages: JobChatMessage[];
+    branches: BranchInfo[];
+    selectedNoteIds: string[];
+  }>(`/jobs/${jobId}/chat/messages${query ? `?${query}` : ""}`);
+}
+
+export async function updateJobGhostwriterContext(
+  jobId: string,
+  input: { selectedNoteIds: string[] },
+): Promise<{ selectedNoteIds: string[] }> {
+  return fetchApi<{ selectedNoteIds: string[] }>(
+    `/jobs/${jobId}/chat/context`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    },
   );
 }
 
@@ -891,7 +1109,7 @@ export async function listJobChatMessages(
 export async function sendJobChatMessage(
   jobId: string,
   threadId: string,
-  input: { content: string },
+  input: { content: string; selectedNoteIds?: string[] },
 ): Promise<{
   userMessage: JobChatMessage;
   assistantMessage: JobChatMessage | null;
@@ -910,14 +1128,18 @@ export async function sendJobChatMessage(
 export async function streamJobChatMessage(
   jobId: string,
   threadId: string,
-  input: { content: string; signal?: AbortSignal },
+  input: { content: string; selectedNoteIds?: string[]; signal?: AbortSignal },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
 ): Promise<void> {
   return streamSseEvents(
     `/jobs/${jobId}/chat/threads/${threadId}/messages`,
-    { content: input.content, stream: true },
+    {
+      content: input.content,
+      selectedNoteIds: input.selectedNoteIds,
+      stream: true,
+    },
     {
       onEvent: handlers.onEvent,
       signal: input.signal,
@@ -927,14 +1149,18 @@ export async function streamJobChatMessage(
 
 export async function streamJobGhostwriterMessage(
   jobId: string,
-  input: { content: string; signal?: AbortSignal },
+  input: { content: string; selectedNoteIds?: string[]; signal?: AbortSignal },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
 ): Promise<void> {
   return streamSseEvents(
     `/jobs/${jobId}/chat/messages`,
-    { content: input.content, stream: true },
+    {
+      content: input.content,
+      selectedNoteIds: input.selectedNoteIds,
+      stream: true,
+    },
     {
       onEvent: handlers.onEvent,
       signal: input.signal,
@@ -999,14 +1225,14 @@ export async function streamRegenerateJobChatMessage(
   jobId: string,
   threadId: string,
   assistantMessageId: string,
-  input: { signal?: AbortSignal },
+  input: { selectedNoteIds?: string[]; signal?: AbortSignal },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
 ): Promise<void> {
   return streamSseEvents(
     `/jobs/${jobId}/chat/threads/${threadId}/messages/${assistantMessageId}/regenerate`,
-    { stream: true },
+    { selectedNoteIds: input.selectedNoteIds, stream: true },
     {
       onEvent: handlers.onEvent,
       signal: input.signal,
@@ -1017,14 +1243,14 @@ export async function streamRegenerateJobChatMessage(
 export async function streamRegenerateJobGhostwriterMessage(
   jobId: string,
   assistantMessageId: string,
-  input: { signal?: AbortSignal },
+  input: { selectedNoteIds?: string[]; signal?: AbortSignal },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
 ): Promise<void> {
   return streamSseEvents(
     `/jobs/${jobId}/chat/messages/${assistantMessageId}/regenerate`,
-    { stream: true },
+    { selectedNoteIds: input.selectedNoteIds, stream: true },
     {
       onEvent: handlers.onEvent,
       signal: input.signal,
@@ -1035,14 +1261,18 @@ export async function streamRegenerateJobGhostwriterMessage(
 export async function editJobGhostwriterMessage(
   jobId: string,
   messageId: string,
-  input: { content: string; signal?: AbortSignal },
+  input: { content: string; selectedNoteIds?: string[]; signal?: AbortSignal },
   handlers: {
     onEvent: (event: JobChatStreamEvent) => void;
   },
 ): Promise<void> {
   return streamSseEvents(
     `/jobs/${jobId}/chat/messages/${messageId}/edit`,
-    { content: input.content, stream: true },
+    {
+      content: input.content,
+      selectedNoteIds: input.selectedNoteIds,
+      stream: true,
+    },
     {
       onEvent: handlers.onEvent,
       signal: input.signal,
@@ -1255,8 +1485,41 @@ export async function getPipelineStatus(): Promise<PipelineStatusResponse> {
   return fetchApi<PipelineStatusResponse>("/pipeline/status");
 }
 
+export async function getPipelineProgressSnapshot(): Promise<PipelineProgressState> {
+  return fetchApi<PipelineProgressState>("/pipeline/progress/snapshot");
+}
+
 export async function getPipelineRuns(): Promise<PipelineRun[]> {
   return fetchApi<PipelineRun[]>("/pipeline/runs");
+}
+
+export async function prepareChallengeViewer(): Promise<{
+  available: boolean;
+  viewerUrl: string | null;
+  reason: string | null;
+}> {
+  return fetchApi<{
+    available: boolean;
+    viewerUrl: string | null;
+    reason: string | null;
+  }>("/pipeline/challenge-viewer", {
+    method: "POST",
+  });
+}
+
+export async function solvePipelineChallenge(extractorId: string): Promise<{
+  status: "solved";
+  extractorId: string;
+  challengesRemaining: number;
+}> {
+  return fetchApi<{
+    status: "solved";
+    extractorId: string;
+    challengesRemaining: number;
+  }>("/pipeline/solve-challenge", {
+    method: "POST",
+    body: JSON.stringify({ extractorId }),
+  });
 }
 
 export async function getPipelineRunInsights(
@@ -1653,6 +1916,23 @@ export async function uploadDesignResumePicture(input: {
   });
 }
 
+export async function uploadDesignResumePictureFile(input: {
+  file: File;
+  baseRevision?: number;
+}): Promise<DesignResumeDocument> {
+  return fetchApi<DesignResumeDocument>("/design-resume/assets", {
+    method: "POST",
+    headers: {
+      "Content-Type": input.file.type || "application/octet-stream",
+      "x-file-name": encodeURIComponent(input.file.name || "picture"),
+      ...(input.baseRevision
+        ? { "x-base-revision": String(input.baseRevision) }
+        : {}),
+    },
+    body: await input.file.arrayBuffer(),
+  });
+}
+
 export async function deleteDesignResumePicture(input?: {
   baseRevision?: number;
   document?: DesignResumeJson;
@@ -1671,6 +1951,10 @@ export async function generateDesignResumePdf(): Promise<DesignResumePdfResponse
   return fetchApi<DesignResumePdfResponse>("/design-resume/generate-pdf", {
     method: "POST",
   });
+}
+
+export async function getDesignResumePdfBlob(): Promise<Blob> {
+  return fetchBlobApi("/design-resume/pdf");
 }
 
 export async function getProfileStatus(): Promise<ProfileStatusResponse> {

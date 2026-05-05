@@ -4,12 +4,14 @@ import type {
   Job,
   JobChatMessage,
   JobChatStreamEvent,
+  JobNote,
 } from "@shared/types";
 import { Settings2 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,15 +26,26 @@ import { Button } from "@/components/ui/button";
 import { bucketQueryLength, trackProductEvent } from "@/lib/analytics";
 import { Composer } from "./Composer";
 import { MessageList } from "./MessageList";
+import { NoteContextSelector } from "./NoteContextSelector";
 
 type GhostwriterPanelProps = {
   job: Job;
+  initialPrompt?: string | null;
+  onInitialPromptConsumed?: () => void;
 };
 
-export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
+export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({
+  job,
+  initialPrompt,
+  onInitialPromptConsumed,
+}) => {
   const [messages, setMessages] = useState<JobChatMessage[]>([]);
   const [branches, setBranches] = useState<BranchInfo[]>([]);
+  const [notes, setNotes] = useState<JobNote[]>([]);
+  const [selectedNoteIds, setSelectedNoteIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [areNotesLoading, setAreNotesLoading] = useState(true);
+  const [isSavingContext, setIsSavingContext] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
     null,
@@ -43,6 +56,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
 
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const consumedInitialPromptRef = useRef<string | null>(null);
   const runTriggerRef = useRef<"new_prompt" | "regenerate" | "edit">(
     "new_prompt",
   );
@@ -63,20 +77,31 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     });
     setMessages(data.messages);
     setBranches(data.branches);
+    setSelectedNoteIds(data.selectedNoteIds);
+  }, [job.id]);
+
+  const loadNotes = useCallback(async () => {
+    setAreNotesLoading(true);
+    try {
+      const data = await api.getJobNotes(job.id);
+      setNotes(data);
+    } catch (error) {
+      showErrorToast(error, "Failed to load notes");
+    } finally {
+      setAreNotesLoading(false);
+    }
   }, [job.id]);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      await loadMessages();
+      await Promise.all([loadMessages(), loadNotes()]);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to load Ghostwriter";
-      toast.error(message);
+      showErrorToast(error, "Failed to load Ghostwriter");
     } finally {
       setIsLoading(false);
     }
-  }, [loadMessages]);
+  }, [loadMessages, loadNotes]);
 
   useEffect(() => {
     void load();
@@ -85,6 +110,14 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
       streamAbortRef.current = null;
     };
   }, [load]);
+
+  useEffect(() => {
+    if (areNotesLoading) return;
+    const noteIds = new Set(notes.map((note) => note.id));
+    setSelectedNoteIds((current) =>
+      current.filter((noteId) => noteIds.has(noteId)),
+    );
+  }, [areNotesLoading, notes]);
 
   const onStreamEvent = useCallback(
     (event: JobChatStreamEvent) => {
@@ -196,7 +229,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
       try {
         await api.streamJobGhostwriterMessage(
           job.id,
-          { content, signal: controller.signal },
+          { content, selectedNoteIds, signal: controller.signal },
           { onEvent: onStreamEvent },
         );
 
@@ -206,15 +239,20 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
           return;
         }
 
-        const message =
-          error instanceof Error ? error.message : "Failed to send message";
-        toast.error(message);
+        showErrorToast(error, "Failed to send message");
       } finally {
         streamAbortRef.current = null;
         setIsStreaming(false);
       }
     },
-    [isStreaming, job.id, loadMessages, messages, onStreamEvent],
+    [
+      isStreaming,
+      job.id,
+      loadMessages,
+      messages,
+      onStreamEvent,
+      selectedNoteIds,
+    ],
   );
 
   const stopStreaming = useCallback(async () => {
@@ -228,9 +266,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
       setStreamingMessageId(null);
       await loadMessages();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to stop run";
-      toast.error(message);
+      showErrorToast(error, "Failed to stop run");
     }
   }, [activeRunId, job.id, loadMessages]);
 
@@ -256,7 +292,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         await api.streamRegenerateJobGhostwriterMessage(
           job.id,
           assistantMessageId,
-          { signal: controller.signal },
+          { selectedNoteIds, signal: controller.signal },
           { onEvent: onStreamEvent },
         );
         await loadMessages();
@@ -264,17 +300,13 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         if (error instanceof Error && error.name === "AbortError") {
           return;
         }
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to regenerate response";
-        toast.error(message);
+        showErrorToast(error, "Failed to regenerate response");
       } finally {
         streamAbortRef.current = null;
         setIsStreaming(false);
       }
     },
-    [isStreaming, job.id, loadMessages, onStreamEvent],
+    [isStreaming, job.id, loadMessages, onStreamEvent, selectedNoteIds],
   );
 
   const editMessage = useCallback(
@@ -317,7 +349,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         await api.editJobGhostwriterMessage(
           job.id,
           messageId,
-          { content, signal: controller.signal },
+          { content, selectedNoteIds, signal: controller.signal },
           { onEvent: onStreamEvent },
         );
         await loadMessages();
@@ -325,15 +357,34 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         if (error instanceof Error && error.name === "AbortError") {
           return;
         }
-        const message =
-          error instanceof Error ? error.message : "Failed to edit message";
-        toast.error(message);
+        showErrorToast(error, "Failed to edit message");
       } finally {
         streamAbortRef.current = null;
         setIsStreaming(false);
       }
     },
-    [isStreaming, job.id, loadMessages, onStreamEvent],
+    [isStreaming, job.id, loadMessages, onStreamEvent, selectedNoteIds],
+  );
+
+  const updateSelectedNotes = useCallback(
+    async (nextSelectedNoteIds: string[]) => {
+      const previousSelectedNoteIds = selectedNoteIds;
+      setSelectedNoteIds(nextSelectedNoteIds);
+      setIsSavingContext(true);
+
+      try {
+        const result = await api.updateJobGhostwriterContext(job.id, {
+          selectedNoteIds: nextSelectedNoteIds,
+        });
+        setSelectedNoteIds(result.selectedNoteIds);
+      } catch (error) {
+        setSelectedNoteIds(previousSelectedNoteIds);
+        showErrorToast(error, "Failed to update Ghostwriter notes");
+      } finally {
+        setIsSavingContext(false);
+      }
+    },
+    [job.id, selectedNoteIds],
   );
 
   const switchBranch = useCallback(
@@ -343,9 +394,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
         setMessages(result.messages);
         setBranches(result.branches);
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to switch branch";
-        toast.error(message);
+        showErrorToast(error, "Failed to switch branch");
       }
     },
     [job.id],
@@ -355,6 +404,22 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
     return !isStreaming && messages.length > 0;
   }, [isStreaming, messages]);
 
+  useEffect(() => {
+    const content = initialPrompt?.trim();
+    if (!content || isLoading || isStreaming) return;
+    if (consumedInitialPromptRef.current === content) return;
+
+    consumedInitialPromptRef.current = content;
+    onInitialPromptConsumed?.();
+    void sendMessage(content);
+  }, [
+    initialPrompt,
+    isLoading,
+    isStreaming,
+    onInitialPromptConsumed,
+    sendMessage,
+  ]);
+
   const resetConversation = useCallback(async () => {
     try {
       await api.resetJobGhostwriterConversation(job.id);
@@ -362,9 +427,7 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
       setBranches([]);
       toast.success("Conversation cleared");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to reset conversation";
-      toast.error(message);
+      showErrorToast(error, "Failed to reset conversation");
     }
   }, [job.id]);
 
@@ -416,6 +479,18 @@ export const GhostwriterPanel: React.FC<GhostwriterPanelProps> = ({ job }) => {
           disabled={isLoading || isStreaming}
           isStreaming={isStreaming}
           canReset={canReset}
+          noteContextSelector={
+            <NoteContextSelector
+              notes={notes}
+              selectedNoteIds={selectedNoteIds}
+              disabled={isLoading || isStreaming}
+              isLoading={areNotesLoading}
+              isSaving={isSavingContext}
+              onChange={(nextSelectedNoteIds) =>
+                void updateSelectedNotes(nextSelectedNoteIds)
+              }
+            />
+          }
           onStop={stopStreaming}
           onSend={sendMessage}
           onReset={() => setIsResetDialogOpen(true)}

@@ -29,11 +29,19 @@ describe("orchestrator utils", () => {
     expect(getEnabledSources(createAppSettings())).toContain("golangjobs");
   });
 
+  it("enables jobindex without credentials", () => {
+    expect(getEnabledSources(createAppSettings())).toContain("jobindex");
+  });
+
   it("enables seek only when apify token is configured", () => {
     const withToken = createAppSettings({ apifyTokenHint: "sk-" });
     const withoutToken = createAppSettings({ apifyTokenHint: null });
     expect(getEnabledSources(withToken)).toContain("seek");
     expect(getEnabledSources(withoutToken)).not.toContain("seek");
+  });
+
+  it("enables naukri without credentials", () => {
+    expect(getEnabledSources(createAppSettings())).toContain("naukri");
   });
 
   it("counts processing jobs in ready and discovered tabs", () => {

@@ -1,6 +1,8 @@
 import { logger } from "@infra/logger";
+import { getOriginalEnvValue } from "@server/services/envSettings";
 import { toStringOrNull } from "@shared/utils/type-conversion";
 import { CodexClient } from "./codex/client";
+import { GeminiCliClient } from "./gemini-cli/client";
 import {
   buildModeCacheKey,
   getOrderedModes,
@@ -33,14 +35,15 @@ export class LlmService {
   private readonly apiKey: string | null;
   private readonly strategy: (typeof strategies)[LlmProvider];
   private readonly codexClient: CodexClient;
+  private readonly geminiCliClient: GeminiCliClient;
 
   constructor(options: LlmServiceOptions = {}) {
     const normalizedBaseUrl =
       toStringOrNull(options.baseUrl) ||
-      toStringOrNull(process.env.LLM_BASE_URL) ||
+      toStringOrNull(getOriginalEnvValue("LLM_BASE_URL")) ||
       null;
     const resolvedProvider = normalizeProvider(
-      options.provider ?? process.env.LLM_PROVIDER ?? null,
+      options.provider ?? getOriginalEnvValue("LLM_PROVIDER") ?? null,
       normalizedBaseUrl,
     );
 
@@ -49,7 +52,7 @@ export class LlmService {
 
     let apiKey =
       toStringOrNull(options.apiKey) ||
-      toStringOrNull(process.env.LLM_API_KEY) ||
+      toStringOrNull(getOriginalEnvValue("LLM_API_KEY")) ||
       null;
 
     // Backwards-compat migration: OPENROUTER_API_KEY -> LLM_API_KEY.
@@ -57,14 +60,15 @@ export class LlmService {
     if (
       !apiKey &&
       resolvedProvider === "openrouter" &&
-      toStringOrNull(process.env.OPENROUTER_API_KEY)
+      toStringOrNull(getOriginalEnvValue("OPENROUTER_API_KEY"))
     ) {
       logger.warn(
         "[DEPRECATED] OPENROUTER_API_KEY is deprecated. Copying to LLM_API_KEY; please update your environment.",
       );
-      const migrated = toStringOrNull(process.env.OPENROUTER_API_KEY);
+      const migrated = toStringOrNull(
+        getOriginalEnvValue("OPENROUTER_API_KEY"),
+      );
       if (migrated) {
-        process.env.LLM_API_KEY = migrated;
         apiKey = migrated;
       }
     }
@@ -74,11 +78,16 @@ export class LlmService {
     this.apiKey = apiKey;
     this.strategy = strategy;
     this.codexClient = new CodexClient();
+    this.geminiCliClient = new GeminiCliClient();
   }
 
   async callJson<T>(options: LlmRequestOptions<T>): Promise<LlmResponse<T>> {
     if (this.provider === "codex") {
       return this.callCodexJson(options);
+    }
+
+    if (this.provider === "gemini_cli") {
+      return this.callGeminiCliJson(options);
     }
 
     if (this.strategy.requiresApiKey && !this.apiKey) {
@@ -136,6 +145,10 @@ export class LlmService {
   async validateCredentials(): Promise<LlmValidationResult> {
     if (this.provider === "codex") {
       return this.codexClient.validateCredentials();
+    }
+
+    if (this.provider === "gemini_cli") {
+      return this.geminiCliClient.validateCredentials();
     }
 
     if (this.strategy.requiresApiKey && !this.apiKey) {
@@ -199,6 +212,11 @@ export class LlmService {
       return this.codexClient.listModels();
     }
 
+    if (this.provider === "gemini_cli") {
+      const models = await this.geminiCliClient.listModels();
+      return sortModels(models, getPreferredModel(this.provider));
+    }
+
     if (this.strategy.requiresApiKey && !this.apiKey) {
       throw new Error("LLM API key is missing.");
     }
@@ -251,6 +269,48 @@ export class LlmService {
 
         if (attempt < maxRetries && shouldRetryAttempt({ message })) {
           logger.warn("Codex attempt failed, retrying", {
+            jobId: jobId ?? "unknown",
+            attempt: attempt + 1,
+            maxRetries,
+            message,
+          });
+          continue;
+        }
+
+        return { success: false, error: message };
+      }
+    }
+
+    return { success: false, error: "All retry attempts failed" };
+  }
+
+  private async callGeminiCliJson<T>(
+    options: LlmRequestOptions<T>,
+  ): Promise<LlmResponse<T>> {
+    const { maxRetries = 0, retryDelayMs = 500, signal, jobId } = options;
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          logger.info("LLM retry attempt", {
+            jobId: jobId ?? "unknown",
+            attempt,
+            maxRetries,
+          });
+          await sleep(getRetryDelayMs(retryDelayMs, attempt));
+        }
+
+        const result = await this.geminiCliClient.callJson({
+          ...options,
+          signal,
+        });
+        const parsed = parseJsonContent<T>(result.text, jobId);
+        return { success: true, data: parsed };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        if (attempt < maxRetries && shouldRetryAttempt({ message })) {
+          logger.warn("Gemini CLI attempt failed, retrying", {
             jobId: jobId ?? "unknown",
             attempt: attempt + 1,
             maxRetries,
@@ -468,6 +528,7 @@ function normalizeProvider(
   }
   if (normalized === "openai") return "openai";
   if (normalized === "gemini") return "gemini";
+  if (normalized === "gemini_cli") return "gemini_cli";
   if (normalized === "lmstudio") return "lmstudio";
   if (normalized === "ollama") return "ollama";
   if (normalized === "codex") return "codex";
@@ -487,7 +548,7 @@ function normalizeModelForProvider(
   provider: LlmProvider,
   model: string,
 ): string {
-  if (provider !== "gemini") return model;
+  if (provider !== "gemini" && provider !== "gemini_cli") return model;
   return normalizeGeminiModelName(model) || model;
 }
 
@@ -500,7 +561,9 @@ function normalizeGeminiModelName(value: string): string {
 
 function getPreferredModel(provider: LlmProvider): string | null {
   if (provider === "openai") return "gpt-5.4-mini";
-  if (provider === "gemini") return "google/gemini-3-flash-preview";
+  if (provider === "gemini" || provider === "gemini_cli") {
+    return "google/gemini-3-flash-preview";
+  }
   return null;
 }
 

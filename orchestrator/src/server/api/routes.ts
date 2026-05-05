@@ -21,6 +21,7 @@ import { settingsRouter } from "./routes/settings";
 import { tracerLinksRouter } from "./routes/tracer-links";
 import { visaSponsorsRouter } from "./routes/visa-sponsors";
 import { webhookRouter } from "./routes/webhook";
+import { workspacesRouter } from "./routes/workspaces";
 
 export const apiRouter = Router();
 
@@ -40,5 +41,6 @@ apiRouter.use("/visa-sponsors", visaSponsorsRouter);
 apiRouter.use("/onboarding", onboardingRouter);
 apiRouter.use("/backups", backupRouter);
 apiRouter.use("/tracer-links", tracerLinksRouter);
+apiRouter.use("/workspaces", workspacesRouter);
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/", extractorHealthRouter);

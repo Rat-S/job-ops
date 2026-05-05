@@ -13,6 +13,7 @@ Ghostwriter uses:
 
 - current job description and metadata
 - reduced profile snapshot
+- selected job notes when you choose them in the composer
 - global writing style settings
 - the configurable Ghostwriter system prompt template from Settings
 
@@ -35,9 +36,24 @@ Typical use cases:
 1. Open a job in `discovered` or `ready`.
 2. Open the Ghostwriter drawer.
 3. On desktop, use the header expand button to open pop-up mode and the restore button to return to drawer mode.
-4. Enter your prompt and stream a response.
-5. Use the `Copy` button on any completed Ghostwriter reply to copy the full output.
-6. Stop or regenerate responses when needed.
+4. Use the `Notes` selector near the composer to choose job notes Ghostwriter should include as extra context.
+5. Enter your prompt and stream a response.
+6. Use the `Copy` button on any completed Ghostwriter reply to copy the full output.
+7. Stop or regenerate responses when needed.
+
+### Note context
+
+The note selector uses existing job notes only. Save email details, interview transcripts, recruiter names, or preparation notes as job notes first, then select them in Ghostwriter.
+
+Selected notes are remembered for the job's Ghostwriter conversation. New prompts, edits, and regenerations use the current selection.
+
+Limits:
+
+- Up to 8 selected notes.
+- Each note contributes up to 3,000 characters.
+- Selected notes contribute up to 12,000 characters total.
+
+The UI shows an `8 note limit` footer when you reach the selection cap. Oversized selected notes show `Trimmed for AI`, and the selector warns when the total selected note content exceeds the context budget.
 
 ### Writing style settings impact
 
@@ -47,6 +63,7 @@ Global settings affecting generations:
 - `Formality`
 - `Constraints`
 - `Do-not-use terms`
+- `Use Stop Slop for Ghostwriter`
 
 Ghostwriter follows the output language you request in your prompt. For example, `Ecris en français` should produce a French reply.
 
@@ -59,23 +76,28 @@ less reliable, but reset restores the default template quickly.
 
 `Do-not-use terms` are passed as guidance in the prompt. They are not enforced by a hard post-generation filter, so the model should avoid them but may still use them occasionally.
 
+`Use Stop Slop for Ghostwriter` adds extra Ghostwriter-only instructions based on the Stop Slop skill. When enabled, Ghostwriter revises toward direct active voice, cuts filler and formulaic AI phrasing, avoids vague claims, and removes em dashes. It does not change resume tailoring.
+
 Defaults:
 
 - Tone: `professional`
 - Formality: `medium`
 - Constraints: empty
 - Do-not-use terms: empty
+- Use Stop Slop for Ghostwriter: disabled
 
 ### Context and safety model
 
 - Job snapshot is truncated to fit prompt budget.
 - Profile snapshot includes relevant slices only.
+- Selected notes are truncated to the note-context limits shown in the UI.
 - System prompt enforces read-only assistant behavior.
 - Logging stores metadata, not full prompt/response dumps.
 
 ### API surface
 
 - `GET /api/jobs/:id/chat/messages`
+- `PATCH /api/jobs/:id/chat/context`
 - `POST /api/jobs/:id/chat/messages` (streaming)
 - `POST /api/jobs/:id/chat/runs/:runId/cancel`
 - `POST /api/jobs/:id/chat/messages/:assistantMessageId/regenerate` (streaming)
@@ -100,7 +122,8 @@ Compatibility thread endpoints remain, but UI behavior is one thread per job.
 ### Missing context in answers
 
 - Update profile data and relevant project details used by Ghostwriter context.
-- Regenerate after updating job notes/description.
+- Save extra context as job notes, select those notes in Ghostwriter, then regenerate.
+- Regenerate after updating job notes or the job description.
 
 ### I need more reading space for long drafts
 

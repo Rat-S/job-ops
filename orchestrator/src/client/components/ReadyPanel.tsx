@@ -1,3 +1,4 @@
+import { showErrorToast } from "@/client/lib/error-toast";
 /**
  * ReadyPanel - Optimized "shipping lane" view for Ready jobs.
  *
@@ -27,6 +28,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { uploadJobPdfFromFile } from "@/client/lib/job-pdf-upload";
+import { downloadJobPdf, openJobPdf } from "@/client/lib/private-pdf";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -144,10 +146,6 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
   }, [onTailoringDirtyChange]);
 
   // Compute derived values
-  const pdfHref = job
-    ? `/pdfs/resume_${job.id}.pdf?v=${encodeURIComponent(job.updatedAt)}`
-    : "#";
-
   const jobLink = job ? job.applicationLink || job.jobUrl : "#";
 
   const selectedProjectIds = useMemo(() => {
@@ -157,6 +155,21 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
     () => (job ? buildReadyPanelGoogleDorks(job) : []),
     [job],
   );
+  const pdfFilename = `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(job?.employer || "Unknown")}.pdf`;
+
+  const handleOpenPdf = useCallback(() => {
+    if (!job) return;
+    void openJobPdf(job.id).catch((error) => {
+      showErrorToast(error, "Could not open PDF");
+    });
+  }, [job]);
+
+  const handleDownloadPdf = useCallback(() => {
+    if (!job) return;
+    void downloadJobPdf(job.id, pdfFilename).catch((error) => {
+      showErrorToast(error, "Could not download PDF");
+    });
+  }, [job, pdfFilename]);
 
   const handleUndoApplied = useCallback(
     async (jobId: string) => {
@@ -183,9 +196,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
           from_status: "applied",
           to_status: "ready",
         });
-        const message =
-          error instanceof Error ? error.message : "Failed to undo";
-        toast.error(message);
+        showErrorToast(error, "Failed to undo");
       }
     },
     [onJobUpdated, recentlyApplied],
@@ -236,9 +247,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         from_status: job.status,
         to_status: "applied",
       });
-      const message =
-        error instanceof Error ? error.message : "Failed to mark as applied";
-      toast.error(message);
+      showErrorToast(error, "Failed to mark as applied");
     } finally {
       setIsMarkingApplied(false);
     }
@@ -263,9 +272,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         result: "error",
         from_status: job.status,
       });
-      const message =
-        error instanceof Error ? error.message : "Failed to regenerate PDF";
-      toast.error(message);
+      showErrorToast(error, "Failed to regenerate PDF");
     } finally {
       setIsRegenerating(false);
     }
@@ -297,8 +304,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         from_status: job.status,
         to_status: "skipped",
       });
-      const message = error instanceof Error ? error.message : "Failed to skip";
-      toast.error(message);
+      showErrorToast(error, "Failed to skip");
     }
   }, [job, onJobMoved, onJobUpdated, skipJobMutation]);
 
@@ -325,9 +331,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         toast.success(job.pdfPath ? "PDF replaced" : "PDF attached");
         await onJobUpdated();
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Failed to upload PDF";
-        toast.error(message);
+        showErrorToast(error, "Failed to upload PDF");
       } finally {
         setIsUploadingPdf(false);
         if (uploadPdfInputRef.current) {
@@ -358,9 +362,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
         result: "error",
         from_status: job.status,
       });
-      const message =
-        error instanceof Error ? error.message : "Failed to regenerate PDF";
-      toast.error(message);
+      showErrorToast(error, "Failed to regenerate PDF");
     } finally {
       setIsRegenerating(false);
     }
@@ -435,18 +437,13 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
 
           {/* Download PDF - primary artifact action */}
           <Button
-            asChild
             variant="outline"
             className="h-9 w-full gap-1 px-2 text-xs"
+            onClick={handleDownloadPdf}
           >
-            <a
-              href={pdfHref}
-              download={`${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(job.employer || "Unknown")}.pdf`}
-            >
-              <Download className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Download PDF</span>
-              <KbdHint shortcut="d" className="ml-auto" />
-            </a>
+            <Download className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Download PDF</span>
+            <KbdHint shortcut="d" className="ml-auto" />
           </Button>
 
           {/* Open job - to verify before applying */}
@@ -615,11 +612,7 @@ export const ReadyPanel: React.FC<ReadyPanelProps> = ({
             <DropdownMenuSeparator />
 
             {/* Utility actions */}
-            <DropdownMenuItem
-              onSelect={() =>
-                window.open(pdfHref, "_blank", "noopener,noreferrer")
-              }
-            >
+            <DropdownMenuItem onSelect={handleOpenPdf}>
               <FileText className="mr-2 h-4 w-4" />
               View PDF
             </DropdownMenuItem>

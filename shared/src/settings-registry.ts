@@ -38,7 +38,9 @@ function parseJsonArrayOrNull(raw: string | undefined): string[] | null {
 
 function parseBitBoolOrNull(raw: string | undefined): boolean | null {
   if (!raw) return null;
-  return raw === "true" || raw === "1";
+  if (raw === "true" || raw === "1") return true;
+  if (raw === "false" || raw === "0") return false;
+  return null;
 }
 
 function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
@@ -66,7 +68,7 @@ export function getDefaultModelForProvider(
     return DEFAULT_OPENAI_MODEL;
   }
 
-  if (normalizedProvider === "gemini") {
+  if (normalizedProvider === "gemini" || normalizedProvider === "gemini_cli") {
     return DEFAULT_GEMINI_MODEL;
   }
 
@@ -187,6 +189,7 @@ export const settingsRegistry = {
           "openai",
           "openai_compatible",
           "gemini",
+          "gemini_cli",
           "codex",
         ])
         .nullable(),
@@ -325,6 +328,32 @@ export const settingsRegistry = {
     parse: parseIntOrNull,
     serialize: serializeNullableNumber,
   },
+  naukriMaxJobsPerTerm: {
+    kind: "typed" as const,
+    schema: z.number().int().min(1).max(1000),
+    default: (): number =>
+      parseInt(
+        typeof process !== "undefined"
+          ? process.env.NAUKRI_MAX_JOBS_PER_TERM || "50"
+          : "50",
+        10,
+      ),
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
+  jobindexMaxJobsPerTerm: {
+    kind: "typed" as const,
+    schema: z.number().int().min(1).max(1000),
+    default: (): number =>
+      parseInt(
+        typeof process !== "undefined"
+          ? process.env.JOBINDEX_MAX_JOBS_PER_TERM || "50"
+          : "50",
+        10,
+      ),
+    parse: parseIntOrNull,
+    serialize: serializeNullableNumber,
+  },
   searchTerms: {
     kind: "typed" as const,
     schema: z.array(z.string().trim().min(1).max(200)).max(100),
@@ -373,6 +402,13 @@ export const settingsRegistry = {
     parse: parseNonEmptyStringOrNull,
     serialize: (value: string | null | undefined): string | null =>
       value ?? null,
+  },
+  ghostwriterStopSlopEnabled: {
+    kind: "typed" as const,
+    schema: z.boolean(),
+    default: (): boolean => false,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
   },
   tailoringPromptTemplate: {
     kind: "typed" as const,

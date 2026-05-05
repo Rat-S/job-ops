@@ -77,11 +77,14 @@ function formatMarkdownEntry(entry: LlmLogEntry): string {
   const lines: string[] = [];
 
   lines.push(`---`);
-  lines.push(`## [${entry.timestamp}] - ${entry.context?.operation || 'LLM Call'}`);
+  lines.push(
+    `## [${entry.timestamp}] - ${entry.context?.operation || "LLM Call"}`,
+  );
   lines.push(``);
   lines.push(`**Model:** ${entry.model}`);
   if (entry.context?.jobId) lines.push(`**Job ID:** ${entry.context.jobId}`);
-  if (entry.context?.pipelineRunId) lines.push(`**Pipeline Run ID:** ${entry.context.pipelineRunId}`);
+  if (entry.context?.pipelineRunId)
+    lines.push(`**Pipeline Run ID:** ${entry.context.pipelineRunId}`);
   lines.push(``);
 
   // Request section
@@ -115,10 +118,13 @@ function formatMarkdownEntry(entry: LlmLogEntry): string {
   // Response section
   lines.push(`### Response`);
   lines.push(`**Success:** ${entry.response.success}`);
-  if (entry.metadata?.duration) lines.push(`**Duration:** ${entry.metadata.duration}ms`);
+  if (entry.metadata?.duration)
+    lines.push(`**Duration:** ${entry.metadata.duration}ms`);
   if (entry.metadata?.tokens) {
     const t = entry.metadata.tokens;
-    lines.push(`**Tokens:** Input=${t.input ?? 'N/A'}, Output=${t.output ?? 'N/A'}, Total=${t.total ?? 'N/A'}`);
+    lines.push(
+      `**Tokens:** Input=${t.input ?? "N/A"}, Output=${t.output ?? "N/A"}, Total=${t.total ?? "N/A"}`,
+    );
   }
   lines.push(``);
 

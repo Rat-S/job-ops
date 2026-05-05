@@ -5,6 +5,7 @@ import { ItemDialog } from "@client/components/design-resume/ItemDialog";
 import { PageHeader, PageMain } from "@client/components/layout";
 import { useDesignResume } from "@client/hooks/useDesignResume";
 import { useSettings } from "@client/hooks/useSettings";
+import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
 import type {
   DesignResumeDocument,
   DesignResumeJson,
@@ -22,6 +23,8 @@ import {
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
+import { downloadDesignResumePdf } from "@/client/lib/private-pdf";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,6 +64,7 @@ export const DesignResumePage: React.FC = () => {
   const queryClient = useQueryClient();
   const { document, status, isLoading, error } = useDesignResume();
   const { settings, isLoading: settingsLoading } = useSettings();
+  const { readiness: tracerReadiness } = useTracerReadiness();
   const [draft, setDraft] = useState<DesignResumeDocument | null>(null);
   const [saveState, setSaveState] = useState<
     "idle" | "saving" | "saved" | "error"
@@ -85,6 +89,10 @@ export const DesignResumePage: React.FC = () => {
 
   const pdfRenderer = settings?.pdfRenderer?.value ?? "rxresume";
   const canDownloadPdf = status?.exists && !pdfDownloading;
+  const pictureEnabled = Boolean(tracerReadiness?.isPubliclyAvailable);
+  const pictureDisabledReason =
+    tracerReadiness?.reason ??
+    "Pictures require JobOps to be reachable at a public URL.";
 
   useEffect(() => {
     if (!document) return;
@@ -140,9 +148,7 @@ export const DesignResumePage: React.FC = () => {
         setSaveState("idle");
       } catch (saveError) {
         setSaveState("error");
-        toast.error(
-          formatUserFacingError(saveError, "Failed to save Design Resume."),
-        );
+        showErrorToast(saveError, "Failed to save Design Resume.");
       }
     }, 700);
 
@@ -243,9 +249,7 @@ export const DesignResumePage: React.FC = () => {
       toast.success("Imported your resume.");
     } catch (importError) {
       setSaveState("error");
-      toast.error(
-        formatUserFacingError(importError, "Failed to import your resume."),
-      );
+      showErrorToast(importError, "Failed to import your resume.");
     }
   };
 
@@ -277,12 +281,7 @@ export const DesignResumePage: React.FC = () => {
       toast.success("Imported your resume file.");
     } catch (importError) {
       setSaveState("error");
-      toast.error(
-        formatUserFacingError(
-          importError,
-          "Failed to import your resume file.",
-        ),
-      );
+      showErrorToast(importError, "Failed to import your resume file.");
     } finally {
       setResumeImporting(false);
       if (importFileInputRef.current) {
@@ -297,9 +296,7 @@ export const DesignResumePage: React.FC = () => {
       makeDownload(exported.fileName, exported.document);
       toast.success("Exported your resume JSON.");
     } catch (exportError) {
-      toast.error(
-        formatUserFacingError(exportError, "Failed to export Design Resume."),
-      );
+      showErrorToast(exportError, "Failed to export Design Resume.");
     }
   };
 
@@ -307,33 +304,33 @@ export const DesignResumePage: React.FC = () => {
     try {
       setPdfDownloading(true);
       const generated = await api.generateDesignResumePdf();
-      const anchor = window.document.createElement("a");
-      anchor.href = generated.pdfUrl;
-      anchor.download = generated.fileName;
-      anchor.click();
+      await downloadDesignResumePdf(generated.fileName);
       toast.success("Your PDF is ready.");
     } catch (downloadError) {
-      toast.error(
-        formatUserFacingError(downloadError, "Failed to generate a PDF."),
-      );
+      showErrorToast(downloadError, "Failed to generate a PDF.");
     } finally {
       setPdfDownloading(false);
     }
   };
 
   const handleUploadPicture = async (file: File) => {
+    if (!pictureEnabled) {
+      toast.error(pictureDisabledReason);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     try {
       setPictureUploading(true);
       const latestDraft = await ensureLatestPersistedDraft();
       if (!latestDraft) return;
 
-      const dataUrl = await fileToDataUrl(file);
       const editVersionAtStart = editVersionRef.current;
-      const updated = await api.uploadDesignResumePicture({
-        fileName: file.name,
-        dataUrl,
+      const updated = await api.uploadDesignResumePictureFile({
+        file,
         baseRevision: latestDraft.revision,
-        document: latestDraft.resumeJson,
       });
       if (editVersionRef.current === editVersionAtStart) {
         setDesignResume(updated);
@@ -351,9 +348,7 @@ export const DesignResumePage: React.FC = () => {
       }
       toast.success("Picture uploaded.");
     } catch (uploadError) {
-      toast.error(
-        formatUserFacingError(uploadError, "Failed to upload picture."),
-      );
+      showErrorToast(uploadError, "Failed to upload picture.");
     } finally {
       setPictureUploading(false);
       if (fileInputRef.current) {
@@ -388,9 +383,7 @@ export const DesignResumePage: React.FC = () => {
       }
       toast.success("Picture removed.");
     } catch (deleteError) {
-      toast.error(
-        formatUserFacingError(deleteError, "Failed to delete picture."),
-      );
+      showErrorToast(deleteError, "Failed to delete picture.");
     }
   };
 
@@ -409,12 +402,7 @@ export const DesignResumePage: React.FC = () => {
           : "React Resume Renderer is now active.",
       );
     } catch (updateError) {
-      toast.error(
-        formatUserFacingError(
-          updateError,
-          "Failed to update the resume template.",
-        ),
-      );
+      showErrorToast(updateError, "Failed to update the resume template.");
     } finally {
       setRendererUpdating(false);
     }
@@ -454,6 +442,8 @@ export const DesignResumePage: React.FC = () => {
       onUploadPicture={() => fileInputRef.current?.click()}
       onDeletePicture={handleDeletePicture}
       pictureUploading={pictureUploading}
+      pictureEnabled={pictureEnabled}
+      pictureDisabledReason={pictureDisabledReason}
     />
   ) : null;
 

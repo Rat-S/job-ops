@@ -12,12 +12,14 @@ const LOG_FILE = `./logs/tailoring_requests_${Date.now()}.jsonl`;
 
 function logToFile(entry: Record<string, unknown>) {
   try {
-    const line = JSON.stringify({ ...entry, _loggedAt: new Date().toISOString() }) + "\n";
+    const line =
+      JSON.stringify({ ...entry, _loggedAt: new Date().toISOString() }) + "\n";
     appendFileSync(LOG_FILE, line);
   } catch {
     // Silent fail - file logging is best effort
   }
 }
+
 import type { JsonSchemaDefinition } from "./llm/types";
 import { createLlmLogEntry, logLlmCall } from "./llm-logging";
 import { resolveLlmModel } from "./modelSelection";
@@ -69,7 +71,8 @@ const JSON_RESUME_TAILORING_SEQUENTIAL_SUMMARY_SCHEMA: JsonSchemaDefinition = {
     properties: {
       summary: {
         type: "string",
-        description: "Tailored resume summary paragraph (max 3 sentences, ~60 words)",
+        description:
+          "Tailored resume summary paragraph (max 3 sentences, ~60 words)",
       },
     },
     required: ["summary"],
@@ -85,14 +88,22 @@ const JSON_RESUME_TAILORING_SEQUENTIAL_WORK_SCHEMA: JsonSchemaDefinition = {
     properties: {
       work: {
         type: "array",
-        description: "Work experience with tailored bullet points (company, position, dates are static from master resume)",
+        description:
+          "Work experience with tailored bullet points (company, position, dates are static from master resume)",
         items: {
           type: "object",
           properties: {
-            summary: { type: "string", description: "Job summary paragraph (max 2 sentences, ~40 words)" },
+            summary: {
+              type: "string",
+              description: "Job summary paragraph (max 2 sentences, ~40 words)",
+            },
             highlights: {
               type: "array",
-              items: { type: "string", description: "Tailored bullet points for this role (max 3 bullets, ~15 words each)" },
+              items: {
+                type: "string",
+                description:
+                  "Tailored bullet points for this role (max 3 bullets, ~15 words each)",
+              },
             },
           },
         },
@@ -104,88 +115,119 @@ const JSON_RESUME_TAILORING_SEQUENTIAL_WORK_SCHEMA: JsonSchemaDefinition = {
 };
 
 /** JSON schema for sequential tailoring - call 3: supporting sections */
-const JSON_RESUME_TAILORING_SEQUENTIAL_SUPPORTING_SCHEMA: JsonSchemaDefinition = {
-  name: "json_resume_tailoring_sequential_supporting",
-  schema: {
-    type: "object",
-    properties: {
-      education: {
-        type: "array",
-        description: "Education with tailored courses (institution, area, dates are static from master resume)",
-        items: {
+const JSON_RESUME_TAILORING_SEQUENTIAL_SUPPORTING_SCHEMA: JsonSchemaDefinition =
+  {
+    name: "json_resume_tailoring_sequential_supporting",
+    schema: {
+      type: "object",
+      properties: {
+        education: {
+          type: "array",
+          description:
+            "Education with tailored courses (institution, area, dates are static from master resume)",
+          items: {
+            type: "object",
+            properties: {
+              courses: {
+                type: "array",
+                items: {
+                  type: "string",
+                  description: "Tailored coursework bullet points",
+                },
+              },
+            },
+          },
+        },
+        projects: {
+          type: "array",
+          description:
+            "Selected and tailored projects (names, dates are static from master resume)",
+          items: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+                description: "Project name (must match master resume exactly)",
+              },
+              description: {
+                type: "string",
+                description: "Tailored project description",
+              },
+              keywords: {
+                type: "array",
+                items: {
+                  type: "string",
+                  description: "Relevant keywords for this project",
+                },
+              },
+            },
+          },
+        },
+        skills: {
+          type: "array",
+          description: "Selected skills with proof points",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string", description: "Skill category name" },
+              keywords: {
+                type: "array",
+                items: {
+                  type: "string",
+                  description: "Selected skills in this category",
+                },
+              },
+              proofPoint: {
+                type: "string",
+                description:
+                  "1-sentence evidence demonstrating this skill from work history",
+              },
+            },
+          },
+        },
+        certifications: {
+          type: "array",
+          description:
+            "Selected certifications (name, issuer, date are static from master resume)",
+          items: {
+            type: "object",
+            properties: {
+              name: {
+                type: "string",
+                description:
+                  "Certification name (must match master resume exactly)",
+              },
+              issuer: {
+                type: "string",
+                description: "Issuer name (must match master resume exactly)",
+              },
+              date: {
+                type: "string",
+                description:
+                  "Certification date (must match master resume exactly)",
+              },
+            },
+          },
+        },
+        metadata: {
           type: "object",
           properties: {
-            courses: {
+            pageCount: {
+              type: "number",
+              description: "Estimated page count (2 or 3)",
+            },
+            selectedSkills: {
               type: "array",
-              items: { type: "string", description: "Tailored coursework bullet points" },
+              items: { type: "string" },
+              description: "Top 5 skills selected for this role",
             },
           },
         },
       },
-      projects: {
-        type: "array",
-        description: "Selected and tailored projects (names, dates are static from master resume)",
-        items: {
-          type: "object",
-          properties: {
-            name: { type: "string", description: "Project name (must match master resume exactly)" },
-            description: { type: "string", description: "Tailored project description" },
-            keywords: {
-              type: "array",
-              items: { type: "string", description: "Relevant keywords for this project" },
-            },
-          },
-        },
-      },
-      skills: {
-        type: "array",
-        description: "Selected skills with proof points",
-        items: {
-          type: "object",
-          properties: {
-            name: { type: "string", description: "Skill category name" },
-            keywords: {
-              type: "array",
-              items: { type: "string", description: "Selected skills in this category" },
-            },
-            proofPoint: {
-              type: "string",
-              description: "1-sentence evidence demonstrating this skill from work history",
-            },
-          },
-        },
-      },
-      certifications: {
-        type: "array",
-        description: "Selected certifications (name, issuer, date are static from master resume)",
-        items: {
-          type: "object",
-          properties: {
-            name: { type: "string", description: "Certification name (must match master resume exactly)" },
-            issuer: { type: "string", description: "Issuer name (must match master resume exactly)" },
-            date: { type: "string", description: "Certification date (must match master resume exactly)" },
-          },
-        },
-      },
-      metadata: {
-        type: "object",
-        properties: {
-          pageCount: {
-            type: "number",
-            description: "Estimated page count (2 or 3)",
-          },
-          selectedSkills: {
-            type: "array",
-            items: { type: "string" },
-            description: "Top 5 skills selected for this role",
-          },
-        },
-      },
+      required: ["metadata"],
+      additionalProperties: false,
     },
-    required: ["metadata"],
-    additionalProperties: false,
-  },
-};
+  };
 
 /**
  * Convert JSON resume data to compact markdown format for token efficiency.
@@ -205,7 +247,9 @@ function convertToCompactFormat(data: Record<string, unknown>): string {
     if (basics.location && typeof basics.location === "object") {
       const loc = basics.location as Record<string, unknown>;
       if (loc.city || loc.countryCode) {
-        lines.push(`Location: ${[loc.city, loc.countryCode].filter(Boolean).join(", ")}`);
+        lines.push(
+          `Location: ${[loc.city, loc.countryCode].filter(Boolean).join(", ")}`,
+        );
       }
     }
     if (basics.profiles && Array.isArray(basics.profiles)) {
@@ -233,7 +277,8 @@ function convertToCompactFormat(data: Record<string, unknown>): string {
       const parts = [];
       if (w.company) parts.push(w.company);
       if (w.position) parts.push(`- ${w.position}`);
-      if (w.startDate || w.endDate) parts.push(`(${w.startDate} - ${w.endDate})`);
+      if (w.startDate || w.endDate)
+        parts.push(`(${w.startDate} - ${w.endDate})`);
       lines.push(parts.join(" "));
       if (w.summary && typeof w.summary === "string") {
         lines.push(`  ${w.summary}`);
@@ -255,7 +300,8 @@ function convertToCompactFormat(data: Record<string, unknown>): string {
       if (e.institution) parts.push(e.institution);
       if (e.area) parts.push(`- ${e.area}`);
       if (e.studyType) parts.push(`(${e.studyType})`);
-      if (e.startDate || e.endDate) parts.push(`(${e.startDate} - ${e.endDate})`);
+      if (e.startDate || e.endDate)
+        parts.push(`(${e.startDate} - ${e.endDate})`);
       lines.push(parts.join(" "));
       if (e.courses && Array.isArray(e.courses)) {
         lines.push("  Courses:");
@@ -273,7 +319,8 @@ function convertToCompactFormat(data: Record<string, unknown>): string {
     (data.projects as Array<Record<string, unknown>>).forEach((p) => {
       const parts = [];
       if (p.name) parts.push(p.name);
-      if (p.startDate || p.endDate) parts.push(`(${p.startDate} - ${p.endDate})`);
+      if (p.startDate || p.endDate)
+        parts.push(`(${p.startDate} - ${p.endDate})`);
       lines.push(parts.join(" "));
       if (p.description && typeof p.description === "string") {
         lines.push(`  ${p.description}`);
@@ -300,7 +347,9 @@ function convertToCompactFormat(data: Record<string, unknown>): string {
   }
 
   // Handle certifications (or awards - master resume uses awards)
-  const certifications = (data.certifications || data.awards) as Array<Record<string, unknown>> | undefined;
+  const certifications = (data.certifications || data.awards) as
+    | Array<Record<string, unknown>>
+    | undefined;
   if (certifications && Array.isArray(certifications)) {
     lines.push("## Certifications");
     certifications.forEach((c) => {
@@ -327,8 +376,11 @@ async function callPythonTailoringService(
 ): Promise<TailoringResult | null> {
   // Immediate log to confirm this function is being called
   // eslint-disable-next-line no-console
-  console.log("[TYPESCRIPT] >>> CALLING PYTHON SERVICE for job:", context?.jobId);
-  
+  console.log(
+    "[TYPESCRIPT] >>> CALLING PYTHON SERVICE for job:",
+    context?.jobId,
+  );
+
   try {
     const writingStyle = await getWritingStyle();
     const constraints = {
@@ -336,7 +388,8 @@ async function callPythonTailoringService(
       targetKeywords: input.constraints?.targetKeywords ?? [],
     };
 
-    const pythonServiceUrl = process.env.PYTHON_TAILORING_SERVICE_URL ?? "http://localhost:8000";
+    const pythonServiceUrl =
+      process.env.PYTHON_TAILORING_SERVICE_URL ?? "http://localhost:8000";
     const response = await fetch(`${pythonServiceUrl}/tailor`, {
       method: "POST",
       headers: {
@@ -363,32 +416,41 @@ async function callPythonTailoringService(
     }
 
     const result = await response.json();
-    
+
     // Log what we received from Python service
     const summaryReceived = result.data?.tailoredResumeJson?.summary;
     logger.info("Python service response received", {
       jobId: context?.jobId,
       success: result.success,
       hasSummary: !!summaryReceived,
-      summaryPreview: typeof summaryReceived === "string" ? summaryReceived.substring(0, 100) : "(none)",
+      summaryPreview:
+        typeof summaryReceived === "string"
+          ? summaryReceived.substring(0, 100)
+          : "(none)",
     });
     // eslint-disable-next-line no-console
-    console.log("[TYPESCRIPT] Python response:", { 
-      success: result.success, 
+    console.log("[TYPESCRIPT] Python response:", {
+      success: result.success,
       hasSummary: !!summaryReceived,
-      summaryPreview: typeof summaryReceived === "string" ? summaryReceived.substring(0, 150) : "(none)"
+      summaryPreview:
+        typeof summaryReceived === "string"
+          ? summaryReceived.substring(0, 150)
+          : "(none)",
     });
-    
+
     // Log to file for debugging
     logToFile({
       type: "python_service_response",
       jobId: context?.jobId,
       success: result.success,
       hasSummary: !!summaryReceived,
-      summaryPreview: typeof summaryReceived === "string" ? summaryReceived.substring(0, 500) : "(none)",
+      summaryPreview:
+        typeof summaryReceived === "string"
+          ? summaryReceived.substring(0, 500)
+          : "(none)",
       fullResponse: result,
     });
-    
+
     if (result.success && result.data) {
       return {
         success: true,
@@ -404,12 +466,18 @@ async function callPythonTailoringService(
       };
     }
 
-    return { success: false, error: result.error || "Unknown error from Python service" };
+    return {
+      success: false,
+      error: result.error || "Unknown error from Python service",
+    };
   } catch (error) {
-    logger.warn("Python tailoring service unavailable, falling back to TypeScript implementation", {
-      jobId: context?.jobId,
-      error: error instanceof Error ? error.message : String(error),
-    });
+    logger.warn(
+      "Python tailoring service unavailable, falling back to TypeScript implementation",
+      {
+        jobId: context?.jobId,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
     return null;
   }
 }
@@ -420,7 +488,7 @@ async function callPythonTailoringService(
  * 2. Work (with summary context)
  * 3. Supporting sections (with summary + work context)
  * Falls back to master resume data if any call fails.
- * 
+ *
  * First tries Python Tailoring Service (Instructor + Prefect), then falls back
  * to TypeScript implementation if unavailable.
  */
@@ -429,19 +497,26 @@ export async function generateJsonResumeTailoring(
   context?: { jobId?: string; pipelineRunId?: string },
 ): Promise<TailoringResult> {
   // eslint-disable-next-line no-console
-  console.log("[TYPESCRIPT] generateJsonResumeTailoring START for job:", context?.jobId);
-  
+  console.log(
+    "[TYPESCRIPT] generateJsonResumeTailoring START for job:",
+    context?.jobId,
+  );
+
   // Try Python service first
   const pythonResult = await callPythonTailoringService(input, context);
   // eslint-disable-next-line no-console
-  console.log("[TYPESCRIPT] Python result received:", pythonResult ? "YES" : "NO (null)");
-  
+  console.log(
+    "[TYPESCRIPT] Python result received:",
+    pythonResult ? "YES" : "NO (null)",
+  );
+
   if (pythonResult) {
     const summary = pythonResult.data?.tailoredResumeJson?.summary;
-    logger.info("Using Python Tailoring Service result", { 
+    logger.info("Using Python Tailoring Service result", {
       jobId: context?.jobId,
       hasSummary: !!summary,
-      summaryPreview: typeof summary === "string" ? summary.substring(0, 100) : "(none)",
+      summaryPreview:
+        typeof summary === "string" ? summary.substring(0, 100) : "(none)",
     });
     return pythonResult;
   }
@@ -449,8 +524,8 @@ export async function generateJsonResumeTailoring(
   // DISABLED: TypeScript fallback - Python service is required
   // eslint-disable-next-line no-console
   console.error("[TYPESCRIPT] PYTHON SERVICE FAILED - No fallback available");
-  return { 
-    success: false, 
-    error: `Python Tailoring Service failed: ${pythonResult === null ? 'Service unavailable or returned null' : 'Unknown error'}` 
+  return {
+    success: false,
+    error: `Python Tailoring Service failed: ${pythonResult === null ? "Service unavailable or returned null" : "Unknown error"}`,
   };
 }

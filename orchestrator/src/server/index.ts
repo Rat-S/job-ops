@@ -15,6 +15,7 @@ import {
   setBackupSettings,
   startBackupScheduler,
 } from "./services/backup/index";
+import { attachChallengeViewerUpgradeProxy } from "./services/challenge-viewer";
 import { initializeDemoModeServices } from "./services/demo-mode";
 import { applyStoredEnvOverrides } from "./services/envSettings";
 import { initializeHistoricalServerEventReplaySafely } from "./services/historical-product-analytics";
@@ -60,7 +61,7 @@ async function startServer() {
   const PORT = process.env.PORT || 3001;
 
   // Start server
-  app.listen(PORT, async () => {
+  const server = app.listen(PORT, async () => {
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
@@ -153,6 +154,7 @@ async function startServer() {
     void initializeHistoricalServerEventReplaySafely();
     void initializeActivationAnalyticsSafely();
   });
+  attachChallengeViewerUpgradeProxy(server);
 }
 
 void startServer();

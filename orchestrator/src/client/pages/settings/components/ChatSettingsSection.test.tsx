@@ -81,6 +81,7 @@ const ChatSettingsHarness = ({
       chatStyleDoNotUse: "",
       chatStyleLanguageMode: null,
       chatStyleManualLanguage: null,
+      ghostwriterStopSlopEnabled: null,
       chatStyleSummaryMaxWords: null,
       chatStyleMaxKeywordsPerSkill: null,
     },
@@ -97,6 +98,7 @@ const ChatSettingsHarness = ({
             doNotUse: { effective: "", default: "" },
             languageMode: { effective: "manual", default: "manual" },
             manualLanguage: { effective: "english", default: "english" },
+            stopSlopEnabled: { effective: false, default: false },
             summaryMaxWords: { effective: null, default: null },
             maxKeywordsPerSkill: { effective: null, default: null },
           }}
@@ -145,6 +147,15 @@ describe("ChatSettingsSection", () => {
       screen.queryByRole("combobox", { name: /specific language/i }),
     ).not.toBeInTheDocument();
     expect(screen.queryByDisplayValue("english")).not.toBeInTheDocument();
+  });
+
+  it("renders the Stop Slop Ghostwriter toggle", () => {
+    render(<ChatSettingsHarness />);
+
+    expect(
+      screen.getByLabelText("Use Stop Slop for Ghostwriter"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Effective: Disabled/)).toBeInTheDocument();
   });
 
   it("shows validation error when summary word limit is out of range", async () => {

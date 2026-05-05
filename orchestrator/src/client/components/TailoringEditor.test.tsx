@@ -56,6 +56,7 @@ describe("TailoringEditor", () => {
     _resetTracerReadinessCache();
     vi.mocked(api.getTracerReadiness).mockResolvedValue({
       status: "ready",
+      isPubliclyAvailable: true,
       canEnable: true,
       publicBaseUrl: "https://my-jobops.example.com",
       healthUrl: "https://my-jobops.example.com/health",
@@ -246,17 +247,18 @@ describe("TailoringEditor", () => {
     fireEvent.change(screen.getByLabelText("Keywords (comma-separated)"), {
       target: { value: "Node.js, TypeScript" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save Selection" }));
 
-    await waitFor(() =>
-      expect(api.updateJob).toHaveBeenCalledWith(
-        "job-1",
-        expect.objectContaining({
-          tailoredHeadline: "Updated headline",
-          tailoredSkills:
-            '[{"name":"Core","keywords":["Node.js","TypeScript"]}]',
-        }),
-      ),
+    await waitFor(
+      () =>
+        expect(api.updateJob).toHaveBeenCalledWith(
+          "job-1",
+          expect.objectContaining({
+            tailoredHeadline: "Updated headline",
+            tailoredSkills:
+              '[{"name":"Core","keywords":["Node.js","TypeScript"]}]',
+          }),
+        ),
+      { timeout: 2000 },
     );
   });
 
@@ -275,7 +277,7 @@ describe("TailoringEditor", () => {
       expect(api.getResumeProjectsCatalog).toHaveBeenCalled(),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "AI Summarize" }));
+    fireEvent.click(screen.getByRole("button", { name: "Draft Content" }));
 
     await waitFor(() => ensureAccordionOpen("Headline"));
     expect(screen.getByLabelText("Tailored Headline")).toHaveValue(
@@ -301,15 +303,16 @@ describe("TailoringEditor", () => {
     ensureAccordionOpen("Tracer Links");
 
     fireEvent.click(screen.getByLabelText("Enable tracer links for this job"));
-    fireEvent.click(screen.getByRole("button", { name: "Save Selection" }));
 
-    await waitFor(() =>
-      expect(api.updateJob).toHaveBeenCalledWith(
-        "job-1",
-        expect.objectContaining({
-          tracerLinksEnabled: true,
-        }),
-      ),
+    await waitFor(
+      () =>
+        expect(api.updateJob).toHaveBeenCalledWith(
+          "job-1",
+          expect.objectContaining({
+            tracerLinksEnabled: true,
+          }),
+        ),
+      { timeout: 2000 },
     );
   });
 

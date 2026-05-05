@@ -1,9 +1,14 @@
 import * as api from "@client/api";
 import { subscribeToEventSource } from "@client/lib/sse";
-import type { Job, JobListItem, JobStatus } from "@shared/types";
+import type {
+  Job,
+  JobListItem,
+  JobStatus,
+  PipelineProgressStep,
+} from "@shared/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { queryKeys } from "@/client/lib/queryKeys";
 
 const initialStats: Record<JobStatus, number> = {
@@ -18,16 +23,6 @@ const initialStats: Record<JobStatus, number> = {
 
 const isDocumentVisible = () =>
   typeof document === "undefined" || document.visibilityState === "visible";
-
-type PipelineProgressStep =
-  | "idle"
-  | "crawling"
-  | "importing"
-  | "scoring"
-  | "processing"
-  | "completed"
-  | "cancelled"
-  | "failed";
 
 type PipelineProgressEvent = {
   step: PipelineProgressStep;
@@ -52,6 +47,7 @@ type PipelineTerminalSnapshot = {
 
 const ACTIVE_PIPELINE_STEPS: ReadonlySet<PipelineProgressStep> = new Set([
   "crawling",
+  "challenge_required",
   "importing",
   "scoring",
   "processing",
@@ -182,11 +178,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
           setSelectedJob(fullJob);
         }
       } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to load selected job details";
-        toast.error(message);
+        showErrorToast(error, "Failed to load selected job details");
       }
     },
     [queryClient, selectedJobId],
@@ -206,9 +198,7 @@ export const useOrchestratorData = (selectedJobId: string | null) => {
         lastRevisionRef.current = data.revision;
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to load jobs";
-      toast.error(message);
+      showErrorToast(error, "Failed to load jobs");
     } finally {
       pendingLoadCountRef.current = Math.max(
         0,

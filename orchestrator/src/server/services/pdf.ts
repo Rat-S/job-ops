@@ -4,8 +4,6 @@
  */
 
 import { spawn } from "node:child_process";
-import { marked } from "marked";
-import puppeteer from "puppeteer";
 import { existsSync } from "node:fs";
 import { access, mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -14,6 +12,8 @@ import { logger } from "@infra/logger";
 import { getSetting } from "@server/repositories/settings";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { DesignResumePdfResponse, PdfRenderer } from "@shared/types";
+import { marked } from "marked";
+import puppeteer from "puppeteer";
 import { getDataDir } from "../config/dataDir";
 import { getCurrentDesignResume } from "./design-resume";
 import { renderResumePdf } from "./resume-renderer";
@@ -109,12 +109,7 @@ async function renderResumedPdf(args: {
     await writeFile(jsonPath, JSON.stringify(resumeJson, null, 2), "utf8");
 
     // Build resumed CLI arguments - use export command for PDF generation
-    const resumedArgs = [
-      "export",
-      jsonPath,
-      "-o",
-      outputPath,
-    ];
+    const resumedArgs = ["export", jsonPath, "-o", outputPath];
     if (theme) {
       resumedArgs.push("-t", theme);
     }
@@ -420,18 +415,27 @@ export async function generatePdf(
       const theme =
         settingsRegistry.jsonResumeTheme.parse(themeValue ?? undefined) ??
         settingsRegistry.jsonResumeTheme.default();
-      
+
       // Use complete tailoredResumeJson if available, otherwise use prepared resume
       let resumeJson = preparedResume.data;
       if (options?.tailoredResumeJson) {
         try {
-          resumeJson = JSON.parse(options.tailoredResumeJson) as Record<string, unknown>;
-          logger.info("Using complete tailoredResumeJson for resumed renderer", { jobId });
+          resumeJson = JSON.parse(options.tailoredResumeJson) as Record<
+            string,
+            unknown
+          >;
+          logger.info(
+            "Using complete tailoredResumeJson for resumed renderer",
+            { jobId },
+          );
         } catch (error) {
-          logger.warn("Failed to parse tailoredResumeJson, using prepared resume", { jobId, error });
+          logger.warn(
+            "Failed to parse tailoredResumeJson, using prepared resume",
+            { jobId, error },
+          );
         }
       }
-      
+
       // Ensure JSON Resume schema compatibility for resumed CLI
       if (Array.isArray(resumeJson.work)) {
         resumeJson.work = resumeJson.work.map((entry: any) => {
@@ -439,7 +443,10 @@ export async function generatePdf(
             if (entry.company && !entry.name) {
               entry.name = entry.company;
             }
-            if (typeof entry.endDate === "string" && entry.endDate.toLowerCase() === "present") {
+            if (
+              typeof entry.endDate === "string" &&
+              entry.endDate.toLowerCase() === "present"
+            ) {
               entry.endDate = "";
             }
           }
@@ -570,9 +577,13 @@ export async function generateCoverLetterPdf(
 
     // Build contact line from available fields
     const contactParts: string[] = [];
-    if (meta.candidateEmail) contactParts.push(`<a href="mailto:${meta.candidateEmail}">${meta.candidateEmail}</a>`);
+    if (meta.candidateEmail)
+      contactParts.push(
+        `<a href="mailto:${meta.candidateEmail}">${meta.candidateEmail}</a>`,
+      );
     if (meta.candidatePhone) contactParts.push(meta.candidatePhone);
-    if (meta.candidateLinkedIn) contactParts.push(`<a href="${meta.candidateLinkedIn}">LinkedIn</a>`);
+    if (meta.candidateLinkedIn)
+      contactParts.push(`<a href="${meta.candidateLinkedIn}">LinkedIn</a>`);
     const contactLine = contactParts.join(" &nbsp;|&nbsp; ");
 
     const letterheadHtml = `
@@ -678,7 +689,10 @@ export async function generateCoverLetterPdf(
 
     await browser.close();
 
-    logger.info("Cover letter PDF generated successfully", { jobId, outputPath });
+    logger.info("Cover letter PDF generated successfully", {
+      jobId,
+      outputPath,
+    });
     return { success: true, pdfPath: outputPath };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

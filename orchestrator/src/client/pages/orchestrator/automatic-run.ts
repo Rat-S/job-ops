@@ -10,6 +10,7 @@ import {
   serializeSearchCitiesSetting,
 } from "@shared/search-cities.js";
 import type { JobSource } from "@shared/types";
+import { getAuthScopedStorageKey } from "@/client/api/client";
 
 export type AutomaticPresetId = "fast" | "balanced" | "detailed";
 export type AutomaticPresetSelection = AutomaticPresetId | "custom";
@@ -84,6 +85,24 @@ export const AUTOMATIC_PRESETS: Record<
 
 export const RUN_MEMORY_STORAGE_KEY = "jobops.pipeline.run-memory.v1";
 
+export function getRunMemoryStorageKey(): string {
+  return getAuthScopedStorageKey(RUN_MEMORY_STORAGE_KEY);
+}
+
+function readRunMemoryStorage(): string | null {
+  const storageKey = getRunMemoryStorageKey();
+  const scoped = localStorage.getItem(storageKey);
+  if (scoped || storageKey === RUN_MEMORY_STORAGE_KEY) return scoped;
+  return localStorage.getItem(RUN_MEMORY_STORAGE_KEY);
+}
+
+function migrateLegacyRunMemoryStorage(raw: string): void {
+  const storageKey = getRunMemoryStorageKey();
+  if (storageKey === RUN_MEMORY_STORAGE_KEY) return;
+  if (localStorage.getItem(storageKey)) return;
+  localStorage.setItem(storageKey, raw);
+}
+
 export const SEARCH_SCOPE_OPTIONS: Array<{
   value: LocationSearchScope;
   label: string;
@@ -146,7 +165,9 @@ export interface ExtractorLimits {
   adzunaMaxJobsPerTerm: number;
   startupjobsMaxJobsPerTerm: number;
   workingnomadsMaxJobsPerTerm: number;
+  jobindexMaxJobsPerTerm: number;
   seekMaxJobsPerTerm: number;
+  naukriMaxJobsPerTerm: number;
 }
 
 export function inferAutomaticPresetSelection(args: {
@@ -201,7 +222,9 @@ export function deriveExtractorLimits(args: {
   const includesHiringCafe = args.sources.includes("hiringcafe");
   const includesStartupJobs = args.sources.includes("startupjobs");
   const includesWorkingNomads = args.sources.includes("workingnomads");
+  const includesJobindex = args.sources.includes("jobindex");
   const includesSeek = args.sources.includes("seek");
+  const includesNaukri = args.sources.includes("naukri");
 
   const weightedContributors =
     (includesIndeed ? termCount : 0) +
@@ -213,7 +236,9 @@ export function deriveExtractorLimits(args: {
     (includesHiringCafe ? termCount : 0) +
     (includesStartupJobs ? termCount : 0) +
     (includesWorkingNomads ? termCount : 0) +
-    (includesSeek ? termCount : 0);
+    (includesJobindex ? termCount : 0) +
+    (includesSeek ? termCount : 0) +
+    (includesNaukri ? termCount : 0);
 
   if (weightedContributors <= 0) {
     return {
@@ -223,7 +248,9 @@ export function deriveExtractorLimits(args: {
       adzunaMaxJobsPerTerm: budget,
       startupjobsMaxJobsPerTerm: budget,
       workingnomadsMaxJobsPerTerm: budget,
+      jobindexMaxJobsPerTerm: budget,
       seekMaxJobsPerTerm: budget,
+      naukriMaxJobsPerTerm: budget,
     };
   }
 
@@ -237,7 +264,9 @@ export function deriveExtractorLimits(args: {
     adzunaMaxJobsPerTerm: perUnit,
     startupjobsMaxJobsPerTerm: perUnit,
     workingnomadsMaxJobsPerTerm: perUnit,
+    jobindexMaxJobsPerTerm: perUnit,
     seekMaxJobsPerTerm: perUnit,
+    naukriMaxJobsPerTerm: perUnit,
   };
 }
 
@@ -323,7 +352,9 @@ export function calculateAutomaticEstimate(args: {
   const hasHiringCafe = sources.includes("hiringcafe");
   const hasStartupJobs = sources.includes("startupjobs");
   const hasWorkingNomads = sources.includes("workingnomads");
+  const hasJobindex = sources.includes("jobindex");
   const hasSeek = sources.includes("seek");
+  const hasNaukri = sources.includes("naukri");
   const limits = deriveExtractorLimits({
     budget: values.runBudget,
     searchTerms: values.searchTerms,
@@ -348,7 +379,11 @@ export function calculateAutomaticEstimate(args: {
   const workingNomadsCap = hasWorkingNomads
     ? limits.workingnomadsMaxJobsPerTerm * termCount
     : 0;
+  const jobindexCap = hasJobindex
+    ? limits.jobindexMaxJobsPerTerm * termCount
+    : 0;
   const seekCap = hasSeek ? limits.seekMaxJobsPerTerm * termCount : 0;
+  const naukriCap = hasNaukri ? limits.naukriMaxJobsPerTerm * termCount : 0;
 
   const discoveredCap =
     jobspyCap +
@@ -358,7 +393,9 @@ export function calculateAutomaticEstimate(args: {
     hiringCafeCap +
     startupJobsCap +
     workingNomadsCap +
-    seekCap;
+    jobindexCap +
+    seekCap +
+    naukriCap;
   const discoveredMin = Math.round(discoveredCap * 0.35);
   const discoveredMax = Math.round(discoveredCap * 0.75);
   const processedMin = Math.min(values.topN, discoveredMin);
@@ -379,7 +416,7 @@ export function calculateAutomaticEstimate(args: {
 
 export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
   try {
-    const raw = localStorage.getItem(RUN_MEMORY_STORAGE_KEY);
+    const raw = readRunMemoryStorage();
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (
@@ -400,6 +437,7 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
     const explicitPresetId = isAutomaticPresetSelection(parsed.presetId)
       ? parsed.presetId
       : null;
+    migrateLegacyRunMemoryStorage(raw);
 
     if (explicitPresetId && explicitPresetId !== "custom") {
       const preset = AUTOMATIC_PRESETS[explicitPresetId];
@@ -449,7 +487,7 @@ export function loadAutomaticRunMemory(): AutomaticRunMemory | null {
 
 export function saveAutomaticRunMemory(memory: AutomaticRunMemory): void {
   try {
-    localStorage.setItem(RUN_MEMORY_STORAGE_KEY, JSON.stringify(memory));
+    localStorage.setItem(getRunMemoryStorageKey(), JSON.stringify(memory));
   } catch {
     // Ignore localStorage failures
   }

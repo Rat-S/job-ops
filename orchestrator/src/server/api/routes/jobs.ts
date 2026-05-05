@@ -42,7 +42,6 @@ import {
 } from "@server/services/demo-simulator";
 import { uploadJobPdf } from "@server/services/job-pdf-upload";
 import { generateCoverLetterPdf } from "@server/services/pdf";
-import { generateCoverLetterPdf } from "@server/services/pdf";
 import { getProfile } from "@server/services/profile";
 import { scoreJobSuitability } from "@server/services/scorer";
 import { getTracerReadiness } from "@server/services/tracer-links";
@@ -1766,7 +1765,10 @@ jobsRouter.get("/:id/cover-letter/pdf", async (req: Request, res: Response) => {
     }
 
     if (!job.coverLetter) {
-      return fail(res, badRequest("Cover letter has not been generated for this job"));
+      return fail(
+        res,
+        badRequest("Cover letter has not been generated for this job"),
+      );
     }
 
     // Extract candidate basics from tailoredResumeJson for the letterhead
@@ -1776,14 +1778,25 @@ jobsRouter.get("/:id/cover-letter/pdf", async (req: Request, res: Response) => {
     let candidateLinkedIn: string | undefined;
     if (job.tailoredResumeJson) {
       try {
-        const resumeJson = JSON.parse(job.tailoredResumeJson) as Record<string, unknown>;
+        const resumeJson = JSON.parse(job.tailoredResumeJson) as Record<
+          string,
+          unknown
+        >;
         const basics = resumeJson.basics as Record<string, unknown> | undefined;
-        candidateName = (basics?.name || basics?.fullName) as string | undefined;
+        candidateName = (basics?.name || basics?.fullName) as
+          | string
+          | undefined;
         candidateEmail = basics?.email as string | undefined;
         candidatePhone = basics?.phone as string | undefined;
-        const profiles = basics?.profiles as Array<Record<string, string>> | undefined;
-        candidateLinkedIn = profiles?.find(p => p.network?.toLowerCase() === "linkedin")?.url;
-      } catch { /* ignore parse errors */ }
+        const profiles = basics?.profiles as
+          | Array<Record<string, string>>
+          | undefined;
+        candidateLinkedIn = profiles?.find(
+          (p) => p.network?.toLowerCase() === "linkedin",
+        )?.url;
+      } catch {
+        /* ignore parse errors */
+      }
     }
 
     const result = await generateCoverLetterPdf(job.id, job.coverLetter, {
@@ -1802,11 +1815,14 @@ jobsRouter.get("/:id/cover-letter/pdf", async (req: Request, res: Response) => {
           status: 500,
           code: "INTERNAL_ERROR",
           message: result.error ?? "Failed to generate cover letter PDF",
-        })
+        }),
       );
     }
 
-    res.download(result.pdfPath, `cover_letter_${job.employer.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
+    res.download(
+      result.pdfPath,
+      `cover_letter_${job.employer.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.pdf`,
+    );
   } catch (error) {
     fail(res, toAppError(error));
   }

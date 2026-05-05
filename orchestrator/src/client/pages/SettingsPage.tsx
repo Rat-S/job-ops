@@ -54,6 +54,8 @@ import {
 import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
+import { formatUserFacingError } from "@/client/lib/error-format";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { queryKeys } from "@/client/lib/queryKeys";
 import {
   Accordion,
@@ -84,6 +86,7 @@ const DEFAULT_FORM_VALUES: UpdateSettingsInput = {
   chatStyleFormality: "",
   chatStyleConstraints: "",
   chatStyleDoNotUse: "",
+  ghostwriterStopSlopEnabled: null,
   chatStyleSummaryMaxWords: null,
   chatStyleMaxKeywordsPerSkill: null,
   chatStyleLanguageMode: null,
@@ -145,7 +148,7 @@ type SettingsGroupId =
   | "ai"
   | "scoring"
   | "integrations"
-  | "accounts"
+  | "workspaces"
   | "display"
   | "backups"
   | "danger";
@@ -172,7 +175,15 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
         id: "model",
         label: "Models",
         description: "Provider, API credentials, and task-specific overrides.",
-        searchTerms: ["llm", "provider", "openai", "gemini", "ollama", "codex"],
+        searchTerms: [
+          "llm",
+          "provider",
+          "openai",
+          "gemini",
+          "gemini_cli",
+          "ollama",
+          "codex",
+        ],
       },
       {
         id: "chat",
@@ -227,12 +238,12 @@ const SETTINGS_NAV_GROUPS: SettingsNavGroup[] = [
     ],
   },
   {
-    id: "accounts",
-    label: "Accounts & Security",
+    id: "workspaces",
+    label: "Workspaces & Security",
     items: [
       {
         id: "environment",
-        label: "Accounts & Access",
+        label: "Workspace Access",
         description: "Service credentials and authentication protection.",
         searchTerms: ["security", "auth", "adzuna", "ukvisajobs"],
       },
@@ -294,6 +305,7 @@ const SECTION_FIELD_MAP: Record<
     "chatStyleFormality",
     "chatStyleConstraints",
     "chatStyleDoNotUse",
+    "ghostwriterStopSlopEnabled",
     "chatStyleLanguageMode",
     "chatStyleManualLanguage",
   ],
@@ -383,6 +395,7 @@ const NULL_SETTINGS_PAYLOAD: UpdateSettingsInput = {
   chatStyleFormality: null,
   chatStyleConstraints: null,
   chatStyleDoNotUse: null,
+  ghostwriterStopSlopEnabled: null,
   chatStyleSummaryMaxWords: null,
   chatStyleMaxKeywordsPerSkill: null,
   chatStyleLanguageMode: null,
@@ -436,6 +449,7 @@ const mapSettingsToForm = (data: AppSettings): UpdateSettingsInput => ({
   chatStyleFormality: data.chatStyleFormality.override ?? "",
   chatStyleConstraints: data.chatStyleConstraints.override ?? "",
   chatStyleDoNotUse: data.chatStyleDoNotUse.override ?? "",
+  ghostwriterStopSlopEnabled: data.ghostwriterStopSlopEnabled.override,
   chatStyleSummaryMaxWords: data.chatStyleSummaryMaxWords.override ?? null,
   chatStyleMaxKeywordsPerSkill:
     data.chatStyleMaxKeywordsPerSkill.override ?? null,
@@ -579,6 +593,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
         effective: settings?.chatStyleDoNotUse?.value ?? "",
         default: settings?.chatStyleDoNotUse?.default ?? "",
       },
+      stopSlopEnabled: {
+        effective: settings?.ghostwriterStopSlopEnabled?.value ?? false,
+        default: settings?.ghostwriterStopSlopEnabled?.default ?? false,
+      },
       languageMode: {
         effective: settings?.chatStyleLanguageMode?.value ?? "manual",
         default: settings?.chatStyleLanguageMode?.default ?? "manual",
@@ -674,8 +692,10 @@ const getDerivedSettings = (settings: AppSettings | null) => {
         default: settings?.jsonResumeTailoringSequentialWork?.default ?? "",
       },
       jsonResumeTailoringSequentialSupporting: {
-        effective: settings?.jsonResumeTailoringSequentialSupporting?.value ?? "",
-        default: settings?.jsonResumeTailoringSequentialSupporting?.default ?? "",
+        effective:
+          settings?.jsonResumeTailoringSequentialSupporting?.value ?? "",
+        default:
+          settings?.jsonResumeTailoringSequentialSupporting?.default ?? "",
       },
     },
   };
@@ -826,11 +846,7 @@ export const SettingsPage: React.FC = () => {
       })
       .catch((error) => {
         if (!isMounted || error.name === "AbortError") return;
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Failed to load RxResume projects";
-        toast.error(message);
+        showErrorToast(error, "Failed to load RxResume projects");
         setRxResumeProjectsOverride(null);
       })
       .finally(() => {
@@ -867,9 +883,7 @@ export const SettingsPage: React.FC = () => {
       toast.success("Backup created successfully");
       await queryClient.invalidateQueries({ queryKey: queryKeys.backups.all });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to create backup";
-      toast.error(message);
+      showErrorToast(error, "Failed to create backup");
     } finally {
       setIsCreatingBackup(false);
     }
@@ -888,9 +902,7 @@ export const SettingsPage: React.FC = () => {
       toast.success("Backup deleted successfully");
       await queryClient.invalidateQueries({ queryKey: queryKeys.backups.all });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to delete backup";
-      toast.error(message);
+      showErrorToast(error, "Failed to delete backup");
     } finally {
       setIsDeletingBackup(false);
     }
@@ -910,11 +922,7 @@ export const SettingsPage: React.FC = () => {
         );
       }
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to verify tracer-link readiness";
-      toast.error(message);
+      showErrorToast(error, "Failed to verify tracer-link readiness");
     }
   }, [refreshReadiness]);
 
@@ -945,9 +953,9 @@ export const SettingsPage: React.FC = () => {
         skipPrecheck: silent,
         getPrecheckMessage: (failure) => RXRESUME_PRECHECK_MESSAGES[failure],
         getValidationErrorMessage: (error) =>
-          error instanceof Error ? error.message : "RxResume validation failed",
+          formatUserFacingError(error, "RxResume validation failed"),
         getPersistErrorMessage: (error) =>
-          error instanceof Error ? error.message : "RxResume validation failed",
+          formatUserFacingError(error, "RxResume validation failed"),
       });
 
       setRxResumeValidationStatus(result.validation);
@@ -1130,6 +1138,10 @@ export const SettingsPage: React.FC = () => {
         chatStyleFormality: normalizeString(data.chatStyleFormality),
         chatStyleConstraints: normalizeString(data.chatStyleConstraints),
         chatStyleDoNotUse: normalizeString(data.chatStyleDoNotUse),
+        ghostwriterStopSlopEnabled: nullIfSame(
+          data.ghostwriterStopSlopEnabled,
+          chat.stopSlopEnabled.default,
+        ),
         chatStyleSummaryMaxWords: Number.isNaN(data.chatStyleSummaryMaxWords)
           ? null
           : (data.chatStyleSummaryMaxWords ?? null),
@@ -1242,9 +1254,7 @@ export const SettingsPage: React.FC = () => {
         toast.info(rxResumeSaveWarningMessage);
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to save settings";
-      toast.error(message);
+      showErrorToast(error, "Failed to save settings");
     } finally {
       setIsSaving(false);
     }
@@ -1258,9 +1268,7 @@ export const SettingsPage: React.FC = () => {
         description: `Deleted ${result.jobsDeleted} jobs.`,
       });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to clear database";
-      toast.error(message);
+      showErrorToast(error, "Failed to clear database");
     } finally {
       setIsSaving(false);
     }
@@ -1294,9 +1302,7 @@ export const SettingsPage: React.FC = () => {
         });
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to clear jobs";
-      toast.error(message);
+      showErrorToast(error, "Failed to clear jobs");
     } finally {
       setIsSaving(false);
     }
@@ -1317,11 +1323,7 @@ export const SettingsPage: React.FC = () => {
         });
       }
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Failed to clear jobs by score";
-      toast.error(message);
+      showErrorToast(error, "Failed to clear jobs by score");
     } finally {
       setIsSaving(false);
     }
@@ -1344,9 +1346,7 @@ export const SettingsPage: React.FC = () => {
       reset(mapSettingsToForm(updated));
       toast.success("Reset to default");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to reset settings";
-      toast.error(message);
+      showErrorToast(error, "Failed to reset settings");
     } finally {
       setIsSaving(false);
     }

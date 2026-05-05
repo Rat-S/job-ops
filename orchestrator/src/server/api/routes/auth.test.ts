@@ -14,6 +14,7 @@ describe.sequential("Auth routes", () => {
     BASIC_AUTH_USER: "admin",
     BASIC_AUTH_PASSWORD: "secret",
     JWT_SECRET: "an-explicit-jwt-secret-with-at-least-32-chars",
+    JOBOPS_TEST_AUTH_BYPASS: "0",
   };
 
   afterEach(async () => {
@@ -80,6 +81,7 @@ describe.sequential("Auth routes", () => {
         env: {
           BASIC_AUTH_USER: "admin",
           BASIC_AUTH_PASSWORD: "secret",
+          JOBOPS_TEST_AUTH_BYPASS: "0",
         },
       }));
 
@@ -127,6 +129,22 @@ describe.sequential("Auth routes", () => {
       });
 
       expect(res.status).toBe(401);
+    });
+  });
+
+  describe("POST /api/auth/setup", () => {
+    beforeEach(async () => {
+      ({ server, baseUrl, closeDb, tempDir } = await startServer());
+    });
+
+    it("rejects a short first-admin password", async () => {
+      const res = await fetch(`${baseUrl}/api/auth/setup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "short" }),
+      });
+
+      expect(res.status).toBe(400);
     });
   });
 

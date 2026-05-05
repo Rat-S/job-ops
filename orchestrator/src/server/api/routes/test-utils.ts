@@ -41,12 +41,15 @@ vi.mock("@server/pipeline/index", () => {
     summarizeJob: vi.fn().mockResolvedValue({ success: true }),
     generateFinalPdf: vi.fn().mockResolvedValue({ success: true }),
     getPipelineStatus: vi.fn(() => ({ isRunning: false })),
+    getProgress: vi.fn(() => ({ ...progress })),
     requestPipelineCancel: vi.fn(() => ({
       accepted: false,
       pipelineRunId: null,
       alreadyRequested: false,
     })),
     isPipelineCancelRequested: vi.fn(() => false),
+    getPendingChallenges: vi.fn(() => []),
+    resolvePipelineChallenge: vi.fn(() => ({ resolved: false, remaining: 0 })),
     subscribeToProgress: vi.fn((listener: (data: unknown) => void) => {
       listener(progress);
       return () => {};
@@ -80,6 +83,17 @@ vi.mock("@server/services/activation-funnel", () => ({
   reconcileActivationMilestonesFromHistorySafely: vi
     .fn()
     .mockResolvedValue(undefined),
+}));
+
+vi.mock("@server/services/challenge-viewer", () => ({
+  ensureChallengeViewer: vi
+    .fn()
+    .mockResolvedValue({ available: false, reason: "not a container" }),
+  createChallengeViewerSession: vi.fn(() => ({ token: "viewer-token" })),
+  buildChallengeViewerUrl: vi.fn(
+    () => "/challenge-viewer/session/viewer-token/vnc.html",
+  ),
+  proxyChallengeViewerRequest: vi.fn(),
 }));
 
 vi.mock("@server/services/visa-sponsors/index", () => ({
@@ -172,6 +186,7 @@ export async function startServer(options?: {
     ...nextEnv,
     DATA_DIR: tempDir,
     NODE_ENV: "test",
+    JOBOPS_TEST_AUTH_BYPASS: "1",
     MODEL: "test-model",
     JOBSPY_SEARCH_TERMS: "alpha|beta",
     ...envOverrides,

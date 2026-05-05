@@ -2,13 +2,28 @@ import * as api from "@client/api";
 import { useProfile } from "@client/hooks/useProfile";
 import { useTracerReadiness } from "@client/hooks/useTracerReadiness";
 import type { Job } from "@shared/types.js";
-import { ArrowLeft, Check, FileText, Loader2, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  CircleAlert,
+  FileText,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import type React from "react";
 import type { ComponentProps } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { formatUserFacingError } from "@/client/lib/error-format";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   fromEditableSkillGroups,
   getOriginalHeadline,
@@ -20,7 +35,11 @@ import {
 } from "../tailoring-utils";
 import { canFinalizeTailoring } from "./rules";
 import { TailoringSections } from "./TailoringSections";
-import { useTailoringDraft } from "./useTailoringDraft";
+import {
+  getTailoringSavePayloadKey,
+  type TailoringSavePayload,
+  useTailoringDraft,
+} from "./useTailoringDraft";
 
 interface TailoringWorkspaceBaseProps {
   job: Job;
@@ -53,6 +72,54 @@ interface TailoringBaseline {
   skillsJson: string;
 }
 
+type AutosaveStatus = "saved" | "unsaved" | "saving" | "error";
+
+const AutosaveStatusIcon: React.FC<{ status: AutosaveStatus }> = ({
+  status,
+}) => {
+  const copy =
+    status === "saving"
+      ? "Saving..."
+      : status === "unsaved"
+        ? "Unsaved changes"
+        : status === "error"
+          ? "Save failed"
+          : "Saved";
+  const iconClassName =
+    status === "error"
+      ? "text-rose-300"
+      : status === "unsaved"
+        ? "text-amber-300"
+        : status === "saving"
+          ? "text-muted-foreground"
+          : "text-emerald-400/80";
+
+  return (
+    <TooltipProvider delayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground"
+            role="img"
+            aria-label={copy}
+          >
+            {status === "saving" ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : status === "error" || status === "unsaved" ? (
+              <CircleAlert className={`h-3.5 w-3.5 ${iconClassName}`} />
+            ) : (
+              <Check className={`h-3.5 w-3.5 ${iconClassName}`} />
+            )}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{copy}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
 const normalizeSkillsJson = (value: string | null | undefined) =>
   serializeTailoredSkills(parseTailoredSkills(value));
 
@@ -64,11 +131,18 @@ const toBaselineFromJob = (job: Job): TailoringBaseline => {
   // If legacy fields are empty, try to extract from tailoredResumeJson
   if ((!summary || !headline || !skillsJson) && job.tailoredResumeJson) {
     try {
-      const jsonResume = JSON.parse(job.tailoredResumeJson) as Record<string, unknown>;
+      const jsonResume = JSON.parse(job.tailoredResumeJson) as Record<
+        string,
+        unknown
+      >;
       if (!summary && typeof jsonResume.summary === "string") {
         summary = jsonResume.summary;
       }
-      if (!headline && typeof jsonResume.basics === "object" && jsonResume.basics !== null) {
+      if (
+        !headline &&
+        typeof jsonResume.basics === "object" &&
+        jsonResume.basics !== null
+      ) {
         const basics = jsonResume.basics as Record<string, unknown>;
         if (typeof basics.label === "string") {
           headline = basics.label;
@@ -79,7 +153,9 @@ const toBaselineFromJob = (job: Job): TailoringBaseline => {
         const skills = jsonResume.skills as Array<Record<string, unknown>>;
         const skillGroups = skills.map((skill) => ({
           name: typeof skill.name === "string" ? skill.name : "",
-          keywords: Array.isArray(skill.keywords) ? skill.keywords as string[] : [],
+          keywords: Array.isArray(skill.keywords)
+            ? (skill.keywords as string[])
+            : [],
         }));
         skillsJson = JSON.stringify(skillGroups);
       }
@@ -91,6 +167,15 @@ const toBaselineFromJob = (job: Job): TailoringBaseline => {
 
   return { summary, headline, skillsJson };
 };
+
+const toSavePayloadFromJob = (job: Job): TailoringSavePayload => ({
+  tailoredSummary: job.tailoredSummary ?? "",
+  tailoredHeadline: job.tailoredHeadline ?? "",
+  tailoredSkills: normalizeSkillsJson(job.tailoredSkills),
+  jobDescription: job.jobDescription ?? "",
+  selectedProjectIds: job.selectedProjectIds ?? "",
+  tracerLinksEnabled: Boolean(job.tracerLinksEnabled),
+});
 
 export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   props,
@@ -117,7 +202,9 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
     setOpenSkillGroupId,
     skillsJson,
     isDirty,
+    savedPayloadKey,
     applyIncomingDraft,
+    markSavedJob,
     handleToggleProject,
     handleAddSkillGroup,
     handleUpdateSkillGroup,
@@ -128,9 +215,16 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>("saved");
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveInFlightRef = useRef<Promise<void> | null>(null);
+  const saveAgainRef = useRef(false);
+  const latestPayloadRef = useRef<TailoringSavePayload | null>(null);
+  const persistedPayloadKeyRef = useRef(savedPayloadKey);
+  const isMountedRef = useRef(true);
   const { profile, error: profileError } = useProfile();
   const { readiness: tracerReadiness, isChecking: isTracerReadinessChecking } =
     useTracerReadiness();
@@ -166,7 +260,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
         "Verify tracer links in Settings before enabling this job.")
       : null;
 
-  const savePayload = useMemo(
+  const savePayload = useMemo<TailoringSavePayload>(
     () => ({
       tailoredSummary: summary,
       tailoredHeadline: headline,
@@ -184,64 +278,179 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       tracerLinksEnabled,
     ],
   );
+  const savePayloadKey = useMemo(
+    () => getTailoringSavePayloadKey(savePayload),
+    [savePayload],
+  );
+
+  useEffect(() => {
+    latestPayloadRef.current = savePayload;
+  }, [savePayload]);
+
+  useEffect(() => {
+    persistedPayloadKeyRef.current = savedPayloadKey;
+  }, [savedPayloadKey]);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, []);
 
   const persistCurrent = useCallback(async () => {
     const updatedJob = await api.updateJob(props.job.id, savePayload);
     applyIncomingDraft(updatedJob);
   }, [props.job.id, savePayload, applyIncomingDraft]);
 
-  // Note: Auto-save removed.
-  // Editor mode: user must explicitly save via the "Save Selection" button to persist changes.
-  // Tailor mode: there is no explicit save action; changes only persist when the user finalizes
-  // or otherwise completes the tailoring flow. This prevents race conditions and simplifies state.
+  const runAutosaveLoop = useCallback(async () => {
+    if (!editorProps) return;
+    if (saveInFlightRef.current) {
+      saveAgainRef.current = true;
+      await saveInFlightRef.current;
+      return;
+    }
 
-  const saveChanges = useCallback(
-    async ({ showToast = true }: { showToast?: boolean } = {}) => {
-      if (!editorProps) return;
-
+    const savePromise = (async () => {
       try {
-        setIsSaving(true);
-        const updatedJob = await api.updateJob(props.job.id, savePayload);
-        applyIncomingDraft(updatedJob);
-        if (showToast) toast.success("Changes saved");
-        await editorProps.onUpdate();
-      } catch (error) {
-        if (showToast) toast.error("Failed to save changes");
-        throw error;
+        do {
+          saveAgainRef.current = false;
+          const snapshot = latestPayloadRef.current;
+          if (!snapshot) return;
+
+          if (
+            getTailoringSavePayloadKey(snapshot) ===
+            persistedPayloadKeyRef.current
+          ) {
+            if (isMountedRef.current) setAutosaveStatus("saved");
+            return;
+          }
+
+          if (isMountedRef.current) setAutosaveStatus("saving");
+          const snapshotKey = getTailoringSavePayloadKey(snapshot);
+          const updatedJob = await api.updateJob(props.job.id, snapshot);
+          if (!isMountedRef.current) return;
+          const updatedPayload = toSavePayloadFromJob(updatedJob);
+
+          const latestStillMatchesSnapshot =
+            latestPayloadRef.current &&
+            getTailoringSavePayloadKey(latestPayloadRef.current) ===
+              snapshotKey;
+          if (latestStillMatchesSnapshot) {
+            applyIncomingDraft(updatedJob);
+            latestPayloadRef.current = updatedPayload;
+          } else {
+            markSavedJob(updatedJob);
+          }
+          persistedPayloadKeyRef.current =
+            getTailoringSavePayloadKey(updatedPayload);
+
+          const latestKey = latestPayloadRef.current
+            ? getTailoringSavePayloadKey(latestPayloadRef.current)
+            : persistedPayloadKeyRef.current;
+          if (isMountedRef.current) {
+            setAutosaveStatus(
+              latestKey === persistedPayloadKeyRef.current
+                ? "saved"
+                : "unsaved",
+            );
+          }
+        } while (
+          saveAgainRef.current ||
+          (latestPayloadRef.current &&
+            getTailoringSavePayloadKey(latestPayloadRef.current) !==
+              persistedPayloadKeyRef.current)
+        );
+      } catch {
+        if (isMountedRef.current) setAutosaveStatus("error");
+        throw new Error("Autosave failed");
       } finally {
-        setIsSaving(false);
+        saveInFlightRef.current = null;
       }
-    },
-    [editorProps, props.job.id, savePayload, applyIncomingDraft],
-  );
+    })();
+
+    saveInFlightRef.current = savePromise;
+    await savePromise;
+  }, [applyIncomingDraft, editorProps, markSavedJob, props.job.id]);
+
+  const flushAutosave = useCallback(async () => {
+    if (!editorProps) return;
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    if (saveInFlightRef.current) {
+      saveAgainRef.current = true;
+      await saveInFlightRef.current;
+    }
+    const latestPayload = latestPayloadRef.current;
+    if (
+      latestPayload &&
+      getTailoringSavePayloadKey(latestPayload) !==
+        persistedPayloadKeyRef.current
+    ) {
+      await runAutosaveLoop();
+    }
+  }, [editorProps, runAutosaveLoop]);
+
+  useEffect(() => {
+    if (!editorProps) return;
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+
+    if (!isDirty || savePayloadKey === persistedPayloadKeyRef.current) {
+      if (!saveInFlightRef.current) setAutosaveStatus("saved");
+      return;
+    }
+
+    setAutosaveStatus("unsaved");
+    if (saveInFlightRef.current) {
+      saveAgainRef.current = true;
+      return;
+    }
+
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = null;
+      void runAutosaveLoop().catch(() => {
+        // The status state already reflects the failure; keep the draft local.
+      });
+    }, 800);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+    };
+  }, [editorProps, isDirty, runAutosaveLoop, savePayloadKey]);
 
   useEffect(() => {
     if (!editorProps?.onRegisterSave) return;
-    editorProps.onRegisterSave(() => saveChanges({ showToast: false }));
-  }, [editorProps, saveChanges]);
+    editorProps.onRegisterSave(flushAutosave);
+  }, [editorProps, flushAutosave]);
 
   const handleSummarizeEditor = useCallback(async () => {
     if (!editorProps) return;
 
     try {
       setIsSummarizing(true);
-      if (isDirty) {
-        await saveChanges({ showToast: false });
-      }
+      await flushAutosave();
 
       const updatedJob = await api.summarizeJob(props.job.id, { force: true });
       applyIncomingDraft(updatedJob);
       setAiBaseline(toBaselineFromJob(updatedJob));
-      toast.success("AI Summary & Projects generated");
+      toast.success("Draft content generated");
       await editorProps.onUpdate();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "AI summarization failed";
-      toast.error(message);
+      showErrorToast(error, "AI summarization failed");
     } finally {
       setIsSummarizing(false);
     }
-  }, [editorProps, isDirty, saveChanges, props.job.id, applyIncomingDraft]);
+  }, [editorProps, flushAutosave, props.job.id, applyIncomingDraft]);
 
   const handleGenerateWithAi = useCallback(async () => {
     if (!tailorProps) return;
@@ -261,9 +470,7 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
         description: "Review and edit before finalizing.",
       });
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to generate AI draft";
-      toast.error(message);
+      showErrorToast(error, "Failed to generate AI draft");
     } finally {
       setIsGenerating(false);
     }
@@ -279,24 +486,23 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
       if (shouldProceed === false) return;
 
       setIsGeneratingPdf(true);
-      await saveChanges({ showToast: false });
+      await flushAutosave();
       await api.generateJobPdf(props.job.id);
       toast.success("Resume PDF generated");
       await editorProps.onUpdate();
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "PDF generation failed";
+      const message = formatUserFacingError(error, "PDF generation failed");
       if (/tracer/i.test(message)) {
         toast.error("Tracer links are unavailable right now", {
           description: message,
         });
       } else {
-        toast.error(message);
+        showErrorToast(error, "PDF generation failed");
       }
     } finally {
       setIsGeneratingPdf(false);
     }
-  }, [editorProps, saveChanges, props.job.id]);
+  }, [editorProps, flushAutosave, props.job.id]);
 
   const handleFinalize = useCallback(async () => {
     if (!tailorProps) return;
@@ -430,32 +636,36 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
   if (editorProps) {
     return (
       <div className="space-y-4">
-        <div className="flex flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-sm font-semibold text-muted-foreground">
-            Editor
-          </h3>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+        <div className="space-y-3 pb-2">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-sm font-semibold text-foreground/85">
+                Tailoring
+              </h3>
+              <AutosaveStatusIcon status={autosaveStatus} />
+            </div>
+            <p className="mt-0.5 text-[10px] text-muted-foreground/70">
+              Changes autosave. Draft resume content, or generate the PDF.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
             <Button
-              size="sm"
-              variant="outline"
               onClick={handleSummarizeEditor}
-              disabled={isSummarizing || isGeneratingPdf || isSaving}
-              className="w-full sm:w-auto"
+              disabled={isSummarizing || isGeneratingPdf}
+              variant="outline"
+              className="h-10 w-full gap-1.5 px-2 text-xs"
             >
               {isSummarizing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Sparkles className="mr-2 h-4 w-4" />
               )}
-              AI Summarize
+              Draft Content
             </Button>
             <Button
-              size="sm"
               onClick={handleGeneratePdf}
-              disabled={
-                isSummarizing || isGeneratingPdf || isSaving || !summary
-              }
-              className="w-full sm:w-auto"
+              disabled={isSummarizing || isGeneratingPdf || !summary}
+              className="h-10 w-full gap-1.5 px-2 text-xs"
             >
               {isGeneratingPdf ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -469,22 +679,6 @@ export const TailoringWorkspace: React.FC<TailoringWorkspaceProps> = (
 
         <div className="space-y-4 rounded-lg border bg-card p-4 shadow-sm">
           <TailoringSections {...tailoringSectionsProps} />
-
-          <div className="flex justify-end border-t pt-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void saveChanges()}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="mr-2 h-4 w-4" />
-              )}
-              Save Selection
-            </Button>
-          </div>
         </div>
       </div>
     );

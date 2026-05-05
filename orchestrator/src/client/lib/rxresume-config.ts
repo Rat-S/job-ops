@@ -1,5 +1,6 @@
 import type { UpdateSettingsInput } from "@shared/settings-schema.js";
 import type { ValidationResult } from "@shared/types.js";
+import { formatUserFacingError } from "@/client/lib/error-format";
 
 export type RxResumeSettingsLike =
   | {
@@ -106,6 +107,9 @@ export const buildRxResumeSettingsUpdate = (
 type ValidateAndMaybePersistRxResumeModeInput<TSettings> = {
   stored: RxResumeStoredCredentialAvailability;
   draft: RxResumeCredentialDrafts;
+  validationPayloadOptions?: {
+    preserveBlankFields?: Array<keyof RxResumeCredentialDrafts>;
+  };
   validate: (
     payload: ReturnType<typeof toRxResumeValidationPayload>,
   ) => Promise<ValidationResult>;
@@ -131,17 +135,16 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
   const {
     stored,
     draft,
+    validationPayloadOptions,
     validate,
     persist,
     persistOnSuccess = false,
     skipPrecheck = false,
     getPrecheckMessage = (failure) => RXRESUME_PRECHECK_MESSAGES[failure],
     getValidationErrorMessage = (error) =>
-      error instanceof Error ? error.message : "RxResume validation failed",
+      formatUserFacingError(error, "RxResume validation failed"),
     getPersistErrorMessage = (error) =>
-      error instanceof Error
-        ? error.message
-        : "Failed to save RxResume settings",
+      formatUserFacingError(error, "Failed to save RxResume settings"),
   } = input;
 
   const precheckFailure = skipPrecheck
@@ -164,7 +167,9 @@ export const validateAndMaybePersistRxResumeMode = async <TSettings>(
 
   let validation: ValidationResult;
   try {
-    validation = await validate(toRxResumeValidationPayload(draft));
+    validation = await validate(
+      toRxResumeValidationPayload(draft, validationPayloadOptions),
+    );
   } catch (error) {
     return {
       validation: {

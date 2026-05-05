@@ -1,5 +1,6 @@
 import { logger } from "@infra/logger";
 import * as settingsRepo from "@server/repositories/settings";
+import { getOriginalEnvValue } from "@server/services/envSettings";
 import {
   getDefaultModelForProvider,
   settingsRegistry,
@@ -35,6 +36,9 @@ function resolveDefaultLlmBaseUrl(provider: string): string {
   if (normalized === "gemini") {
     return "https://generativelanguage.googleapis.com";
   }
+  if (normalized === "gemini_cli") {
+    return "";
+  }
   if (normalized === "codex") {
     return "";
   }
@@ -61,7 +65,7 @@ function normalizeModelForProviderCompatibility(
     }
   }
 
-  if (normalizedProvider === "gemini") {
+  if (normalizedProvider === "gemini" || normalizedProvider === "gemini_cli") {
     const isGeminiModel =
       normalizedModel.startsWith("google/") ||
       normalizedModel.startsWith("models/") ||
@@ -91,7 +95,10 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const resolvedModelDefault =
     normalizeModelForProviderCompatibility(
       effectiveLlmProvider,
-      getDefaultModelForProvider(effectiveLlmProvider, process.env.MODEL),
+      getDefaultModelForProvider(
+        effectiveLlmProvider,
+        getOriginalEnvValue("MODEL"),
+      ),
     ) ?? getDefaultModelForProvider(effectiveLlmProvider);
 
   const rxresumeBaseResumeId = resolveRxResumeBaseResumeId({
@@ -170,7 +177,8 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
         const provider =
           effectiveLlmProvider ?? settingsRegistry.llmProvider.default();
         defaultValue =
-          process.env.LLM_BASE_URL || resolveDefaultLlmBaseUrl(provider);
+          getOriginalEnvValue("LLM_BASE_URL") ||
+          resolveDefaultLlmBaseUrl(provider);
       }
 
       if (key === "resumeProjects") {

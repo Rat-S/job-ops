@@ -143,7 +143,8 @@ EXAMPLE VALID RESPONSE:
   },
   jsonResumeTailoringSequentialSummary: {
     label: "JSON Resume tailoring prompt (sequential - summary)",
-    description: "First call in sequential tailoring: generates only the resume summary paragraph.",
+    description:
+      "First call in sequential tailoring: generates only the resume summary paragraph.",
     placeholders: [
       "jobDescription",
       "masterResumeJson",
@@ -181,7 +182,8 @@ OUTPUT FORMAT:
   },
   jsonResumeTailoringSequentialWork: {
     label: "JSON Resume tailoring prompt (sequential - work)",
-    description: "Second call in sequential tailoring: generates work summaries and highlights, with context from previous summary.",
+    description:
+      "Second call in sequential tailoring: generates work summaries and highlights, with context from previous summary.",
     placeholders: [
       "jobDescription",
       "masterResumeJson",
@@ -227,7 +229,8 @@ OUTPUT FORMAT:
   },
   jsonResumeTailoringSequentialSupporting: {
     label: "JSON Resume tailoring prompt (sequential - supporting sections)",
-    description: "Third call in sequential tailoring: generates education, projects, skills, certifications with context from previous calls.",
+    description:
+      "Third call in sequential tailoring: generates education, projects, skills, certifications with context from previous calls.",
     placeholders: [
       "jobDescription",
       "masterResumeJson",

@@ -8,6 +8,8 @@ import { sanitizeUnknown } from "@infra/sanitize";
 import { createId } from "@paralleldrive/cuid2";
 import { getDataDir } from "@server/config/dataDir";
 import * as designResumeRepo from "@server/repositories/design-resume";
+import { getSetting } from "@server/repositories/settings";
+import { getOriginalEnvValue } from "@server/services/envSettings";
 import { getResume } from "@server/services/rxresume";
 import { getConfiguredRxResumeBaseResumeId } from "@server/services/rxresume/baseResumeId";
 import { getResumeSchemaValidationMessage } from "@server/services/rxresume/schema";
@@ -15,6 +17,7 @@ import {
   parseV5ResumeData,
   safeParseV5ResumeData,
 } from "@server/services/rxresume/schema/v5";
+import { getActiveTenantId } from "@server/tenancy/context";
 import type {
   DesignResumeAsset,
   DesignResumeDocument,
@@ -29,11 +32,16 @@ const DESIGN_RESUME_DIR = join(getDataDir(), "design-resume");
 const DESIGN_RESUME_ASSET_DIR = join(DESIGN_RESUME_DIR, "assets");
 const DESIGN_RESUME_DEFAULT_ID = "primary";
 const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_PICTURE_FETCH_REDIRECTS = 3;
 const LEGACY_REIMPORT_MESSAGE =
   "Stored Design Resume is no longer compatible. Re-import from Reactive Resume v5 to continue.";
 const INVALID_V5_PREFIX =
   "Design Resume must be a valid Reactive Resume v5 document.";
+
+function buildTenantScopedDesignResumeDocumentId(): string {
+  return `${DESIGN_RESUME_DEFAULT_ID}_${getActiveTenantId()}`;
+}
 
 type JsonPatchOperation = NonNullable<
   DesignResumePatchRequest["operations"]
@@ -101,6 +109,245 @@ function contentUrlForAsset(assetId: string): string {
   return `/api/design-resume/assets/${encodeURIComponent(assetId)}/content`;
 }
 
+function absolutizeUrl(value: string, baseUrl: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  try {
+    return new URL(trimmed).toString();
+  } catch {
+    try {
+      return new URL(trimmed, baseUrl).toString();
+    } catch {
+      return trimmed;
+    }
+  }
+}
+
+async function resolveReactiveResumePublicBaseUrl(): Promise<string> {
+  return (
+    (await getSetting("rxresumeUrl"))?.trim() ||
+    getOriginalEnvValue("RXRESUME_URL")?.trim() ||
+    "https://rxresu.me"
+  );
+}
+
+function withReactiveResumePictureUrl(
+  document: DesignResumeJson,
+  baseUrl: string,
+): DesignResumeJson {
+  const picture = asRecord(document.picture);
+  const pictureUrl = toText(picture?.url);
+  if (!pictureUrl) return document;
+
+  return {
+    ...document,
+    picture: {
+      ...document.picture,
+      url: absolutizeUrl(pictureUrl, baseUrl),
+    } as DesignResumeJson["picture"],
+  };
+}
+
+function normalizeImageMimeType(input: {
+  mimeType?: string | null;
+  fileName?: string | null;
+}): string {
+  const normalizedMimeType = input.mimeType
+    ?.split(";")[0]
+    ?.trim()
+    .toLowerCase();
+  if (normalizedMimeType && IMAGE_MIME_TYPES.has(normalizedMimeType)) {
+    return normalizedMimeType;
+  }
+
+  const extension = input.fileName?.toLowerCase().split(".").pop() ?? "";
+  if (extension === "png") return "image/png";
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "webp") return "image/webp";
+
+  throw badRequest("Only PNG, JPEG, and WebP images are supported.");
+}
+
+function assertImageByteSize(byteLength: number): void {
+  if (byteLength > MAX_IMAGE_BYTES) {
+    throw badRequest("Images must be 10 MB or smaller.");
+  }
+}
+
+function isLocalOrPrivateHostname(hostnameRaw: string): boolean {
+  const hostname = hostnameRaw.trim().toLowerCase();
+  if (!hostname) return true;
+
+  if (
+    hostname === "localhost" ||
+    hostname.endsWith(".localhost") ||
+    hostname.endsWith(".local")
+  ) {
+    return true;
+  }
+
+  const ipv4Match = hostname.match(
+    /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/,
+  );
+  if (ipv4Match) {
+    const octets = ipv4Match.slice(1).map((part) => Number(part));
+    if (octets.some((octet) => Number.isNaN(octet) || octet > 255)) return true;
+    const [first, second] = octets;
+    if (
+      first === 10 ||
+      first === 127 ||
+      first === 0 ||
+      (first === 169 && second === 254) ||
+      (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && second === 168)
+    ) {
+      return true;
+    }
+  }
+
+  if (hostname.includes(":")) {
+    if (
+      hostname === "::1" ||
+      hostname.startsWith("fe80:") ||
+      hostname.startsWith("fc") ||
+      hostname.startsWith("fd")
+    ) {
+      return true;
+    }
+  }
+
+  if (!hostname.includes(".") && !hostname.includes(":")) {
+    return true;
+  }
+
+  return false;
+}
+
+function parsePublicPictureUrl(value: string): URL {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw badRequest("Design Resume pictures must use a valid absolute URL.");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw badRequest("Design Resume pictures must use HTTP or HTTPS URLs.");
+  }
+  if (parsed.username || parsed.password) {
+    throw badRequest("Design Resume picture URLs cannot include credentials.");
+  }
+  if (isLocalOrPrivateHostname(parsed.hostname)) {
+    throw badRequest(
+      "Design Resume picture URLs must point to a publicly reachable host.",
+    );
+  }
+
+  return parsed;
+}
+
+function originalNameFromUrl(url: string, mimeType: string): string {
+  try {
+    const pathname = new URL(url).pathname;
+    const name = basename(decodeURIComponent(pathname));
+    if (name) return name;
+  } catch {
+    // Fall back to a deterministic generated name below.
+  }
+  return `picture${extensionForMimeType(mimeType)}`;
+}
+
+async function storeDesignResumePictureAsset(input: {
+  documentId: string;
+  fileName: string;
+  mimeType: string;
+  data: Buffer;
+  updatedAt: string;
+}) {
+  await ensureStorageDirs();
+  assertImageByteSize(input.data.byteLength);
+
+  const assetId = createId();
+  const storagePath = join(
+    DESIGN_RESUME_ASSET_DIR,
+    `${assetId}${extensionForMimeType(input.mimeType)}`,
+  );
+
+  try {
+    await writeFile(storagePath, input.data);
+    await designResumeRepo.insertDesignResumeAsset({
+      id: assetId,
+      documentId: input.documentId,
+      kind: "picture",
+      originalName: basename(
+        input.fileName || `picture${extname(storagePath)}`,
+      ),
+      mimeType: input.mimeType,
+      byteSize: input.data.byteLength,
+      storagePath,
+      updatedAt: input.updatedAt,
+    });
+  } catch (error) {
+    await deleteAssetFile(storagePath);
+    throw error;
+  }
+
+  return { assetId, storagePath };
+}
+
+async function fetchPictureFromUrl(
+  url: string,
+  redirectCount = 0,
+): Promise<{
+  data: Buffer;
+  fileName: string;
+  mimeType: string;
+}> {
+  const parsedUrl = parsePublicPictureUrl(url);
+  const response = await fetch(parsedUrl.toString(), {
+    signal: AbortSignal.timeout(15_000),
+    redirect: "manual",
+  });
+  if (
+    response.status >= 300 &&
+    response.status < 400 &&
+    response.headers.get("location")
+  ) {
+    if (redirectCount >= MAX_PICTURE_FETCH_REDIRECTS) {
+      throw new Error(
+        "Reactive Resume picture download redirected too many times.",
+      );
+    }
+    const nextUrl = new URL(response.headers.get("location") ?? "", parsedUrl);
+    return fetchPictureFromUrl(nextUrl.toString(), redirectCount + 1);
+  }
+  if (!response.ok) {
+    throw new Error(
+      `Reactive Resume picture download failed with HTTP ${response.status}.`,
+    );
+  }
+
+  const mimeType = normalizeImageMimeType({
+    mimeType: response.headers.get("content-type"),
+    fileName: url,
+  });
+  const contentLength = Number(response.headers.get("content-length") ?? 0);
+  if (contentLength > 0) assertImageByteSize(contentLength);
+
+  const data = Buffer.from(await response.arrayBuffer());
+  if (data.byteLength === 0) {
+    throw new Error("Reactive Resume picture download returned an empty file.");
+  }
+  assertImageByteSize(data.byteLength);
+
+  return {
+    data,
+    fileName: originalNameFromUrl(url, mimeType),
+    mimeType,
+  };
+}
+
 function toDesignResumeAsset(
   row: Awaited<
     ReturnType<typeof designResumeRepo.getDesignResumeAssetById>
@@ -148,22 +395,15 @@ function parseDataUrl(input: string): { mimeType: string; data: Buffer } {
     throw badRequest("Image payload must be a base64 data URL.");
   }
 
-  const mimeType = match[1].toLowerCase();
-  if (!IMAGE_MIME_TYPES.has(mimeType)) {
-    throw badRequest("Only PNG, JPEG, and WebP images are supported.");
-  }
+  const mimeType = normalizeImageMimeType({ mimeType: match[1] });
 
   // Base64 expands by roughly 4/3, so we can reject oversized payloads
   // before decoding the entire string into memory.
   const estimatedByteLength = Math.floor((match[2].length * 3) / 4);
-  if (estimatedByteLength > MAX_IMAGE_BYTES) {
-    throw badRequest("Images must be 5 MB or smaller.");
-  }
+  assertImageByteSize(estimatedByteLength);
 
   const data = Buffer.from(match[2], "base64");
-  if (data.byteLength > MAX_IMAGE_BYTES) {
-    throw badRequest("Images must be 5 MB or smaller.");
-  }
+  assertImageByteSize(data.byteLength);
 
   return {
     mimeType,
@@ -328,8 +568,9 @@ function validatePatchedDocument(
 function isMissingDesignResumeTableError(error: unknown): boolean {
   const message = String((error as Error)?.message ?? error);
   return (
-    message.includes("no such table") &&
-    message.includes("design_resume_documents")
+    (message.includes("no such table") &&
+      message.includes("design_resume_documents")) ||
+    (message.includes("no such column") && message.includes("tenant_id"))
   );
 }
 
@@ -373,7 +614,7 @@ export async function replaceCurrentDesignResumeDocument(input: {
   const existingDocument = await getCurrentDesignResumeOrNullOnLegacy();
   const importedAt = input.importedAt ?? new Date().toISOString();
   const saved = await designResumeRepo.upsertDesignResumeDocument({
-    id: DESIGN_RESUME_DEFAULT_ID,
+    id: existingDocument?.id ?? buildTenantScopedDesignResumeDocumentId(),
     title: buildDocumentTitle(input.resumeJson),
     resumeJson: input.resumeJson,
     revision: 1,
@@ -455,13 +696,67 @@ export async function importDesignResumeFromReactiveResume(): Promise<DesignResu
     throw badRequest("Reactive Resume base resume is empty or invalid.");
   }
 
-  const validated = validateIncomingDesignResumeDocument(upstreamResume.data);
-  return replaceCurrentDesignResumeDocument({
+  const validated = withReactiveResumePictureUrl(
+    validateIncomingDesignResumeDocument(upstreamResume.data),
+    await resolveReactiveResumePublicBaseUrl(),
+  );
+  const imported = await replaceCurrentDesignResumeDocument({
     resumeJson: validated,
     sourceResumeId: resumeId,
     sourceMode: "v5",
     importedAt: new Date().toISOString(),
   });
+
+  return localizeImportedDesignResumePicture(imported);
+}
+
+async function localizeImportedDesignResumePicture(
+  document: DesignResumeDocument,
+): Promise<DesignResumeDocument> {
+  const picture = asRecord(document.resumeJson.picture);
+  const pictureUrl = toText(picture?.url).trim();
+  if (!pictureUrl || pictureUrl.startsWith("/api/design-resume/assets/")) {
+    return document;
+  }
+
+  let downloaded: Awaited<ReturnType<typeof fetchPictureFromUrl>>;
+  try {
+    downloaded = await fetchPictureFromUrl(pictureUrl);
+  } catch (error) {
+    logger.warn("Failed to localize Reactive Resume picture", {
+      documentId: document.id,
+      sourceResumeId: document.sourceResumeId,
+      pictureUrl,
+      error: sanitizeUnknown(error),
+    });
+    return document;
+  }
+
+  const now = new Date().toISOString();
+  const { assetId, storagePath } = await storeDesignResumePictureAsset({
+    documentId: document.id,
+    fileName: downloaded.fileName,
+    mimeType: downloaded.mimeType,
+    data: downloaded.data,
+    updatedAt: now,
+  });
+
+  const nextDocument = structuredClone(document.resumeJson) as DesignResumeJson;
+  nextDocument.picture = {
+    ...(asRecord(nextDocument.picture) ?? {}),
+    url: contentUrlForAsset(assetId),
+  } as DesignResumeJson["picture"];
+
+  try {
+    return await updateCurrentDesignResume({
+      baseRevision: document.revision,
+      document: nextDocument,
+    });
+  } catch (error) {
+    await designResumeRepo.deleteDesignResumeAsset(assetId);
+    await deleteAssetFile(storagePath);
+    throw error;
+  }
 }
 
 export async function updateCurrentDesignResume(
@@ -514,14 +809,79 @@ export async function uploadDesignResumePicture(input: {
   document?: DesignResumeJson;
 }): Promise<DesignResumeDocument> {
   const current = await requireCurrentDesignResume();
-  await ensureStorageDirs();
-
   const parsed = parseDataUrl(input.dataUrl);
-  const assetId = createId();
-  const storagePath = join(
-    DESIGN_RESUME_ASSET_DIR,
-    `${assetId}${extensionForMimeType(parsed.mimeType)}`,
+  const existingAsset = await designResumeRepo.findDesignResumeAssetForDocument(
+    {
+      documentId: current.id,
+      kind: "picture",
+    },
   );
+
+  const now = new Date().toISOString();
+  const { assetId, storagePath } = await storeDesignResumePictureAsset({
+    documentId: current.id,
+    fileName: input.fileName,
+    mimeType: parsed.mimeType,
+    data: parsed.data,
+    updatedAt: now,
+  });
+
+  const baseDocument = input.document
+    ? validatePatchedDocument(
+        structuredClone(input.document) as Record<string, unknown>,
+      )
+    : current.resumeJson;
+  const nextDocument = structuredClone(baseDocument) as DesignResumeJson;
+  const picture = asRecord(nextDocument.picture) ?? {};
+  nextDocument.picture = {
+    ...picture,
+    url: contentUrlForAsset(assetId),
+    hidden: false,
+  } as DesignResumeJson["picture"];
+
+  let updated: DesignResumeDocument;
+  try {
+    updated = await updateCurrentDesignResume({
+      baseRevision: input.baseRevision ?? current.revision,
+      document: nextDocument,
+    });
+  } catch (error) {
+    await designResumeRepo.deleteDesignResumeAsset(assetId);
+    await deleteAssetFile(storagePath);
+    throw error;
+  }
+
+  if (existingAsset) {
+    try {
+      await designResumeRepo.deleteDesignResumeAsset(existingAsset.id);
+      await deleteAssetFile(existingAsset.storagePath);
+    } catch (error) {
+      logger.warn("Failed to delete replaced design resume asset", {
+        assetId: existingAsset.id,
+        documentId: current.id,
+        error: sanitizeUnknown(error),
+      });
+    }
+  }
+
+  return updated;
+}
+
+export async function uploadDesignResumePictureFile(input: {
+  fileName: string;
+  mimeType?: string | null;
+  data: Buffer;
+  baseRevision?: number;
+}): Promise<DesignResumeDocument> {
+  const current = await requireCurrentDesignResume();
+  const mimeType = normalizeImageMimeType({
+    mimeType: input.mimeType,
+    fileName: input.fileName,
+  });
+  if (input.data.byteLength === 0) {
+    throw badRequest("Image payload must not be empty.");
+  }
+  assertImageByteSize(input.data.byteLength);
 
   const existingAsset = await designResumeRepo.findDesignResumeAssetForDocument(
     {
@@ -531,31 +891,15 @@ export async function uploadDesignResumePicture(input: {
   );
 
   const now = new Date().toISOString();
-  try {
-    await writeFile(storagePath, parsed.data);
-    await designResumeRepo.insertDesignResumeAsset({
-      id: assetId,
-      documentId: current.id,
-      kind: "picture",
-      originalName: basename(
-        input.fileName || `picture${extname(storagePath)}`,
-      ),
-      mimeType: parsed.mimeType,
-      byteSize: parsed.data.byteLength,
-      storagePath,
-      updatedAt: now,
-    });
-  } catch (error) {
-    await deleteAssetFile(storagePath);
-    throw error;
-  }
+  const { assetId, storagePath } = await storeDesignResumePictureAsset({
+    documentId: current.id,
+    fileName: input.fileName,
+    mimeType,
+    data: input.data,
+    updatedAt: now,
+  });
 
-  const baseDocument = input.document
-    ? validatePatchedDocument(
-        structuredClone(input.document) as Record<string, unknown>,
-      )
-    : current.resumeJson;
-  const nextDocument = structuredClone(baseDocument) as DesignResumeJson;
+  const nextDocument = structuredClone(current.resumeJson) as DesignResumeJson;
   const picture = asRecord(nextDocument.picture) ?? {};
   nextDocument.picture = {
     ...picture,
@@ -634,11 +978,16 @@ export async function deleteDesignResumePicture(input?: {
   return updated;
 }
 
-export async function readDesignResumeAssetContent(assetId: string): Promise<{
+export async function readDesignResumeAssetContent(
+  assetId: string,
+  options?: { bypassTenantScope?: boolean },
+): Promise<{
   asset: DesignResumeAsset;
   content: Buffer;
 }> {
-  const row = await designResumeRepo.getDesignResumeAssetById(assetId);
+  const row = options?.bypassTenantScope
+    ? await designResumeRepo.getDesignResumeAssetByIdAnyTenant(assetId)
+    : await designResumeRepo.getDesignResumeAssetById(assetId);
   if (!row) {
     throw notFound("Design Resume asset not found.");
   }

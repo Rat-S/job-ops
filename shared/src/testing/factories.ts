@@ -36,6 +36,7 @@ export const createJob = (overrides: Partial<Job> = {}): Job => ({
   tailoredSummary: null,
   tailoredHeadline: null,
   tailoredSkills: null,
+  coverLetter: null,
   selectedProjectIds: null,
   tailoredResumeJson: null,
   pdfPath: null,
@@ -165,6 +166,8 @@ export const createAppSettings = (
   gradcrackerMaxJobsPerTerm: { value: 50, default: 50, override: null },
   startupjobsMaxJobsPerTerm: { value: 50, default: 50, override: null },
   seekMaxJobsPerTerm: { value: 50, default: 50, override: null },
+  naukriMaxJobsPerTerm: { value: 50, default: 50, override: null },
+  jobindexMaxJobsPerTerm: { value: 50, default: 50, override: null },
   searchTerms: {
     value: ["Software Engineer"],
     default: ["Software Engineer"],
@@ -190,6 +193,11 @@ export const createAppSettings = (
     default: getDefaultPromptTemplate("ghostwriterSystemPromptTemplate"),
     override: null,
   },
+  ghostwriterStopSlopEnabled: {
+    value: false,
+    default: false,
+    override: null,
+  },
   tailoringPromptTemplate: {
     value: getDefaultPromptTemplate("tailoringPromptTemplate"),
     default: getDefaultPromptTemplate("tailoringPromptTemplate"),
@@ -212,7 +220,9 @@ export const createAppSettings = (
   },
   jsonResumeTailoringSequentialSupporting: {
     value: getDefaultPromptTemplate("jsonResumeTailoringSequentialSupporting"),
-    default: getDefaultPromptTemplate("jsonResumeTailoringSequentialSupporting"),
+    default: getDefaultPromptTemplate(
+      "jsonResumeTailoringSequentialSupporting",
+    ),
     override: null,
   },
   searchCities: {

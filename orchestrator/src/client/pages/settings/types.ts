@@ -29,6 +29,7 @@ export type ChatValues = {
   doNotUse: EffectiveDefault<string>;
   languageMode: EffectiveDefault<ChatStyleLanguageMode>;
   manualLanguage: EffectiveDefault<ChatStyleManualLanguage>;
+  stopSlopEnabled: EffectiveDefault<boolean>;
   summaryMaxWords: EffectiveDefault<number | null>;
   maxKeywordsPerSkill: EffectiveDefault<number | null>;
 };

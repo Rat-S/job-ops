@@ -62,6 +62,8 @@ export interface PipelineRunSourceLimitSnapshot {
   adzunaMaxJobsPerTerm: number;
   gradcrackerMaxJobsPerTerm: number;
   startupjobsMaxJobsPerTerm: number;
+  naukriMaxJobsPerTerm: number;
+  jobindexMaxJobsPerTerm: number;
   jobspyResultsWanted: number;
 }
 
@@ -117,6 +119,58 @@ export interface PipelineStatusResponse {
   isRunning: boolean;
   lastRun: PipelineRun | null;
   nextScheduledRun: string | null;
+}
+
+export type PipelineProgressStep =
+  | "idle"
+  | "crawling"
+  | "challenge_required"
+  | "importing"
+  | "scoring"
+  | "processing"
+  | "completed"
+  | "cancelled"
+  | "failed";
+
+export interface PipelineProgressCurrentJob {
+  id: string;
+  title: string;
+  employer: string;
+}
+
+export interface PipelinePendingChallenge {
+  extractorId: string;
+  extractorName: string;
+  url: string;
+  sources: ExtractorSourceId[];
+}
+
+export interface PipelineProgressState {
+  step: PipelineProgressStep;
+  message: string;
+  detail?: string;
+  pendingChallenges?: PipelinePendingChallenge[];
+  crawlingSource: string | null;
+  crawlingSourcesCompleted: number;
+  crawlingSourcesTotal: number;
+  crawlingTermsProcessed: number;
+  crawlingTermsTotal: number;
+  crawlingListPagesProcessed: number;
+  crawlingListPagesTotal: number;
+  crawlingJobCardsFound: number;
+  crawlingJobPagesEnqueued: number;
+  crawlingJobPagesSkipped: number;
+  crawlingJobPagesProcessed: number;
+  crawlingPhase?: "list" | "job";
+  crawlingCurrentUrl?: string;
+  jobsDiscovered: number;
+  jobsScored: number;
+  jobsProcessed: number;
+  totalToProcess: number;
+  currentJob?: PipelineProgressCurrentJob;
+  error?: string;
+  startedAt?: string;
+  completedAt?: string;
 }
 
 export type PipelineMetricQuality =

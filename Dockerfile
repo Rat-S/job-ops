@@ -64,11 +64,14 @@ COPY orchestrator/package*.json ./orchestrator/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
+COPY extractors/jobindex/package*.json ./extractors/jobindex/
+COPY extractors/naukri/package*.json ./extractors/naukri/
 COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
 COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 COPY extractors/seek/package*.json ./extractors/seek/
+COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 
 # Install Node dependencies with npm cache (dev deps needed for build).
 RUN --mount=type=cache,target=/root/.npm \
@@ -88,12 +91,15 @@ COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
 COPY extractors/hiringcafe ./extractors/hiringcafe
 COPY extractors/gradcracker ./extractors/gradcracker
+COPY extractors/jobindex ./extractors/jobindex
 COPY extractors/jobspy ./extractors/jobspy
+COPY extractors/naukri ./extractors/naukri
 COPY extractors/startupjobs ./extractors/startupjobs
 COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/golangjobs ./extractors/golangjobs
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
 COPY extractors/seek ./extractors/seek
+COPY extractors/browser-utils ./extractors/browser-utils
 
 # ============================================================================
 # PARALLEL BUILD STAGES
@@ -113,6 +119,11 @@ RUN npm run build:client
 # ============================================================================
 FROM runtime-base AS runtime-node-deps
 
+# Install virtual display dependencies for the headed Cloudflare challenge solver.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    xvfb x11vnc novnc websockify && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
 # Copy package files for production dependency installation.
 COPY package*.json ./
 COPY docs-site/package*.json ./docs-site/
@@ -121,11 +132,14 @@ COPY orchestrator/package*.json ./orchestrator/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
+COPY extractors/jobindex/package*.json ./extractors/jobindex/
+COPY extractors/naukri/package*.json ./extractors/naukri/
 COPY extractors/startupjobs/package*.json ./extractors/startupjobs/
 COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 COPY extractors/seek/package*.json ./extractors/seek/
+COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 
 # Install production Node dependencies only.
 RUN --mount=type=cache,target=/root/.npm \
@@ -174,20 +188,31 @@ COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
 COPY extractors/hiringcafe ./extractors/hiringcafe
 COPY extractors/gradcracker ./extractors/gradcracker
+COPY extractors/jobindex ./extractors/jobindex
 COPY extractors/jobspy ./extractors/jobspy
+COPY extractors/naukri ./extractors/naukri
 COPY extractors/startupjobs ./extractors/startupjobs
 COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/golangjobs ./extractors/golangjobs
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
 COPY extractors/seek ./extractors/seek
+COPY extractors/browser-utils ./extractors/browser-utils
 
 # Create runtime directories.
-RUN mkdir -p /app/data/pdfs /app/codex-home
+RUN mkdir -p /app/data/pdfs /app/data/cloudflare-cookies /app/codex-home
+
+ENV DISPLAY=:99
+ENV NOVNC_PORT=6080
+ENV NOVNC_HOST=127.0.0.1
+ENV VNC_HOST=127.0.0.1
 
 EXPOSE 3001
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:3001/health || exit 1
 
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
 WORKDIR /app/orchestrator
-CMD ["sh", "-c", "npx tsx src/server/db/migrate.ts && npm run start"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

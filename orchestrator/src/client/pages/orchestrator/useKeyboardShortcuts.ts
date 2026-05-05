@@ -5,10 +5,12 @@ import {
 } from "@client/hooks/queries/useJobMutations";
 import { useHotkeys } from "@client/hooks/useHotkeys";
 import { useProfile } from "@client/hooks/useProfile";
+import { downloadJobPdf, openJobPdf } from "@client/lib/private-pdf";
 import { SHORTCUTS } from "@client/lib/shortcut-map";
 import type { JobAction, JobListItem } from "@shared/types.js";
 import { useCallback, useRef } from "react";
 import { toast } from "sonner";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { safeFilenamePart } from "@/lib/utils";
 import type { FilterTab } from "./constants";
 import { tabs } from "./constants";
@@ -226,18 +228,20 @@ export function useKeyboardShortcuts(args: UseKeyboardShortcutsArgs): void {
       [SHORTCUTS.viewPdf.key]: () => {
         if (!selectedJob) return;
         if (activeTab !== "ready") return;
-        const href = `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`;
-        window.open(href, "_blank", "noopener,noreferrer");
+        void openJobPdf(selectedJob.id).catch((error) => {
+          showErrorToast(error, "Could not open PDF");
+        });
       },
 
       [SHORTCUTS.downloadPdf.key]: () => {
         if (!selectedJob) return;
         if (activeTab !== "ready") return;
-        const href = `/pdfs/resume_${selectedJob.id}.pdf?v=${encodeURIComponent(selectedJob.updatedAt)}`;
-        const a = document.createElement("a");
-        a.href = href;
-        a.download = `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer)}.pdf`;
-        a.click();
+        void downloadJobPdf(
+          selectedJob.id,
+          `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer)}.pdf`,
+        ).catch((error) => {
+          showErrorToast(error, "Could not download PDF");
+        });
       },
 
       [SHORTCUTS.openListing.key]: () => {

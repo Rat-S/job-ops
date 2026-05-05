@@ -117,6 +117,24 @@ describe("updateSettingsSchema", () => {
     });
   });
 
+  it("accepts the Ghostwriter Stop Slop toggle", () => {
+    expect(
+      updateSettingsSchema.parse({
+        ghostwriterStopSlopEnabled: true,
+      }),
+    ).toEqual({
+      ghostwriterStopSlopEnabled: true,
+    });
+
+    expect(
+      updateSettingsSchema.parse({
+        ghostwriterStopSlopEnabled: null,
+      }),
+    ).toEqual({
+      ghostwriterStopSlopEnabled: null,
+    });
+  });
+
   it("rejects prompt template overrides above 12000 characters", () => {
     const result = updateSettingsSchema.safeParse({
       ghostwriterSystemPromptTemplate: "A".repeat(12001),

@@ -45,16 +45,20 @@ describe("location-support", () => {
       true,
     );
     expect(isSourceAllowedForCountry("ukvisajobs", "uk")).toBe(true);
+    expect(isSourceAllowedForCountry("jobindex", "denmark")).toBe(true);
     expect(isSourceAllowedForCountry("gradcracker", "united states")).toBe(
       false,
     );
     expect(isSourceAllowedForCountry("ukvisajobs", "worldwide")).toBe(false);
+    expect(isSourceAllowedForCountry("jobindex", "united kingdom")).toBe(false);
     expect(isSourceAllowedForCountry("indeed", "united states")).toBe(true);
     expect(isSourceAllowedForCountry("linkedin", "worldwide")).toBe(true);
     expect(isSourceAllowedForCountry("glassdoor", "united states")).toBe(true);
     expect(isSourceAllowedForCountry("glassdoor", "japan")).toBe(false);
     expect(isSourceAllowedForCountry("adzuna", "united states")).toBe(true);
     expect(isSourceAllowedForCountry("adzuna", "japan")).toBe(false);
+    expect(isSourceAllowedForCountry("naukri", "india")).toBe(true);
+    expect(isSourceAllowedForCountry("naukri", "united kingdom")).toBe(false);
     expect(isSourceAllowedForCountry("startupjobs", "united states")).toBe(
       true,
     );
@@ -69,7 +73,9 @@ describe("location-support", () => {
           "indeed",
           "glassdoor",
           "ukvisajobs",
+          "jobindex",
           "adzuna",
+          "naukri",
           "startupjobs",
           "linkedin",
         ],

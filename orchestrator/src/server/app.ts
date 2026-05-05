@@ -17,13 +17,15 @@ import {
   requestContextMiddleware,
 } from "@infra/http";
 import { logger } from "@infra/logger";
+import { runWithRequestContext } from "@infra/request-context";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { verifyToken } from "@server/auth/jwt";
+import * as usersRepo from "@server/repositories/users";
+import { proxyChallengeViewerRequest } from "@server/services/challenge-viewer";
+import { DEFAULT_TENANT_ID } from "@server/tenancy/constants";
 import cors from "cors";
 import express from "express";
 import { apiRouter } from "./api/index";
-import { getDataDir } from "./config/dataDir";
-import { isDemoMode } from "./config/demo";
 import { resolveTracerRedirect } from "./services/tracer-links";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -132,25 +134,33 @@ function buildUmamiProxyHeaders(req: express.Request): Headers {
 }
 
 export function createAuthGuard() {
-  function getAuthConfig() {
-    const user = process.env.BASIC_AUTH_USER || "";
-    const pass = process.env.BASIC_AUTH_PASSWORD || "";
-    return {
-      user,
-      pass,
-      enabled: user.length > 0 && pass.length > 0,
-    };
-  }
+  const testAuthBypassEnabled =
+    process.env.NODE_ENV === "test" &&
+    process.env.JOBOPS_TEST_AUTH_BYPASS === "1";
 
-  async function isAuthorized(req: express.Request): Promise<boolean> {
+  async function getAuthorizationContext(req: express.Request): Promise<{
+    userId: string;
+    tenantId: string;
+    username: string;
+    isSystemAdmin: boolean;
+  } | null> {
     const authHeader = req.headers.authorization || "";
-    if (!authHeader.startsWith("Bearer ")) return false;
+    if (!authHeader.startsWith("Bearer ")) return null;
     const token = authHeader.slice("Bearer ".length).trim();
     try {
-      await verifyToken(token);
-      return true;
+      const payload = await verifyToken(token);
+      const user = await usersRepo.getUserById(payload.userId);
+      if (!user || user.isDisabled || user.workspaceId !== payload.tenantId) {
+        return null;
+      }
+      return {
+        userId: user.id,
+        tenantId: user.workspaceId,
+        username: user.username,
+        isSystemAdmin: user.isSystemAdmin,
+      };
     } catch {
-      return false;
+      return null;
     }
   }
 
@@ -165,12 +175,28 @@ export function createAuthGuard() {
       normalizedPath === "/api/visa-sponsors/search"
     )
       return true;
+    if (
+      normalizedMethod === "POST" &&
+      normalizedPath === "/api/webhook/trigger"
+    )
+      return Boolean(process.env.WEBHOOK_SECRET?.trim());
 
     // Auth endpoints must be accessible without existing auth.
     if (
       normalizedMethod === "POST" &&
       (normalizedPath === "/api/auth/login" ||
-        normalizedPath === "/api/auth/logout")
+        normalizedPath === "/api/auth/logout" ||
+        normalizedPath === "/api/auth/setup")
+    )
+      return true;
+    if (
+      normalizedMethod === "GET" &&
+      normalizedPath === "/api/auth/bootstrap-status"
+    )
+      return true;
+    if (
+      ["GET", "HEAD"].includes(normalizedMethod) &&
+      /^\/api\/design-resume\/assets\/[^/]+\/content$/.test(normalizedPath)
     )
       return true;
 
@@ -189,8 +215,13 @@ export function createAuthGuard() {
     // OPTIONS is always exempt for CORS preflight.
     if (method.toUpperCase() === "OPTIONS") return false;
 
-    // Analytics contains PII (IPs, click tracking) — always require auth.
+    // Umami's public script posts browser beacons to /stats/api/send. The
+    // proxy route still validates method/path before forwarding.
+    if (isStatsRoute(path)) return false;
+
+    // Analytics and per-job tracer details are workspace-private.
     if (path.startsWith("/api/tracer-links/analytics")) return true;
+    if (path.startsWith("/api/tracer-links/jobs")) return true;
 
     // Allow public read access to other tracer link routes.
     if (path.startsWith("/api/tracer-links")) {
@@ -200,7 +231,7 @@ export function createAuthGuard() {
     // All other /api/* paths require auth regardless of HTTP method.
     if (path.startsWith("/api/")) return true;
 
-    // Non-API routes (SPA, /health, /pdfs, static) remain publicly readable via GET/HEAD.
+    // Non-API routes (SPA, /health, static) remain publicly readable via GET/HEAD.
     return !["GET", "HEAD"].includes(method.toUpperCase());
   }
 
@@ -210,13 +241,33 @@ export function createAuthGuard() {
     next: express.NextFunction,
   ) => {
     void (async () => {
-      const { enabled } = getAuthConfig();
-      if (!enabled || !requiresAuth(req.method, req.path)) {
+      if (!requiresAuth(req.method, req.path)) {
         next();
         return;
       }
-      if (await isAuthorized(req)) {
-        next();
+
+      if (testAuthBypassEnabled) {
+        runWithRequestContext(
+          {
+            userId: "test-user",
+            tenantId: DEFAULT_TENANT_ID,
+            username: "test",
+            isSystemAdmin: true,
+          },
+          () => next(),
+        );
+        return;
+      }
+
+      const userCount = await usersRepo.countUsers();
+      if (userCount === 0) {
+        fail(res, unauthorized("Initial setup is required"));
+        return;
+      }
+
+      const authContext = await getAuthorizationContext(req);
+      if (authContext) {
+        runWithRequestContext(authContext, () => next());
         return;
       }
       fail(res, unauthorized("Authentication required"));
@@ -225,8 +276,7 @@ export function createAuthGuard() {
 
   return {
     middleware,
-    isAuthorized,
-    authEnabled: getAuthConfig().enabled,
+    getAuthorizationContext,
   };
 }
 
@@ -288,6 +338,18 @@ export function createApp() {
   });
   app.use(requestContextMiddleware());
   app.use("/stats", express.raw({ limit: "1mb", type: "*/*" }));
+  app.use(
+    "/api/design-resume/assets",
+    express.raw({
+      limit: "10mb",
+      type: [
+        "image/png",
+        "image/jpeg",
+        "image/webp",
+        "application/octet-stream",
+      ],
+    }),
+  );
   // Resume file import sends base64 JSON payloads, which expand beyond the raw
   // file size. Scope the larger JSON limit to that endpoint only.
   app.use("/api/design-resume/import/file", express.json({ limit: "15mb" }));
@@ -314,6 +376,10 @@ export function createApp() {
   // API routes
   app.use("/api", apiRouter);
   app.use(notFoundApiHandler());
+
+  app.use("/challenge-viewer/session", (req, res) => {
+    void proxyChallengeViewerRequest(req, res);
+  });
 
   app.get("/cv/:slug", async (req, res) => {
     const slug = req.params.slug?.trim();
@@ -394,18 +460,6 @@ export function createApp() {
       res.status(502).type("text/plain; charset=utf-8").send("Upstream error");
     }
   });
-
-  // Serve static files for generated PDFs
-  const pdfDir = join(getDataDir(), "pdfs");
-  if (isDemoMode()) {
-    const demoPdfPath = join(pdfDir, "demo.pdf");
-    app.get("/pdfs/*", (_req, res) => {
-      res.sendFile(demoPdfPath, (error) => {
-        if (error) res.status(404).end();
-      });
-    });
-  }
-  app.use("/pdfs", express.static(pdfDir));
 
   // Health check
   app.get("/health", (_req, res) => {

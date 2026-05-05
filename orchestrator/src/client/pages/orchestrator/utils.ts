@@ -233,6 +233,10 @@ export const getEnabledSources = (
       if (hasApifyToken) enabled.push(source);
       continue;
     }
+    if (source === "naukri") {
+      enabled.push(source);
+      continue;
+    }
     if (source === "hiringcafe") {
       enabled.push(source);
       continue;
@@ -246,6 +250,10 @@ export const getEnabledSources = (
       continue;
     }
     if (source === "golangjobs") {
+      enabled.push(source);
+      continue;
+    }
+    if (source === "jobindex") {
       enabled.push(source);
       continue;
     }

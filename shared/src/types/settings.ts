@@ -186,11 +186,14 @@ export interface AppSettings {
   gradcrackerMaxJobsPerTerm: Resolved<number>;
   startupjobsMaxJobsPerTerm: Resolved<number>;
   seekMaxJobsPerTerm: Resolved<number>;
+  naukriMaxJobsPerTerm: Resolved<number>;
+  jobindexMaxJobsPerTerm: Resolved<number>;
   searchTerms: Resolved<string[]>;
   workplaceTypes: Resolved<Array<"remote" | "hybrid" | "onsite">>;
   blockedCompanyKeywords: Resolved<string[]>;
   scoringInstructions: Resolved<string>;
   ghostwriterSystemPromptTemplate: Resolved<string>;
+  ghostwriterStopSlopEnabled: Resolved<boolean>;
   tailoringPromptTemplate: Resolved<string>;
   scoringPromptTemplate: Resolved<string>;
   jsonResumeTailoringSequentialSummary: Resolved<string>;

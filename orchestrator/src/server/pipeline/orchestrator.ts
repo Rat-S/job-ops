@@ -16,12 +16,14 @@ import { logger } from "@infra/logger";
 const ORCHESTRATOR_LOG = `./logs/orchestrator_${Date.now()}.jsonl`;
 function logOrchestrator(entry: Record<string, unknown>) {
   try {
-    const line = JSON.stringify({ ...entry, _loggedAt: new Date().toISOString() }) + "\n";
+    const line =
+      JSON.stringify({ ...entry, _loggedAt: new Date().toISOString() }) + "\n";
     appendFileSync(ORCHESTRATOR_LOG, line);
   } catch {
     // Silent fail
   }
 }
+
 import { trackServerProductEvent } from "@infra/product-analytics";
 import { runWithRequestContext } from "@infra/request-context";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-domain.js";
@@ -69,6 +71,33 @@ const DEFAULT_CONFIG: PipelineConfig = {
 let isPipelineRunning = false;
 let activePipelineRunId: string | null = null;
 let cancelRequestedAt: string | null = null;
+
+import type { PendingChallenge } from "./progress";
+
+type ChallengeState = {
+  challenges: Map<string, PendingChallenge>;
+  resolve: () => void;
+};
+const activeChallengeState: ChallengeState | null = null;
+
+export function getPendingChallenges(): PendingChallenge[] {
+  if (!activeChallengeState) return [];
+  return Array.from(activeChallengeState.challenges.values());
+}
+
+export function resolvePipelineChallenge(extractorId: string): {
+  resolved: boolean;
+  remaining: number;
+} {
+  if (!activeChallengeState) return { resolved: false, remaining: 0 };
+  const deleted = activeChallengeState.challenges.delete(extractorId);
+  const remaining = activeChallengeState.challenges.size;
+  progressHelpers.challengeResolved(
+    Array.from(activeChallengeState.challenges.values()),
+  );
+  if (remaining === 0) activeChallengeState.resolve();
+  return { resolved: deleted, remaining };
+}
 
 function parseWorkplaceTypes(
   raw: string | undefined,
@@ -412,41 +441,57 @@ export async function summarizeJob(
       let selectedProjectIds = job.selectedProjectIds;
       if (tailoredResumeJson) {
         try {
-          const jsonResume = JSON.parse(tailoredResumeJson) as Record<string, unknown>;
+          const jsonResume = JSON.parse(tailoredResumeJson) as Record<
+            string,
+            unknown
+          >;
           if (Array.isArray(jsonResume.projects)) {
-            const projectNames = (jsonResume.projects as Array<Record<string, unknown>>)
+            const projectNames = (
+              jsonResume.projects as Array<Record<string, unknown>>
+            )
               .map((p) => p.name)
               .filter(Boolean) as string[];
-            
+
             // Map project names to IDs from profile
             const { catalog } = extractProjectsFromProfile(profile);
             const selectedIds = catalog
               .filter((p) => projectNames.includes(p.name))
               .map((p) => p.id);
-            
+
             selectedProjectIds = selectedIds.join(",");
           }
         } catch (error) {
-          jobLogger.warn("Failed to extract project IDs from tailoredResumeJson", error);
+          jobLogger.warn(
+            "Failed to extract project IDs from tailoredResumeJson",
+            error,
+          );
         }
       }
 
       // Log what we're saving to the database
-      const summaryToSave = tailoredResumeJson ? JSON.parse(tailoredResumeJson).summary : "(none)";
+      const summaryToSave = tailoredResumeJson
+        ? JSON.parse(tailoredResumeJson).summary
+        : "(none)";
       jobLogger.info("Saving tailoredResumeJson to database", {
         hasTailoredResumeJson: !!tailoredResumeJson,
-        summaryPreview: typeof summaryToSave === "string" ? summaryToSave.substring(0, 100) : "(none)",
+        summaryPreview:
+          typeof summaryToSave === "string"
+            ? summaryToSave.substring(0, 100)
+            : "(none)",
       });
-      
+
       // File log for detailed debugging
       logOrchestrator({
         type: "db_save",
         jobId: job.id,
         hasTailoredResumeJson: !!tailoredResumeJson,
-        summaryPreview: typeof summaryToSave === "string" ? summaryToSave.substring(0, 500) : "(none)",
+        summaryPreview:
+          typeof summaryToSave === "string"
+            ? summaryToSave.substring(0, 500)
+            : "(none)",
         fullTailoredResumeJson: tailoredResumeJson,
       });
-      
+
       await jobsRepo.updateJob(job.id, {
         tailoredSummary: undefined, // Deprecated field - using tailoredResumeJson instead
         tailoredHeadline: undefined, // Deprecated field - using tailoredResumeJson instead
@@ -481,20 +526,28 @@ export async function generateFinalPdf(
     try {
       const job = await jobsRepo.getJobById(jobId);
       if (!job) return { success: false, error: "Job not found" };
-      
+
       // Log what we loaded from the database
-      const summaryLoaded = job.tailoredResumeJson ? JSON.parse(job.tailoredResumeJson).summary : "(none)";
+      const summaryLoaded = job.tailoredResumeJson
+        ? JSON.parse(job.tailoredResumeJson).summary
+        : "(none)";
       jobLogger.info("Loaded job for PDF generation", {
         hasTailoredResumeJson: !!job.tailoredResumeJson,
-        summaryPreview: typeof summaryLoaded === "string" ? summaryLoaded.substring(0, 100) : "(none)",
+        summaryPreview:
+          typeof summaryLoaded === "string"
+            ? summaryLoaded.substring(0, 100)
+            : "(none)",
       });
-      
+
       // File log for detailed debugging
       logOrchestrator({
         type: "db_load",
         jobId: job.id,
         hasTailoredResumeJson: !!job.tailoredResumeJson,
-        summaryPreview: typeof summaryLoaded === "string" ? summaryLoaded.substring(0, 500) : "(none)",
+        summaryPreview:
+          typeof summaryLoaded === "string"
+            ? summaryLoaded.substring(0, 500)
+            : "(none)",
         fullTailoredResumeJson: job.tailoredResumeJson,
       });
 
@@ -502,27 +555,43 @@ export async function generateFinalPdf(
       await jobsRepo.updateJob(job.id, { status: "processing" });
 
       // Use tailoredResumeJson if available, otherwise fall back to legacy fields
-      let tailoredContent: { summary: string; headline: string; skills: Array<{ name: string; keywords: string[] }> };
+      let tailoredContent: {
+        summary: string;
+        headline: string;
+        skills: Array<{ name: string; keywords: string[] }>;
+      };
       if (job.tailoredResumeJson) {
         try {
-          const jsonResume = JSON.parse(job.tailoredResumeJson) as Record<string, unknown>;
-          const summary = typeof jsonResume.summary === "string" ? jsonResume.summary : "";
-          const headline = typeof jsonResume.basics === "object" && jsonResume.basics !== null
-            ? (jsonResume.basics as Record<string, unknown>).label as string
-            : "";
-          
+          const jsonResume = JSON.parse(job.tailoredResumeJson) as Record<
+            string,
+            unknown
+          >;
+          const summary =
+            typeof jsonResume.summary === "string" ? jsonResume.summary : "";
+          const headline =
+            typeof jsonResume.basics === "object" && jsonResume.basics !== null
+              ? ((jsonResume.basics as Record<string, unknown>).label as string)
+              : "";
+
           // Transform JSON Resume skills to PDF content format
           let skills: Array<{ name: string; keywords: string[] }> = [];
           if (Array.isArray(jsonResume.skills)) {
-            skills = (jsonResume.skills as Array<Record<string, unknown>>).map((skill) => ({
-              name: typeof skill.name === "string" ? skill.name : "",
-              keywords: Array.isArray(skill.keywords) ? skill.keywords as string[] : [],
-            }));
+            skills = (jsonResume.skills as Array<Record<string, unknown>>).map(
+              (skill) => ({
+                name: typeof skill.name === "string" ? skill.name : "",
+                keywords: Array.isArray(skill.keywords)
+                  ? (skill.keywords as string[])
+                  : [],
+              }),
+            );
           }
-          
+
           tailoredContent = { summary, headline, skills };
         } catch (error) {
-          jobLogger.warn("Failed to parse tailoredResumeJson, falling back to legacy fields", { error });
+          jobLogger.warn(
+            "Failed to parse tailoredResumeJson, falling back to legacy fields",
+            { error },
+          );
           tailoredContent = {
             summary: job.tailoredSummary || "",
             headline: job.tailoredHeadline || "",
@@ -547,7 +616,7 @@ export async function generateFinalPdf(
           tracerLinksEnabled: job.tracerLinksEnabled,
           requestOrigin: options?.requestOrigin ?? null,
           tracerCompanyName: job.employer ?? null,
-          tailoredResumeJson: job.tailoredResumeJson,  // Job reloaded from DB, should have updated value
+          tailoredResumeJson: job.tailoredResumeJson, // Job reloaded from DB, should have updated value
         },
       );
 

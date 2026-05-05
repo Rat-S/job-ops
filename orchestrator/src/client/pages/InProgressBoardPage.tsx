@@ -9,9 +9,10 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDownAZ, Columns3, ExternalLink, Plus } from "lucide-react";
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useQueryErrorToast } from "@/client/hooks/useQueryErrorToast";
+import { showErrorToast } from "@/client/lib/error-toast";
 import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -80,7 +81,12 @@ const resolveCurrentStage = (
 
 export const InProgressBoardPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const location = useLocation();
   const navigate = useNavigate();
+  const jobPageLinkState = React.useMemo(
+    () => ({ jobPageBackTo: `${location.pathname}${location.search}` }),
+    [location.pathname, location.search],
+  );
 
   const [dragging, setDragging] = React.useState<{
     jobId: string;
@@ -211,9 +217,7 @@ export const InProgressBoardPage: React.FC = () => {
           queryKeys.jobs.inProgressBoard(),
           previousCards,
         );
-        const message =
-          error instanceof Error ? error.message : "Failed to move stage";
-        toast.error(message);
+        showErrorToast(error, "Failed to move stage");
       } finally {
         setMovingJobId(null);
         setDragging(null);
@@ -318,6 +322,7 @@ export const InProgressBoardPage: React.FC = () => {
                           <Link
                             key={job.id}
                             to={`/job/${job.id}`}
+                            state={jobPageLinkState}
                             draggable={movingJobId !== job.id}
                             onDragStart={(event) => {
                               setDragging({ jobId: job.id, fromStage: stage });

@@ -1,7 +1,7 @@
 ---
 id: settings
 title: Settings
-description: Configure models, webhooks, accounts, backup behavior, scoring, and safety controls.
+description: Configure models, webhooks, workspaces, backup behavior, scoring, and safety controls.
 sidebar_position: 2
 ---
 
@@ -17,7 +17,7 @@ It lets you configure:
 - Webhook destinations and secret
 - Display and writing-style defaults
 - Editable prompt templates for core AI workflows
-- Service credentials and basic auth
+- Service credentials and workspace users
 - Reactive Resume project selection
 - Tracer Links readiness verification
 - Backup and scoring rules
@@ -42,7 +42,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 
 ![Model settings section](/img/features/settings-model-section.png)
 
-- Choose provider (`openrouter`, `lmstudio`, `ollama`, `openai`, `gemini`)
+- Choose provider (`openrouter`, `lmstudio`, `ollama`, `openai`, `gemini`, `gemini_cli`, `codex`)
 - Set provider-specific base URL/API key when required
 - Configure default model plus task-specific overrides:
   - Scoring model
@@ -50,10 +50,11 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
   - Project-selection model
 - Provider defaults are applied automatically when the model fields are left blank:
   - `openai` defaults to `gpt-5.4-mini`
-  - `gemini` defaults to `google/gemini-3-flash-preview`
+  - `gemini` and `gemini_cli` default to `google/gemini-3-flash-preview`
 - The settings page shows provider-aware model pickers for:
   - `openai`: available text-generation models only
   - `gemini`: available Gemini text-generation models only
+  - `gemini_cli`: a curated list of Gemini model ids the CLI typically supports (install [Gemini CLI](https://www.npmjs.com/package/@google/gemini-cli), run `gemini` and complete Google sign-in, or set `GEMINI_API_KEY` for the CLI; JobOps spawns headless `gemini -p ...` with `--approval-mode plan` and no JobOps API key field). **Resume import** uses the CLI with extracted text: DOCX is parsed locally; PDF uses local text extraction then JSON extraction via the CLI (scanned PDFs without a text layer may not import well).
   - `ollama`: locally installed Ollama models
 - `openrouter`, `lmstudio`, and `openai_compatible` stay manual-entry because JobOps cannot safely infer the exact model catalog from those providers
 - Changing the provider clears stale model overrides in the form, so inherited fields follow the new provider default unless you explicitly choose a new override
@@ -85,19 +86,23 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
   - Formality
   - Output language mode
   - Manual output language
+  - Use Stop Slop for Ghostwriter
   - Constraints
   - Do-not-use terms
 - These settings apply to Ghostwriter and resume tailoring
+- `Use Stop Slop for Ghostwriter` applies only to Ghostwriter. It adds extra instructions that cut filler, formulaic AI phrasing, passive voice, vague claims, and em dashes.
 - Use the output language controls as the primary way to choose generated language
 - Choose how AI output language is resolved:
   - `Manual`: always use the language you select, such as English, German, French, or Spanish
   - `Match Resume`: detect the dominant language from your resume/profile content and use that language for generated output
 - If language detection is unclear or there is not enough resume/profile text, JobOps falls back to English
 - Resume tailoring keeps the exact source wording for ATS-sensitive resume headlines and job titles, even when the rest of the tailored content is generated in the selected language
+- When using the local LaTeX PDF renderer, fixed resume section titles follow the resolved output language
 - Summary max words: optional cap on AI-generated summary length (empty = no limit)
 - Max keywords per skill: optional cap on keywords per skill category in tailoring (empty = no limit)
 - These numeric limits override any similar constraints written in the Constraints text field
 - Do-not-use terms are model guidance, not a guaranteed output filter
+- `Use Stop Slop for Ghostwriter` is disabled by default and affects only new Ghostwriter responses after you save
 
 #### Writing Style & Language workflow
 
@@ -120,6 +125,7 @@ Defaults and constraints:
 - `Match Resume` is best when your base resume is already written in the language you want to preserve.
 - If JobOps cannot determine a reliable resume/profile language, it safely uses English.
 - The generated resume content follows the resolved language, but ATS-sensitive headline and job-title wording stays exact so matching and parsing remain safer.
+- The local LaTeX PDF renderer uses the resolved language for fixed section headings such as Summary, Experience, Education, Projects, and Technical Skills.
 
 ### Prompt Templates
 
@@ -168,13 +174,18 @@ Readiness requires:
 - successful reachability of `<public-base-url>/health`
 - non-localhost/non-private host setup for public redirect usage
 
-### Environment & Accounts
+### Environment & Workspaces
 
 - Configure service accounts:
   - RxResume API key
   - UKVisaJobs email/password
   - Adzuna app ID/app key
-  - Optional basic authentication for write operations
+- Manage workspace users when signed in as a system admin:
+  - create a user with a private workspace
+  - disable a user
+  - reset a user's password
+- Each created user gets a separate private workspace. Jobs, settings, resume data, integrations, PDFs, pipeline runs, chat, analytics, and post-application data are scoped to that user's workspace.
+- `BASIC_AUTH_USER` and `BASIC_AUTH_PASSWORD` are only used as legacy bootstrap credentials during migration. New sign-ins use database users.
 
 ### Backup
 
@@ -183,6 +194,7 @@ Readiness requires:
 - Enable/disable automatic daily backups
 - Configure backup hour (UTC) and max retained backups
 - Create or delete backups manually
+- Backup management is available only to system admins
 - See [Database Backups](../getting-started/database-backups) for full backup/restore guidance.
 
 ### Scoring Settings
@@ -245,6 +257,12 @@ curl -X POST "http://localhost:3001/api/backups"
 - Re-run scoring/tailoring/pipeline to validate effect.
 - In the **Model** section, the field preview and **Resolved config** update immediately when you choose a model, but the change only applies to future actions after you click **Save**.
 - Prompt-template changes only affect new Ghostwriter runs, new tailoring generations, and new scoring runs after you save.
+
+### I do not see workspace user controls
+
+- Workspace user management is shown only to system admins.
+- The first user created during first-run setup or legacy migration is the system admin.
+- Normal users can use their private workspace settings, but cannot create users, reset other passwords, or manage backups.
 
 ### AI behavior got worse after editing a prompt template
 

@@ -25,6 +25,57 @@ describe.sequential("Pipeline API routes", () => {
     expect(body.data.lastRun).toBeNull();
   });
 
+  it("returns the current pipeline progress snapshot in the API envelope", async () => {
+    const res = await fetch(`${baseUrl}/api/pipeline/progress/snapshot`);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.meta.requestId).toBeTruthy();
+    expect(body.data).toEqual(
+      expect.objectContaining({
+        step: "idle",
+        message: "Ready",
+      }),
+    );
+  });
+
+  it("requires auth for the pipeline progress snapshot when auth is enabled", async () => {
+    await stopServer({ server, closeDb, tempDir });
+    ({ server, baseUrl, closeDb, tempDir } = await startServer({
+      env: {
+        BASIC_AUTH_USER: "admin",
+        BASIC_AUTH_PASSWORD: "secret",
+        JOBOPS_TEST_AUTH_BYPASS: "0",
+        JWT_SECRET: "an-explicit-jwt-secret-with-at-least-32-chars",
+      },
+    }));
+
+    const unauthorizedRes = await fetch(
+      `${baseUrl}/api/pipeline/progress/snapshot`,
+    );
+    expect(unauthorizedRes.status).toBe(401);
+
+    const loginRes = await fetch(`${baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "admin", password: "secret" }),
+    });
+    const loginBody = await loginRes.json();
+
+    const authorizedRes = await fetch(
+      `${baseUrl}/api/pipeline/progress/snapshot`,
+      {
+        headers: { Authorization: `Bearer ${loginBody.data.token}` },
+      },
+    );
+    const authorizedBody = await authorizedRes.json();
+
+    expect(authorizedRes.status).toBe(200);
+    expect(authorizedBody.ok).toBe(true);
+    expect(authorizedBody.meta.requestId).toBeTruthy();
+  });
+
   it("returns recent pipeline runs in the API envelope", async () => {
     const { db, schema } = await import("@server/db");
 
@@ -90,6 +141,8 @@ describe.sequential("Pipeline API routes", () => {
           adzunaMaxJobsPerTerm: 50,
           gradcrackerMaxJobsPerTerm: 50,
           startupjobsMaxJobsPerTerm: 50,
+          jobindexMaxJobsPerTerm: 50,
+          naukriMaxJobsPerTerm: 50,
           jobspyResultsWanted: 20,
         },
         autoSkipScoreThreshold: 65,
@@ -332,6 +385,40 @@ describe.sequential("Pipeline API routes", () => {
         }),
       }),
     );
+
+    const naukriRunRes = await fetch(`${baseUrl}/api/pipeline/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sources: ["naukri"],
+        country: "india",
+      }),
+    });
+    const naukriRunBody = await naukriRunRes.json();
+    expect(naukriRunBody.ok).toBe(true);
+    expect(runPipeline).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        sources: ["naukri"],
+        locationIntent: expect.objectContaining({
+          selectedCountry: "india",
+          country: "india",
+        }),
+      }),
+    );
+
+    const blockedNaukriRes = await fetch(`${baseUrl}/api/pipeline/run`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sources: ["naukri"],
+        country: "united kingdom",
+      }),
+    });
+    const blockedNaukriBody = await blockedNaukriRes.json();
+    expect(blockedNaukriRes.status).toBe(400);
+    expect(blockedNaukriBody.ok).toBe(false);
+    expect(blockedNaukriBody.error.message).toContain("incompatible");
   });
 
   it("returns conflict when cancelling with no active pipeline", async () => {
@@ -364,6 +451,65 @@ describe.sequential("Pipeline API routes", () => {
     expect(body.data.pipelineRunId).toBe("run-1");
     expect(body.data.alreadyRequested).toBe(false);
     expect(typeof body.meta.requestId).toBe("string");
+  });
+
+  // -- Challenge endpoints --
+  // Route-level tests only: validates wiring, request validation, and 404 on
+  // unknown extractor. The actual solver (browser-utils/solver.ts) launches a
+  // headed browser for human interaction — not feasible to unit test. Deferring
+  // solver-level tests until a real regression justifies the complexity.
+
+  it("returns empty challenges when no pipeline is paused", async () => {
+    const res = await fetch(`${baseUrl}/api/pipeline/challenges`);
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data.challenges).toEqual([]);
+  });
+
+  it("prepares the challenge viewer lazily", async () => {
+    const { ensureChallengeViewer } = await import(
+      "@server/services/challenge-viewer"
+    );
+    vi.mocked(ensureChallengeViewer).mockResolvedValueOnce({
+      available: true,
+    });
+
+    const res = await fetch(`${baseUrl}/api/pipeline/challenge-viewer`, {
+      method: "POST",
+    });
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data).toEqual({
+      available: true,
+      viewerUrl: "/challenge-viewer/session/viewer-token/vnc.html",
+      reason: null,
+    });
+    expect(ensureChallengeViewer).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects solve-challenge with invalid payload", async () => {
+    const res = await fetch(`${baseUrl}/api/pipeline/solve-challenge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 404 when solving a challenge for unknown extractor", async () => {
+    const res = await fetch(`${baseUrl}/api/pipeline/solve-challenge`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        extractorId: "nonexistent",
+      }),
+    });
+    const body = await res.json();
+    expect(res.status).toBe(404);
+    expect(body.ok).toBe(false);
   });
 
   it("streams pipeline progress over SSE", async () => {

@@ -101,6 +101,8 @@ describe("OverviewPipelineRunsSection", () => {
             adzunaMaxJobsPerTerm: 50,
             gradcrackerMaxJobsPerTerm: 50,
             startupjobsMaxJobsPerTerm: 50,
+            jobindexMaxJobsPerTerm: 50,
+            naukriMaxJobsPerTerm: 50,
             jobspyResultsWanted: 20,
           },
           autoSkipScoreThreshold: 60,
