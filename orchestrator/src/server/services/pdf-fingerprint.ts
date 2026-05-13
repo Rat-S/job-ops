@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import * as settingsRepo from "@server/repositories/settings";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { Job, JobPdfFreshness, PdfRenderer } from "@shared/types";
+import { getResumeGenerationBackend, getResumeOpsConfig } from "../config/resume-ops";
 import { getCurrentDesignResumeOrNullOnLegacy } from "./design-resume";
 import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 
@@ -27,6 +28,8 @@ export interface PdfFingerprintContext {
   designResumeUpdatedAt: string | null;
   pdfRenderer: PdfRenderer;
   rxresumeBaseResumeId: string | null;
+  resumeGenerationBackend: "native" | "resume_ops";
+  resumeOpsTheme: string | null;
 }
 
 export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintContext> {
@@ -47,6 +50,8 @@ export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintCont
     designResumeUpdatedAt: designResume?.updatedAt ?? null,
     pdfRenderer: parsedRenderer ?? settingsRegistry.pdfRenderer.default(),
     rxresumeBaseResumeId: configuredBaseResume.resumeId ?? null,
+    resumeGenerationBackend: getResumeGenerationBackend(),
+    resumeOpsTheme: getResumeOpsConfig()?.theme ?? null,
   };
 }
 
@@ -61,6 +66,8 @@ export function createJobPdfFingerprint(
     designResumeDocumentId: context.designResumeDocumentId,
     designResumeRevision: context.designResumeRevision,
     designResumeUpdatedAt: context.designResumeUpdatedAt,
+    resumeGenerationBackend: context.resumeGenerationBackend,
+    resumeOpsTheme: context.resumeOpsTheme,
     job: {
       tailoredSummary: job.tailoredSummary ?? null,
       tailoredHeadline: job.tailoredHeadline ?? null,

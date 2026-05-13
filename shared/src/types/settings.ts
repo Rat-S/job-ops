@@ -263,4 +263,5 @@ export interface AppSettings {
   // Computed:
   basicAuthActive: boolean;
   profileProjects: ResumeProjectCatalogItem[];
+  resumeGenerationBackend: "native" | "resume_ops";
 }

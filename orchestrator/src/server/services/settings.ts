@@ -19,6 +19,7 @@ import {
   getCurrentDesignResumeOrNullOnLegacy,
 } from "./design-resume";
 import { getEnvSettingsData } from "./envSettings";
+import { getResumeGenerationBackend } from "../config/resume-ops";
 import { getProfile } from "./profile";
 import {
   extractProjectsFromProfile,
@@ -297,6 +298,8 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
 
   // Always expose the effective base resume id for the active RxResume mode.
   result.rxresumeBaseResumeId = rxresumeBaseResumeId;
+  
+  result.resumeGenerationBackend = getResumeGenerationBackend();
 
   return result as AppSettings;
 }

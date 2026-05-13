@@ -3,6 +3,7 @@ import { AppError, badRequest } from "@infra/errors";
 import { fail, ok, okWithMeta } from "@infra/http";
 import { logger } from "@infra/logger";
 import { isDemoMode } from "@server/config/demo";
+import { getResumeGenerationBackend } from "@server/config/resume-ops";
 import { resolveRequestOrigin } from "@server/infra/request-origin";
 import { generateFinalPdf, summarizeJob } from "@server/pipeline/index";
 import * as jobDocumentsRepo from "@server/repositories/job-documents";
@@ -395,6 +396,15 @@ jobsDocumentsRouter.post(
   "/:id/summarize",
   async (req: Request, res: Response) => {
     try {
+      if (getResumeGenerationBackend() === "resume_ops") {
+        const err = new AppError({
+          status: 409,
+          code: "CONFLICT",
+          message: "Tailoring is handled by ResumeOps. Summarize is not available in external backend mode.",
+        });
+        return fail(res, err);
+      }
+
       const forceRaw = req.query.force as string | undefined;
       const force = forceRaw === "1" || forceRaw === "true";
       const fields = parseTailoringGenerateFields(

@@ -2,8 +2,10 @@ import { toAppError } from "@infra/errors";
 import { fail, ok } from "@infra/http";
 import { isDemoMode } from "@server/config/demo";
 import { DEMO_PROJECT_CATALOG } from "@server/config/demo-defaults";
+import { getResumeGenerationBackend } from "@server/config/resume-ops";
 import { getDesignResumeStatus } from "@server/services/design-resume";
 import { clearProfileCache, getProfile } from "@server/services/profile";
+import { getMasterResumeStatus } from "@server/services/resume-ops-client";
 import { extractProjectsFromProfile } from "@server/services/resumeProjects";
 import {
   clearRxResumeResumeCache,
@@ -49,6 +51,20 @@ profileRouter.get("/", async (_req: Request, res: Response) => {
  */
 profileRouter.get("/status", async (_req: Request, res: Response) => {
   try {
+    if (getResumeGenerationBackend() === "resume_ops") {
+      try {
+        const status = await getMasterResumeStatus();
+        if (status.valid) {
+          ok(res, { exists: true, error: null });
+        } else {
+          ok(res, { exists: false, error: status.message || "ResumeOps master resume is invalid or missing" });
+        }
+      } catch (err) {
+        ok(res, { exists: false, error: err instanceof Error ? err.message : "Failed to connect to ResumeOps" });
+      }
+      return;
+    }
+
     const localStatus = await getDesignResumeStatus();
     if (localStatus.exists) {
       ok(res, { exists: true, error: null });

@@ -81,6 +81,19 @@ services:
       retries: 3
       start_period: 10s
 
+  resume-ops:
+    image: resume-ops:latest
+    env_file:
+      - ../resume-ops/.env
+    environment:
+      - MASTER_RESUME_PATH=/data/master-resume.json
+    volumes:
+      - ./data/resume-ops:/data
+      - ./master-resume.json:/data/master-resume.json:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+    restart: unless-stopped
+
 secrets:
   github_token:
     environment: GITHUB_TOKEN

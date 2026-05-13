@@ -16,6 +16,7 @@ import {
 } from "@client/hooks/queries/useJobMutations";
 import { useProfile } from "@client/hooks/useProfile";
 import { useRescoreJob } from "@client/hooks/useRescoreJob";
+import { useSettings } from "@client/hooks/useSettings";
 import { uploadJobPdfFromFile } from "@client/lib/job-pdf-upload";
 import {
   getPdfActionLabels,
@@ -263,6 +264,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const skipJobMutation = useSkipJobMutation();
   const { isRescoring, rescoreJob } = useRescoreJob(onJobUpdated);
   const { personName } = useProfile();
+  const { settings } = useSettings();
 
   const jobLink = selectedJob
     ? selectedJob.applicationLink || selectedJob.jobUrl
@@ -730,12 +732,34 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
         </TabsContent>
 
         <TabsContent value="tailoring">
-          <TailoringWorkspace
-            mode="editor"
-            job={selectedJob}
-            onUpdate={onJobUpdated}
-            onDirtyChange={onPauseRefreshChange}
-          />
+          {settings?.resumeGenerationBackend === "resume_ops" ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center border rounded-lg bg-muted/20 border-border/50">
+              <Sparkles className="h-8 w-8 mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-medium text-foreground">Tailoring Handled Externally</h3>
+              <p className="mt-2 text-sm text-muted-foreground max-w-sm">
+                Tailoring is handled by ResumeOps. Click 'Generate PDF' to create a tailored resume.
+              </p>
+              <Button
+                className="mt-6"
+                onClick={() => void handleProcess()}
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="mr-2 h-4 w-4" />
+                )}
+                Generate PDF
+              </Button>
+            </div>
+          ) : (
+            <TailoringWorkspace
+              mode="editor"
+              job={selectedJob}
+              onUpdate={onJobUpdated}
+              onDirtyChange={onPauseRefreshChange}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="apply">
