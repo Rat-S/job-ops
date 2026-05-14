@@ -7,15 +7,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      secrets:
-        - github_token
     image: ghcr.io/dakheera47/job-ops:latest
     container_name: job-ops
     ports:
       - "3005:3001"
     volumes:
       # Persist database and generated PDFs
-      - ./data:/app/data
+      - ./data:/app/data:Z
       # Persist Codex login/session data for app-server provider
       - codex-home:/app/codex-home
     environment:
@@ -88,15 +86,11 @@ services:
     environment:
       - MASTER_RESUME_PATH=/data/master-resume.json
     volumes:
-      - ./data/resume-ops:/data
-      - ./master-resume.json:/data/master-resume.json:ro
+      - ./data/resume-ops:/data:Z
+      - ./master-resume.json:/data/master-resume.json:ro,Z
     ports:
       - "127.0.0.1:8000:8000"
     restart: unless-stopped
-
-secrets:
-  github_token:
-    environment: GITHUB_TOKEN
 
 # Volumes for data persistence
 volumes:
