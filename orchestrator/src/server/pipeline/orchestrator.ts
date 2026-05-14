@@ -12,6 +12,8 @@ import type { AppErrorCode } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
 import { runWithRequestContext } from "@infra/request-context";
+import { Buffer } from "node:buffer";
+import { promises as fs } from "node:fs";
 import { getActiveTenantId } from "@server/tenancy/context";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-domain.js";
 import type {
@@ -20,6 +22,7 @@ import type {
   PipelineRunSavedDetails,
 } from "@shared/types";
 import { getDataDir } from "../config/dataDir";
+import { getResumeGenerationBackend, getResumeOpsConfig } from "../config/resume-ops";
 import * as jobsRepo from "../repositories/jobs";
 import * as pipelineRepo from "../repositories/pipeline";
 import * as settingsRepo from "../repositories/settings";
@@ -28,12 +31,14 @@ import {
   createJobPdfFingerprint,
   resolvePdfFingerprintContext,
 } from "../services/pdf-fingerprint";
+import { getTenantJobPdfPath } from "../services/pdf-storage";
 import { getProfile } from "../services/profile";
 import { pickProjectIdsForJob } from "../services/projectSelection";
 import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
 } from "../services/resumeProjects";
+import { tailorResume } from "../services/resume-ops-client";
 import { generateTailoring } from "../services/summary";
 import {
   type PendingChallenge,
@@ -499,6 +504,13 @@ export async function summarizeJob(
   success: boolean;
   error?: string;
 }> {
+  if (getResumeGenerationBackend() === "resume_ops") {
+    return {
+      success: false,
+      error: "Tailoring is handled by ResumeOps. Summarize is not available in external backend mode.",
+    };
+  }
+
   return runWithRequestContext({ jobId }, async () => {
     const jobLogger = logger.child({ jobId });
     jobLogger.info("Summarizing job");
@@ -654,42 +666,76 @@ export async function generateFinalPdf(
       }
       pdfRegeneratingMarked = true;
 
-      const pdfResult = await generatePdf(
-        job.id,
-        {
-          summary: job.tailoredSummary || "",
-          headline: job.tailoredHeadline || "",
-          skills: job.tailoredSkills ? JSON.parse(job.tailoredSkills) : [],
-        },
-        job.jobDescription || "",
-        undefined, // deprecated baseResumePath parameter
-        job.selectedProjectIds,
-        {
-          tracerLinksEnabled: job.tracerLinksEnabled,
-          requestOrigin: options?.requestOrigin ?? null,
-          tracerCompanyName: job.employer ?? null,
-        },
-      );
+      const backend = getResumeGenerationBackend();
+      let pdfResultPath: string | undefined;
 
-      if (!pdfResult.success) {
-        await jobsRepo.updateJob(job.id, {
-          status: job.status,
-          pdfRegenerating: false,
-        });
-        pdfRegeneratingMarked = false;
-        const preservedPdfMessage =
-          job.status === "ready" && job.pdfPath
-            ? " Your previous resume PDF is still available."
-            : "";
-        return {
-          success: false,
-          error: `PDF generation failed.${preservedPdfMessage}${
-            pdfResult.error ? ` ${pdfResult.error}` : ""
-          }`,
-          errorCode: pdfResult.errorCode,
-        };
+      if (backend === "resume_ops") {
+        const config = getResumeOpsConfig();
+        if (!config) {
+          throw new Error("ResumeOps backend is not configured");
+        }
+        
+        try {
+          const tailorResult = await tailorResume({
+            job_description: job.jobDescription || "",
+            theme: config.theme,
+          });
+          
+          const outputPath = getTenantJobPdfPath(job.id);
+          await fs.writeFile(outputPath, Buffer.from(tailorResult.pdf_base64, "base64"));
+          pdfResultPath = outputPath;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Unknown error";
+          await jobsRepo.updateJob(job.id, {
+            status: job.status,
+            pdfRegenerating: false,
+          });
+          pdfRegeneratingMarked = false;
+          return {
+            success: false,
+            error: `ResumeOps PDF generation failed: ${message}`,
+          };
+        }
+      } else {
+        const pdfResult = await generatePdf(
+          job.id,
+          {
+            summary: job.tailoredSummary || "",
+            headline: job.tailoredHeadline || "",
+            skills: job.tailoredSkills ? JSON.parse(job.tailoredSkills) : [],
+          },
+          job.jobDescription || "",
+          undefined, // deprecated baseResumePath parameter
+          job.selectedProjectIds,
+          {
+            tracerLinksEnabled: job.tracerLinksEnabled,
+            requestOrigin: options?.requestOrigin ?? null,
+            tracerCompanyName: job.employer ?? null,
+          },
+        );
+
+        if (!pdfResult.success) {
+          await jobsRepo.updateJob(job.id, {
+            status: job.status,
+            pdfRegenerating: false,
+          });
+          pdfRegeneratingMarked = false;
+          const preservedPdfMessage =
+            job.status === "ready" && job.pdfPath
+              ? " Your previous resume PDF is still available."
+              : "";
+          return {
+            success: false,
+            error: `PDF generation failed.${preservedPdfMessage}${
+              pdfResult.error ? ` ${pdfResult.error}` : ""
+            }`,
+            errorCode: pdfResult.errorCode,
+          };
+        }
+        pdfResultPath = pdfResult.pdfPath;
       }
-      if (!pdfResult.pdfPath) {
+
+      if (!pdfResultPath) {
         throw new Error("PDF generation succeeded without an output path.");
       }
 
@@ -702,7 +748,7 @@ export async function generateFinalPdf(
         id: job.id,
         expectedStatus: expectedStatusAtCommit,
         requireGeneratedSource: job.status === "ready",
-        pdfPath: pdfResult.pdfPath,
+        pdfPath: pdfResultPath,
         pdfFingerprint,
         pdfGeneratedAt: new Date().toISOString(),
       });
@@ -788,6 +834,13 @@ export async function processJob(
   error?: string;
 }> {
   try {
+    const backend = getResumeGenerationBackend();
+    
+    if (backend === "resume_ops") {
+      const pdfResult = await generateFinalPdf(jobId, options);
+      return pdfResult;
+    }
+
     // Step 1: Summarize & Select Projects
     const sumResult = await summarizeJob(jobId, options);
     if (!sumResult.success) return sumResult;

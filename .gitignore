@@ -24,4 +24,6 @@ Thumbs.db
 tmp/
 
 # Virtual environment for Python
-.venvmaster-resume.json
+.venv 
+
+master-resume.json
