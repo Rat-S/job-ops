@@ -44,8 +44,8 @@ export async function tailorResume(request: TailorRequest): Promise<TailorRespon
       let errorMessage = `ResumeOps API error: ${response.status} ${response.statusText}`;
       try {
         const errorData = await response.json();
-        if (errorData.detail) {
-          errorMessage += ` - ${JSON.stringify(errorData.detail)}`;
+        if (errorData.detail || errorData.details || errorData.message) {
+          errorMessage += ` - ${JSON.stringify(errorData)}`;
         }
       } catch (e) {
         // ignore JSON parse error

@@ -7,7 +7,7 @@
  * 3. Leave all jobs in "discovered" for manual processing
  */
 
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type { AppErrorCode } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
@@ -682,6 +682,7 @@ export async function generateFinalPdf(
           });
           
           const outputPath = getTenantJobPdfPath(job.id);
+          await fs.mkdir(dirname(outputPath), { recursive: true });
           await fs.writeFile(outputPath, Buffer.from(tailorResult.pdf_base64, "base64"));
           pdfResultPath = outputPath;
         } catch (error) {

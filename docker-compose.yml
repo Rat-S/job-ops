@@ -80,14 +80,23 @@ services:
       start_period: 10s
 
   resume-ops:
+    build:
+      context: ../resume-ops
+      dockerfile: Containerfile
     image: resume-ops:latest
+    command: ["uvicorn", "resume_ops_api.main:create_app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--factory"]
     env_file:
       - ../resume-ops/.env
     environment:
       - MASTER_RESUME_PATH=/data/master-resume.json
+      - PYTHONPATH=/app/src
+      # PDF rendering via system Chromium (installed in image)
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
     volumes:
       - ./data/resume-ops:/data:Z
       - ./master-resume.json:/data/master-resume.json:ro,Z
+      - ../resume-ops/src:/app/src:Z
     ports:
       - "127.0.0.1:8000:8000"
     restart: unless-stopped
