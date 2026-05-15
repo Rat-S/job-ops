@@ -478,7 +478,7 @@ export const DesignResumePage: React.FC = () => {
       <input
         ref={importFileInputRef}
         type="file"
-        accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
+                  accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,application/json,.json"
         className="hidden"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];

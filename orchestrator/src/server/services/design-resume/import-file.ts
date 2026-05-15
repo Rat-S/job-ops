@@ -28,7 +28,8 @@ import { replaceCurrentDesignResumeDocument } from "./index";
 
 type SupportedImportMediaType =
   | "application/pdf"
-  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  | "application/json";
 
 type SupportedRuntimeProvider =
   | "openai"
@@ -77,6 +78,7 @@ const SUPPORTED_EXTENSION_TO_MEDIA_TYPE: Record<
 > = {
   pdf: "application/pdf",
   docx: DOCX_MIME,
+  json: "application/json",
 };
 
 const SYSTEM_PROMPT = `
@@ -151,6 +153,7 @@ function normalizeImportMediaType(input: {
   const normalizedMediaType = input.mediaType?.trim().toLowerCase() ?? "";
   if (normalizedMediaType === "application/pdf") return "application/pdf";
   if (normalizedMediaType === DOCX_MIME) return DOCX_MIME;
+  if (normalizedMediaType === "application/json") return "application/json";
 
   if (
     (!normalizedMediaType ||
@@ -160,7 +163,7 @@ function normalizeImportMediaType(input: {
     return fromExtension;
   }
 
-  throw badRequest("Only PDF and DOCX resumes are supported.");
+  throw badRequest("Only PDF, DOCX, and JSON resumes are supported.");
 }
 
 function normalizeBase64Payload(dataBase64: string): string {
@@ -1182,6 +1185,26 @@ export async function importDesignResumeFromFile(
     mediaType: input.mediaType,
   });
   const { decoded, normalizedBase64 } = decodeBase64Payload(input.dataBase64);
+  
+  if (mediaType === "application/json") {
+    let jsonContent: string;
+    try {
+      jsonContent = decoded.toString("utf-8");
+    } catch (error) {
+      throw badRequest("Failed to decode JSON resume file.");
+    }
+    
+    const parsed = parseImportedResumeJson(jsonContent);
+    const sanitized = sanitizeNormalizedResume(parsed);
+    
+    return replaceCurrentDesignResumeDocument({
+      importedAt: new Date().toISOString(),
+      resumeJson: sanitized,
+      sourceMode: "v5",
+      sourceResumeId: null,
+    });
+  }
+
   const requestId = getRequestId();
 
   const runtime = await resolveLlmRuntimeSettings();

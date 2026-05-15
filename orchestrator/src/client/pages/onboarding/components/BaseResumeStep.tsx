@@ -54,7 +54,7 @@ export const BaseResumeStep: React.FC<{
       <input
         ref={fileInputRef}
         type="file"
-        accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx"
+        accept="application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,application/json,.json"
         className="hidden"
         onChange={(event) => {
           const file = event.currentTarget.files?.[0];
@@ -75,7 +75,7 @@ export const BaseResumeStep: React.FC<{
         {[
           {
             value: "upload",
-            title: "Upload a PDF or DOCX",
+            title: "Upload a PDF, DOCX, or JSON",
             description:
               "Create a local Design Resume directly in Job Ops from your existing file.",
           },
@@ -122,7 +122,7 @@ export const BaseResumeStep: React.FC<{
           <div className="rounded-xl border border-border/60 bg-muted/10 p-5">
             <div className="space-y-2">
               <div className="text-sm font-medium">
-                Upload a PDF or DOCX resume
+                Upload a PDF, DOCX, or JSON resume
               </div>
               <p className="text-sm text-muted-foreground">
                 Job Ops will send the file directly to your configured AI model
@@ -143,7 +143,7 @@ export const BaseResumeStep: React.FC<{
                   : "Upload resume file"}
               </Button>
               <div className="text-xs text-muted-foreground">
-                Supported formats: PDF and DOCX.
+                Supported formats: PDF, DOCX, and JSON.
               </div>
             </div>
           </div>
