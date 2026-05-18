@@ -13,7 +13,9 @@ services:
       - "3005:3001"
     volumes:
       # Persist database and generated PDFs
-      - ./data:/app/data:Z
+      - ./data:/app/data:z
+      # Mount master resume directly for read-only access
+      - ./master-resume.json:/app/master-resume.json:ro,z
       # Persist Codex login/session data for app-server provider
       - codex-home:/app/codex-home
     environment:
@@ -94,8 +96,8 @@ services:
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
       - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
     volumes:
-      - ./data/resume-ops:/data:Z
-      - ./master-resume.json:/data/master-resume.json:ro,Z
+      - ./data/resume-ops:/data:z
+      - ./master-resume.json:/data/master-resume.json:ro,z
       - ../resume-ops/src:/app/src:Z
     ports:
       - "127.0.0.1:8000:8000"

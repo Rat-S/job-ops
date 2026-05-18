@@ -151,41 +151,50 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   let profile: Record<string, unknown> = {};
   let localProfile: ResumeProfile | null = null;
 
-  const localDesignResume = await getCurrentDesignResumeOrNullOnLegacy();
-  if (localDesignResume?.resumeJson) {
-    localProfile = await designResumeToProfile(localDesignResume.resumeJson);
+  const backend = getResumeGenerationBackend();
+  if (backend === "resume_ops") {
+    localProfile = await getProfile().catch((error) => {
+      logger.warn("Failed to load base resume profile for settings from master-resume.json", { error });
+      return null;
+    });
     profile = (localProfile as Record<string, unknown> | null) ?? {};
-  }
+  } else {
+    const localDesignResume = await getCurrentDesignResumeOrNullOnLegacy();
+    if (localDesignResume?.resumeJson) {
+      localProfile = await designResumeToProfile(localDesignResume.resumeJson);
+      profile = (localProfile as Record<string, unknown> | null) ?? {};
+    }
 
-  if (Object.keys(profile).length === 0 && rxresumeBaseResumeId) {
-    try {
-      const resume = await getResume(rxresumeBaseResumeId);
-      if (resume.data && typeof resume.data === "object") {
-        profile = resume.data as Record<string, unknown>;
-      }
-    } catch (error) {
-      if (error instanceof RxResumeAuthConfigError) {
-        logger.warn(
-          "Reactive Resume credentials missing during settings load",
-          {
+    if (Object.keys(profile).length === 0 && rxresumeBaseResumeId) {
+      try {
+        const resume = await getResume(rxresumeBaseResumeId);
+        if (resume.data && typeof resume.data === "object") {
+          profile = resume.data as Record<string, unknown>;
+        }
+      } catch (error) {
+        if (error instanceof RxResumeAuthConfigError) {
+          logger.warn(
+            "Reactive Resume credentials missing during settings load",
+            {
+              resumeId: rxresumeBaseResumeId,
+              error,
+            },
+          );
+        } else {
+          logger.warn("Failed to load Reactive Resume base resume for settings", {
             resumeId: rxresumeBaseResumeId,
             error,
-          },
-        );
-      } else {
-        logger.warn("Failed to load Reactive Resume base resume for settings", {
-          resumeId: rxresumeBaseResumeId,
-          error,
-        });
+          });
+        }
       }
     }
-  }
 
-  if (Object.keys(profile).length === 0) {
-    profile = await getProfile().catch((error) => {
-      logger.warn("Failed to load base resume profile for settings", { error });
-      return {};
-    });
+    if (Object.keys(profile).length === 0) {
+      profile = await getProfile().catch((error) => {
+        logger.warn("Failed to load base resume profile for settings", { error });
+        return {};
+      });
+    }
   }
 
   const envSettings = await getEnvSettingsData(overrides);
