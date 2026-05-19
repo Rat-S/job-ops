@@ -684,6 +684,15 @@ export async function generateFinalPdf(
           const outputPath = getTenantJobPdfPath(job.id);
           await fs.mkdir(dirname(outputPath), { recursive: true });
           await fs.writeFile(outputPath, Buffer.from(tailorResult.pdf_base64, "base64"));
+
+          // Save the tailored JSON resume right next to the PDF for easy user access
+          const jsonOutputPath = outputPath.replace(/\.pdf$/, ".json");
+          await fs.writeFile(
+            jsonOutputPath,
+            JSON.stringify(tailorResult.resume, null, 2),
+            "utf8"
+          );
+
           pdfResultPath = outputPath;
         } catch (error) {
           const message = error instanceof Error ? error.message : "Unknown error";

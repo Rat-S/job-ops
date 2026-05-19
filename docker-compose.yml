@@ -86,10 +86,12 @@ services:
       context: ../resume-ops
       dockerfile: Containerfile
     image: resume-ops:latest
+    user: root
     command: ["uvicorn", "resume_ops_api.main:create_app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--factory"]
     env_file:
       - ../resume-ops/.env
     environment:
+      - DATA_DIR=/data
       - MASTER_RESUME_PATH=/data/master-resume.json
       - PYTHONPATH=/app/src
       # PDF rendering via system Chromium (installed in image)
