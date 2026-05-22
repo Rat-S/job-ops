@@ -4,6 +4,7 @@ name: build-and-push-ghcr
 on:
   push:
     tags: ["v*"]
+    branches: ["feat/resume-ops-integration"]
 
 permissions:
   contents: read

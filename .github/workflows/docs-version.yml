@@ -15,10 +15,10 @@ jobs:
   version-docs:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main
+      - name: Checkout branch
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: feat/resume-ops-integration
           fetch-depth: 0
 
       - name: Setup Node
@@ -66,4 +66,4 @@ jobs:
           fi
 
           git commit -m "docs: cut version ${{ steps.vars.outputs.version }}"
-          git push origin HEAD:main
+          git push origin HEAD:feat/resume-ops-integration
