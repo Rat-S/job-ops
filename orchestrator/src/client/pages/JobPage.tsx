@@ -51,7 +51,11 @@ import {
   PDF_REGENERATING_MESSAGE,
   STALE_PDF_MESSAGE,
 } from "@/client/lib/pdf-freshness";
-import { downloadJobPdf, openJobPdf } from "@/client/lib/private-pdf";
+import {
+  downloadJobJson,
+  downloadJobPdf,
+  openJobPdf,
+} from "@/client/lib/private-pdf";
 import { queryKeys } from "@/client/lib/queryKeys";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -514,6 +518,16 @@ export const JobPage: React.FC = () => {
     });
   };
 
+  const handleDownloadJson = async () => {
+    if (!job || !job.pdfPath || pdfActionsDisabled) return;
+    const filename = `${safeFilenamePart(job.employer)}-${safeFilenamePart(
+      job.title,
+    )}-resume.json`;
+    await downloadJobJson(job.id, filename).catch((error) => {
+      showErrorToast(error, "Could not download JSON");
+    });
+  };
+
   const handleViewJobDescription = () => {
     if (!job) return;
     navigate(`${baseJobPath}/documents`, { state: jobPageNavigationState });
@@ -820,6 +834,7 @@ export const JobPage: React.FC = () => {
                   }}
                   onDownloadPdf={() => void handleDownloadPdf()}
                   onRegeneratePdf={() => void handleRegeneratePdf()}
+                  onDownloadJson={() => void handleDownloadJson()}
                 />
 
                 <JobBriefPane job={job} />

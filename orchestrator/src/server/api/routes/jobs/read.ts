@@ -3,7 +3,12 @@ import { fail, ok } from "@infra/http";
 import { logger } from "@infra/logger";
 import * as jobsRepo from "@server/repositories/jobs";
 import { attachAppliedDuplicateMatches } from "@server/services/applied-duplicate-matching";
-import { getPdfPath, pdfExists } from "@server/services/pdf";
+import {
+  getJsonPath,
+  getPdfPath,
+  jsonExists,
+  pdfExists,
+} from "@server/services/pdf";
 import {
   applyJobsPdfFreshness,
   resolvePdfFingerprintContext,
@@ -242,6 +247,23 @@ jobsReadRouter.get("/:id/pdf", async (req: Request, res: Response) => {
   res.sendFile(pdfPath, (error) => {
     if (error) {
       fail(res, notFound("PDF not found"));
+    }
+  });
+});
+
+jobsReadRouter.get("/:id/json", async (req: Request, res: Response) => {
+  const currentJob = await jobsRepo.getJobById(req.params.id);
+  if (!currentJob || !(await jsonExists(req.params.id))) {
+    fail(res, notFound("JSON resume not found"));
+    return;
+  }
+
+  const jsonPath = getJsonPath(req.params.id);
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Content-Type", "application/json");
+  res.sendFile(jsonPath, (error) => {
+    if (error) {
+      fail(res, notFound("JSON resume not found"));
     }
   });
 });

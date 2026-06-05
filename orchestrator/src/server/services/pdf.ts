@@ -390,6 +390,21 @@ export async function generatePdf(
       });
     }
 
+    // Save the tailored JSON resume right next to the PDF for easy user access
+    try {
+      const jsonOutputPath = outputPath.replace(/\.pdf$/, ".json");
+      await writeFile(
+        jsonOutputPath,
+        JSON.stringify(preparedResume.data, null, 2),
+        "utf8",
+      );
+    } catch (err) {
+      logger.warn("Failed to save tailored JSON resume next to PDF", {
+        jobId,
+        error: err,
+      });
+    }
+
     logger.info("PDF generated successfully", { jobId, outputPath, renderer });
     return { success: true, pdfPath: outputPath };
   } catch (error) {
@@ -477,4 +492,31 @@ export function getPdfPath(jobId: string): string {
   const pdfPath = getTenantJobPdfPath(jobId);
   if (existsSync(pdfPath)) return pdfPath;
   return getLegacyJobPdfPath(jobId);
+}
+
+/**
+ * Check if a JSON resume exists for a job.
+ */
+export async function jsonExists(jobId: string): Promise<boolean> {
+  const jsonPath = getTenantJobPdfPath(jobId).replace(/\.pdf$/, ".json");
+  try {
+    await access(jsonPath);
+    return true;
+  } catch {
+    try {
+      await access(getLegacyJobPdfPath(jobId).replace(/\.pdf$/, ".json"));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/**
+ * Get the path to a job's JSON resume.
+ */
+export function getJsonPath(jobId: string): string {
+  const jsonPath = getTenantJobPdfPath(jobId).replace(/\.pdf$/, ".json");
+  if (existsSync(jsonPath)) return jsonPath;
+  return getLegacyJobPdfPath(jobId).replace(/\.pdf$/, ".json");
 }

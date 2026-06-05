@@ -14,12 +14,12 @@ import {
   type LlmPurposeOverrides,
   type ResumeProfile,
 } from "@shared/types";
+import { getResumeGenerationBackend } from "../config/resume-ops";
 import {
   designResumeToProfile,
   getCurrentDesignResumeOrNullOnLegacy,
 } from "./design-resume";
 import { getEnvSettingsData } from "./envSettings";
-import { getResumeGenerationBackend } from "../config/resume-ops";
 import { getProfile } from "./profile";
 import {
   extractProjectsFromProfile,
@@ -154,7 +154,10 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
   const backend = getResumeGenerationBackend();
   if (backend === "resume_ops") {
     localProfile = await getProfile().catch((error) => {
-      logger.warn("Failed to load base resume profile for settings from master-resume.json", { error });
+      logger.warn(
+        "Failed to load base resume profile for settings from master-resume.json",
+        { error },
+      );
       return null;
     });
     profile = (localProfile as Record<string, unknown> | null) ?? {};
@@ -181,17 +184,22 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
             },
           );
         } else {
-          logger.warn("Failed to load Reactive Resume base resume for settings", {
-            resumeId: rxresumeBaseResumeId,
-            error,
-          });
+          logger.warn(
+            "Failed to load Reactive Resume base resume for settings",
+            {
+              resumeId: rxresumeBaseResumeId,
+              error,
+            },
+          );
         }
       }
     }
 
     if (Object.keys(profile).length === 0) {
       profile = await getProfile().catch((error) => {
-        logger.warn("Failed to load base resume profile for settings", { error });
+        logger.warn("Failed to load base resume profile for settings", {
+          error,
+        });
         return {};
       });
     }
@@ -307,7 +315,7 @@ export async function getEffectiveSettings(): Promise<AppSettings> {
 
   // Always expose the effective base resume id for the active RxResume mode.
   result.rxresumeBaseResumeId = rxresumeBaseResumeId;
-  
+
   result.resumeGenerationBackend = getResumeGenerationBackend();
 
   return result as AppSettings;

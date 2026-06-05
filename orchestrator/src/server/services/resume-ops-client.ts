@@ -18,7 +18,9 @@ interface MasterResumeStatus {
   message: string;
 }
 
-export async function tailorResume(request: TailorRequest): Promise<TailorResponse> {
+export async function tailorResume(
+  request: TailorRequest,
+): Promise<TailorResponse> {
   const config = getResumeOpsConfig();
   if (!config) {
     throw new Error("ResumeOps is not configured");
@@ -53,7 +55,7 @@ export async function tailorResume(request: TailorRequest): Promise<TailorRespon
       throw new Error(errorMessage);
     }
 
-    return await response.json() as TailorResponse;
+    return (await response.json()) as TailorResponse;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -62,22 +64,32 @@ export async function tailorResume(request: TailorRequest): Promise<TailorRespon
 export async function getMasterResumeStatus(): Promise<MasterResumeStatus> {
   const config = getResumeOpsConfig();
   if (!config) {
-    return { configured: false, exists: false, valid: false, message: "ResumeOps not configured" };
+    return {
+      configured: false,
+      exists: false,
+      valid: false,
+      message: "ResumeOps not configured",
+    };
   }
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), config.timeoutMs);
 
   try {
-    const response = await fetch(`${config.baseUrl}/api/v1/master-resume/status`, {
-      signal: controller.signal,
-    });
+    const response = await fetch(
+      `${config.baseUrl}/api/v1/master-resume/status`,
+      {
+        signal: controller.signal,
+      },
+    );
 
     if (!response.ok) {
-      throw new Error(`ResumeOps API error: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `ResumeOps API error: ${response.status} ${response.statusText}`,
+      );
     }
 
-    return await response.json() as MasterResumeStatus;
+    return (await response.json()) as MasterResumeStatus;
   } finally {
     clearTimeout(timeoutId);
   }

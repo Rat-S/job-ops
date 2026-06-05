@@ -2,7 +2,10 @@ import { createHash } from "node:crypto";
 import * as settingsRepo from "@server/repositories/settings";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { Job, JobPdfFreshness, PdfRenderer } from "@shared/types";
-import { getResumeGenerationBackend, getResumeOpsConfig } from "../config/resume-ops";
+import {
+  getResumeGenerationBackend,
+  getResumeOpsConfig,
+} from "../config/resume-ops";
 import { getCurrentDesignResumeOrNullOnLegacy } from "./design-resume";
 import { getConfiguredRxResumeBaseResumeId } from "./rxresume/baseResumeId";
 

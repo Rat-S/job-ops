@@ -25,7 +25,11 @@ import {
   PDF_REGENERATING_MESSAGE,
   STALE_PDF_MESSAGE,
 } from "@client/lib/pdf-freshness";
-import { downloadJobPdf, openJobPdf } from "@client/lib/private-pdf";
+import {
+  downloadJobJson,
+  downloadJobPdf,
+  openJobPdf,
+} from "@client/lib/private-pdf";
 import type {
   Job,
   JobListItem,
@@ -272,6 +276,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const selectedPdfFilename = selectedJob
     ? `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer || "Unknown")}.pdf`
     : "resume.pdf";
+  const selectedJsonFilename = selectedJob
+    ? `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer || "Unknown")}.json`
+    : "resume.json";
   const selectedProjectIds = useMemo(
     () => selectedJob?.selectedProjectIds?.split(",").filter(Boolean) ?? [],
     [selectedJob?.selectedProjectIds],
@@ -485,6 +492,16 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     });
   }, [selectedJob, selectedPdfFilename]);
 
+  const handleDownloadJson = useCallback(() => {
+    if (!selectedJob || !selectedJob.pdfPath || isPdfRegenerating(selectedJob))
+      return;
+    void downloadJobJson(selectedJob.id, selectedJsonFilename).catch(
+      (error) => {
+        showErrorToast(error, "Could not download JSON");
+      },
+    );
+  }, [selectedJob, selectedJsonFilename]);
+
   const handleUploadPdf = useCallback(
     async (file: File) => {
       if (!selectedJob) return;
@@ -690,6 +707,13 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                       <Download className="mr-2 h-4 w-4" />
                       {pdfLabels.download}
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={handleDownloadJson}
+                      disabled={pdfActionDisabled}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download JSON
+                    </DropdownMenuItem>
                   </>
                 )}
                 {canSkip && (
@@ -735,9 +759,12 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
           {settings?.resumeGenerationBackend === "resume_ops" ? (
             <div className="flex flex-col items-center justify-center p-8 text-center border rounded-lg bg-muted/20 border-border/50">
               <Sparkles className="h-8 w-8 mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-medium text-foreground">Tailoring Handled Externally</h3>
+              <h3 className="text-lg font-medium text-foreground">
+                Tailoring Handled Externally
+              </h3>
               <p className="mt-2 text-sm text-muted-foreground max-w-sm">
-                Tailoring is handled by ResumeOps. Click 'Generate PDF' to create a tailored resume.
+                Tailoring is handled by ResumeOps. Click 'Generate PDF' to
+                create a tailored resume.
               </p>
               <Button
                 className="mt-6"
@@ -819,7 +846,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 </div>
               </div>
             </div>
-            <div className="grid gap-2 sm:grid-cols-3">
+            <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
               <TooltipWhenDisabled
                 reason={pdfRegeneratingReason}
                 className="w-full"
@@ -829,10 +856,26 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                   variant="outline"
                   onClick={handleDownloadPdf}
                   disabled={pdfActionDisabled}
+                  className="w-full"
                 >
                   <Download className="size-3.5" />
                   {pdfLabels.download}
                   <KbdHint shortcut="d" className="ml-auto" />
+                </Button>
+              </TooltipWhenDisabled>
+              <TooltipWhenDisabled
+                reason={pdfRegeneratingReason}
+                className="w-full"
+              >
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDownloadJson}
+                  disabled={pdfActionDisabled}
+                  className="w-full"
+                >
+                  <Download className="size-3.5" />
+                  JSON
                 </Button>
               </TooltipWhenDisabled>
               <OpenJobListingButton
