@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, feat/resume-ops-integration]
+    branches: [feat/resume-ops-integration]
   pull_request:
-    branches: [main, feat/resume-ops-integration]
+    branches: [feat/resume-ops-integration]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
