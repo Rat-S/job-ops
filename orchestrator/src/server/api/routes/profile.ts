@@ -57,10 +57,20 @@ profileRouter.get("/status", async (_req: Request, res: Response) => {
         if (status.valid) {
           ok(res, { exists: true, error: null });
         } else {
-          ok(res, { exists: false, error: status.message || "ResumeOps master resume is invalid or missing" });
+          ok(res, {
+            exists: false,
+            error:
+              status.message || "ResumeOps master resume is invalid or missing",
+          });
         }
       } catch (err) {
-        ok(res, { exists: false, error: err instanceof Error ? err.message : "Failed to connect to ResumeOps" });
+        ok(res, {
+          exists: false,
+          error:
+            err instanceof Error
+              ? err.message
+              : "Failed to connect to ResumeOps",
+        });
       }
       return;
     }

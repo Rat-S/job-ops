@@ -400,7 +400,8 @@ jobsDocumentsRouter.post(
         const err = new AppError({
           status: 409,
           code: "CONFLICT",
-          message: "Tailoring is handled by ResumeOps. Summarize is not available in external backend mode.",
+          message:
+            "Tailoring is handled by ResumeOps. Summarize is not available in external backend mode.",
         });
         return fail(res, err);
       }

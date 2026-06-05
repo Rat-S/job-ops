@@ -59,6 +59,7 @@ type JobDocumentsPanelProps = {
   onViewPdf: () => void;
   onDownloadPdf: () => void;
   onRegeneratePdf: () => void;
+  onDownloadJson: () => void;
 };
 
 function DocumentIcon({
@@ -210,6 +211,7 @@ export const JobDocumentsPanel: React.FC<JobDocumentsPanelProps> = ({
   onViewPdf,
   onDownloadPdf,
   onRegeneratePdf,
+  onDownloadJson,
 }) => {
   const queryClient = useQueryClient();
   const uploadDocumentInputRef = useRef<HTMLInputElement | null>(null);
@@ -355,6 +357,20 @@ export const JobDocumentsPanel: React.FC<JobDocumentsPanelProps> = ({
                       >
                         <Download className="mr-1.5 h-3.5 w-3.5" />
                         {pdfDownloadLabel}
+                      </Button>
+                    </TooltipWhenDisabled>
+                    <TooltipWhenDisabled
+                      reason={pdfRegeneratingReason}
+                      className="w-auto"
+                    >
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={onDownloadJson}
+                        disabled={pdfActionsDisabled}
+                      >
+                        <Download className="mr-1.5 h-3.5 w-3.5" />
+                        Download JSON
                       </Button>
                     </TooltipWhenDisabled>
                     <Button

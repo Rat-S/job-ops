@@ -212,6 +212,16 @@ export async function getJobPdfBlob(id: string): Promise<Blob> {
   );
 }
 
+export async function getJobJsonBlob(id: string): Promise<Blob> {
+  const cacheBuster = Date.now().toString(36);
+  return fetchBlobApi(
+    withQuery(`/jobs/${encodeURIComponent(id)}/json`, { v: cacheBuster }),
+    {
+      cache: "no-store",
+    },
+  );
+}
+
 export async function getTracerAnalytics(options?: {
   jobId?: string;
   from?: number;

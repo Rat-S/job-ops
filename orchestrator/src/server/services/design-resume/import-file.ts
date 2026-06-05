@@ -1185,7 +1185,7 @@ export async function importDesignResumeFromFile(
     mediaType: input.mediaType,
   });
   const { decoded, normalizedBase64 } = decodeBase64Payload(input.dataBase64);
-  
+
   if (mediaType === "application/json") {
     let jsonContent: string;
     try {
@@ -1193,10 +1193,10 @@ export async function importDesignResumeFromFile(
     } catch (error) {
       throw badRequest("Failed to decode JSON resume file.");
     }
-    
+
     const parsed = parseImportedResumeJson(jsonContent);
     const sanitized = sanitizeNormalizedResume(parsed);
-    
+
     return replaceCurrentDesignResumeDocument({
       importedAt: new Date().toISOString(),
       resumeJson: sanitized,

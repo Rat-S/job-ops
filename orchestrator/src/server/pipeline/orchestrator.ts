@@ -7,13 +7,13 @@
  * 3. Leave all jobs in "discovered" for manual processing
  */
 
+import { Buffer } from "node:buffer";
+import { promises as fs } from "node:fs";
 import { dirname, join } from "node:path";
 import type { AppErrorCode } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
 import { runWithRequestContext } from "@infra/request-context";
-import { Buffer } from "node:buffer";
-import { promises as fs } from "node:fs";
 import { getActiveTenantId } from "@server/tenancy/context";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-domain.js";
 import type {
@@ -22,7 +22,10 @@ import type {
   PipelineRunSavedDetails,
 } from "@shared/types";
 import { getDataDir } from "../config/dataDir";
-import { getResumeGenerationBackend, getResumeOpsConfig } from "../config/resume-ops";
+import {
+  getResumeGenerationBackend,
+  getResumeOpsConfig,
+} from "../config/resume-ops";
 import * as jobsRepo from "../repositories/jobs";
 import * as pipelineRepo from "../repositories/pipeline";
 import * as settingsRepo from "../repositories/settings";
@@ -34,11 +37,11 @@ import {
 import { getTenantJobPdfPath } from "../services/pdf-storage";
 import { getProfile } from "../services/profile";
 import { pickProjectIdsForJob } from "../services/projectSelection";
+import { tailorResume } from "../services/resume-ops-client";
 import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
 } from "../services/resumeProjects";
-import { tailorResume } from "../services/resume-ops-client";
 import { generateTailoring } from "../services/summary";
 import {
   type PendingChallenge,
@@ -507,7 +510,8 @@ export async function summarizeJob(
   if (getResumeGenerationBackend() === "resume_ops") {
     return {
       success: false,
-      error: "Tailoring is handled by ResumeOps. Summarize is not available in external backend mode.",
+      error:
+        "Tailoring is handled by ResumeOps. Summarize is not available in external backend mode.",
     };
   }
 
@@ -674,28 +678,32 @@ export async function generateFinalPdf(
         if (!config) {
           throw new Error("ResumeOps backend is not configured");
         }
-        
+
         try {
           const tailorResult = await tailorResume({
             job_description: job.jobDescription || "",
             theme: config.theme,
           });
-          
+
           const outputPath = getTenantJobPdfPath(job.id);
           await fs.mkdir(dirname(outputPath), { recursive: true });
-          await fs.writeFile(outputPath, Buffer.from(tailorResult.pdf_base64, "base64"));
+          await fs.writeFile(
+            outputPath,
+            Buffer.from(tailorResult.pdf_base64, "base64"),
+          );
 
           // Save the tailored JSON resume right next to the PDF for easy user access
           const jsonOutputPath = outputPath.replace(/\.pdf$/, ".json");
           await fs.writeFile(
             jsonOutputPath,
             JSON.stringify(tailorResult.resume, null, 2),
-            "utf8"
+            "utf8",
           );
 
           pdfResultPath = outputPath;
         } catch (error) {
-          const message = error instanceof Error ? error.message : "Unknown error";
+          const message =
+            error instanceof Error ? error.message : "Unknown error";
           await jobsRepo.updateJob(job.id, {
             status: job.status,
             pdfRegenerating: false,
@@ -845,7 +853,7 @@ export async function processJob(
 }> {
   try {
     const backend = getResumeGenerationBackend();
-    
+
     if (backend === "resume_ops") {
       const pdfResult = await generateFinalPdf(jobId, options);
       return pdfResult;
