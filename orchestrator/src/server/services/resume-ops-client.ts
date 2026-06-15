@@ -1,6 +1,7 @@
 import { getResumeOpsConfig } from "../config/resume-ops.js";
 
 interface TailorRequest {
+  resume?: Record<string, unknown>;
   job_description: string;
   theme?: string;
 }

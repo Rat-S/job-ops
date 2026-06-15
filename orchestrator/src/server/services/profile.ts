@@ -8,6 +8,7 @@ import type { ResumeProfile } from "@shared/types";
 import { getResumeGenerationBackend } from "../config/resume-ops";
 import {
   designResumeToProfile,
+  getCurrentDesignResume,
   isLegacyDesignResumeError,
 } from "./design-resume";
 import { getResume, RxResumeAuthConfigError } from "./rxresume";
@@ -221,6 +222,90 @@ export function tryLoadLocalMasterResume(): ResumeProfile | null {
 
   logger.warn("Could not find any local master-resume.json file");
   return null;
+}
+
+export function tryLoadRawLocalMasterResume(): Record<string, unknown> | null {
+  const candidates = [
+    join(getDataDir(), "resume-ops", "master-resume.json"),
+    join(process.cwd(), "..", "master-resume.json"),
+    join(process.cwd(), "master-resume.json"),
+  ];
+
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) {
+      try {
+        const raw = readFileSync(candidate, "utf8");
+        const json = JSON.parse(raw);
+        if (json && typeof json === "object") {
+          logger.info(
+            `Successfully loaded raw master-resume.json from ${candidate}`,
+          );
+          return json;
+        }
+      } catch (error) {
+        logger.error(`Failed to parse master-resume.json from ${candidate}`, {
+          error,
+        });
+      }
+    }
+  }
+
+  logger.warn("Could not find any local master-resume.json file");
+  return null;
+}
+
+export async function getRawMasterResume(): Promise<Record<string, unknown>> {
+  const backend = getResumeGenerationBackend();
+  if (backend === "resume_ops") {
+    const localRaw = tryLoadRawLocalMasterResume();
+    if (localRaw) {
+      return localRaw;
+    }
+  }
+
+  try {
+    const designResumeDoc = await getCurrentDesignResume();
+    if (designResumeDoc?.resumeJson) {
+      return designResumeDoc.resumeJson as Record<string, unknown>;
+    }
+  } catch (error) {
+    if (!isLegacyDesignResumeError(error)) {
+      throw error;
+    }
+    logger.warn("Ignoring legacy local Design Resume while loading raw profile fallback", { error });
+  }
+
+  let rxresumeBaseResumeId: string | null = null;
+  try {
+    const res = await getConfiguredRxResumeBaseResumeId();
+    rxresumeBaseResumeId = res.resumeId;
+  } catch (error) {
+    // Ignore error
+  }
+
+  if (rxresumeBaseResumeId) {
+    try {
+      logger.info("Fetching raw profile from Reactive Resume", {
+        resumeId: rxresumeBaseResumeId,
+      });
+      const resume = await getResume(rxresumeBaseResumeId);
+      if (resume.data && typeof resume.data === "object") {
+        return resume.data as Record<string, unknown>;
+      }
+    } catch (error) {
+      logger.error("Failed to fetch raw profile from Reactive Resume", {
+        resumeId: rxresumeBaseResumeId,
+        error,
+      });
+    }
+  }
+
+  const localRaw = tryLoadRawLocalMasterResume();
+  if (localRaw) {
+    return localRaw;
+  }
+
+  throw new Error("No master resume configured or found.");
 }
 
 function jsonResumeToProfile(jsonResume: any): ResumeProfile {

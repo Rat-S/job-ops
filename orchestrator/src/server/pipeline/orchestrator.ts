@@ -35,7 +35,7 @@ import {
   resolvePdfFingerprintContext,
 } from "../services/pdf-fingerprint";
 import { getTenantJobPdfPath } from "../services/pdf-storage";
-import { getProfile } from "../services/profile";
+import { getProfile, getRawMasterResume } from "../services/profile";
 import { pickProjectIdsForJob } from "../services/projectSelection";
 import { tailorResume } from "../services/resume-ops-client";
 import {
@@ -680,7 +680,9 @@ export async function generateFinalPdf(
         }
 
         try {
+          const masterResume = await getRawMasterResume();
           const tailorResult = await tailorResume({
+            resume: masterResume,
             job_description: job.jobDescription || "",
             theme: config.theme,
           });
