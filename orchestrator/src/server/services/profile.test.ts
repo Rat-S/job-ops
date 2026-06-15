@@ -8,7 +8,12 @@ import {
 // Mock the dependencies
 vi.mock("./design-resume", () => ({
   designResumeToProfile: vi.fn(),
+  getCurrentDesignResume: vi.fn(),
   isLegacyDesignResumeError: vi.fn(),
+}));
+
+vi.mock("../config/resume-ops", () => ({
+  getResumeGenerationBackend: vi.fn(() => "rxresume"),
 }));
 
 vi.mock("./rxresume", () => ({
@@ -30,8 +35,10 @@ vi.mock("@server/tenancy/context", () => ({
 }));
 
 import { getActiveTenantId } from "@server/tenancy/context";
+import { getResumeGenerationBackend } from "../config/resume-ops";
 import {
   designResumeToProfile,
+  getCurrentDesignResume,
   isLegacyDesignResumeError,
 } from "./design-resume";
 import { getResume, RxResumeAuthConfigError } from "./rxresume";
@@ -248,5 +255,32 @@ describe("getProfile", () => {
     await expect(getProfile()).rejects.toThrow(
       "Resume data is empty or invalid",
     );
+  });
+
+  it("should parse and return standard JSON resume from database under resume_ops backend", async () => {
+    vi.mocked(getResumeGenerationBackend).mockReturnValue("resume_ops");
+    const mockJsonResume = {
+      basics: {
+        name: "John Doe",
+        email: "john@example.com",
+        label: "Software Engineer",
+      },
+      work: [
+        {
+          name: "Acme Corp",
+          position: "Developer",
+          startDate: "2020-01-01",
+        },
+      ],
+    };
+    vi.mocked(getCurrentDesignResume).mockResolvedValue({
+      id: "primary",
+      resumeJson: mockJsonResume,
+    } as any);
+
+    const profile = await getProfile();
+
+    expect(profile.basics.name).toBe("John Doe");
+    expect(profile.sections.experience?.items?.[0]?.company).toBe("Acme Corp");
   });
 });

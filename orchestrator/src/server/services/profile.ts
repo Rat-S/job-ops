@@ -88,6 +88,33 @@ export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
       cache.localProfile = localMaster;
       return localMaster;
     }
+
+    try {
+      const designResumeDoc = await getCurrentDesignResume();
+      if (designResumeDoc?.resumeJson) {
+        const parsedRecord = designResumeDoc.resumeJson as unknown as Record<
+          string,
+          unknown
+        >;
+        const isStandard =
+          parsedRecord?.basics &&
+          !parsedRecord.sections &&
+          (parsedRecord.work || parsedRecord.education || parsedRecord.skills);
+        if (isStandard) {
+          const profile = jsonResumeToProfile(designResumeDoc.resumeJson);
+          cache.localProfile = profile;
+          return profile;
+        }
+      }
+    } catch (error) {
+      if (!isLegacyDesignResumeError(error)) {
+        throw error;
+      }
+      logger.warn(
+        "Ignoring legacy local Design Resume while loading profile fallback under resume_ops",
+        { error },
+      );
+    }
   }
 
   try {

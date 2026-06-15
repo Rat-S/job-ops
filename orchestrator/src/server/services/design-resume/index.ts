@@ -7,6 +7,7 @@ import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
 import { createId } from "@paralleldrive/cuid2";
 import { getDataDir } from "@server/config/dataDir";
+import { getResumeGenerationBackend } from "@server/config/resume-ops";
 import * as designResumeRepo from "@server/repositories/design-resume";
 import { getSetting } from "@server/repositories/settings";
 import { getOriginalEnvValue } from "@server/services/envSettings";
@@ -144,6 +145,14 @@ function validateStoredDesignResumeDocument(input: unknown): DesignResumeJson {
   if (parsed.success) {
     return parsed.data as DesignResumeJson;
   }
+
+  if (getResumeGenerationBackend() === "resume_ops") {
+    const record = asRecord(input);
+    if (record?.basics) {
+      return input as DesignResumeJson;
+    }
+  }
+
   throw badRequest(LEGACY_REIMPORT_MESSAGE);
 }
 

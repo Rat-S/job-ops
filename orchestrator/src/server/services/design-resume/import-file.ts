@@ -1773,7 +1773,7 @@ export async function importDesignResumeFromFile(
           safeParseV5ResumeData(candidate).data as DesignResumeJson,
         );
       } else if (getResumeGenerationBackend() === "resume_ops") {
-        resumeJson = sanitizeNormalizedResume(parsed);
+        resumeJson = parsed as unknown as DesignResumeJson;
       } else {
         throw badRequest(
           "Reactive Resume JSON must contain a v5 resume document or a data-wrapped v5 resume document.",
