@@ -14,6 +14,9 @@ docs-site/build/
 data/
 data.*/
 
+# Crawlee / extractor runtime storage at repo root
+storage/
+
 # Extractor storage outputs and cached auth
 extractors/ukvisajobs/storage/
 

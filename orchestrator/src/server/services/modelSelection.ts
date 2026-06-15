@@ -1,5 +1,6 @@
 import * as settingsRepo from "@server/repositories/settings";
 import { getOriginalEnvValue } from "@server/services/envSettings";
+import { resolveLlmApiKey } from "@server/services/llm/credentials";
 import { LlmService } from "@server/services/llm/service";
 import { getEffectiveSettings } from "@server/services/settings";
 import {
@@ -79,6 +80,7 @@ function getDefaultBaseUrlForProvider(
   if (normalized === "lmstudio") return "http://localhost:1234";
   if (normalized === "openai") return "https://api.openai.com";
   if (normalized === "openai_compatible") return "https://api.openai.com";
+  if (normalized === "glm") return "https://api.z.ai/api/paas/v4";
   if (normalized === "gemini") {
     return "https://generativelanguage.googleapis.com";
   }
@@ -134,11 +136,11 @@ export async function resolveLlmRuntimeSettings(
     model,
     provider,
     baseUrl,
-    apiKey:
-      purposeApiKey ||
-      overrides?.llmApiKey ||
-      getOriginalEnvValue("LLM_API_KEY") ||
-      null,
+    apiKey: resolveLlmApiKey({
+      purposeApiKey,
+      storedApiKey: overrides?.llmApiKey,
+      provider,
+    }),
   };
 }
 

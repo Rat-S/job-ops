@@ -1,32 +1,22 @@
+import type * as api from "@client/api";
 import type { LlmProviderId } from "@client/pages/settings/utils";
-import type { SearchTermsSuggestionResponse } from "@shared/types.js";
 import type React from "react";
-import type {
-  BasicAuthChoice,
-  ResumeSetupMode,
-  StepId,
-  ValidationState,
-} from "../types";
+import type { ResumeSetupMode, StepId, ValidationState } from "../types";
 import { BaseResumeStep } from "./BaseResumeStep";
-import { BasicAuthStep } from "./BasicAuthStep";
 import { LlmConnectionStep } from "./LlmConnectionStep";
-import { SearchTermsStep } from "./SearchTermsStep";
 
 export const OnboardingStepContent: React.FC<{
+  allowReactiveResume?: boolean;
   baseResumeValidation: ValidationState;
   baseResumeValue: string | null;
-  basicAuthChoice: BasicAuthChoice;
-  basicAuthPassword: string;
-  basicAuthUser: string;
   currentStep: StepId;
   defaultModel: string | null | undefined;
   effectiveModel: string | null | undefined;
+  importingResumeFileName: string | null;
   isBusy: boolean;
   isImportingResume: boolean;
-  isGeneratingSearchTerms: boolean;
   isResumeReady: boolean;
   isRxResumeSelfHosted: boolean;
-  hasSavedSearchTermsInSession: boolean;
   llmApiKey: string;
   llmBaseUrl: string;
   llmKeyHint: string | null;
@@ -37,31 +27,24 @@ export const OnboardingStepContent: React.FC<{
   rxresumeApiKeyHint: string | null | undefined;
   rxresumeUrl: string;
   rxresumeValidation: ValidationState;
-  searchTermDraft: string;
-  searchTerms: string[];
-  searchTermsSource: SearchTermsSuggestionResponse["source"] | null;
-  searchTermsStale: boolean;
   savedBaseUrl: string | null | undefined;
   savedProvider: string | null | undefined;
   selectedProvider: LlmProviderId;
   onLlmApiKeyChange: (value: string) => void;
   onLlmBaseUrlChange: (value: string) => void;
+  onCodexAuthStatusChange?: (
+    status: Awaited<ReturnType<typeof api.getCodexAuthStatus>>,
+  ) => void;
   onLlmModelChange: (value: string) => void;
   onLlmProviderChange: (value: string) => void;
-  onBasicAuthChoiceChange: (choice: BasicAuthChoice) => void;
-  onBasicAuthPasswordChange: (value: string) => void;
-  onBasicAuthUserChange: (value: string) => void;
   onImportResumeFile: (file: File) => Promise<void>;
-  onRegenerateSearchTerms: () => Promise<void>;
   onRxresumeApiKeyChange: (value: string) => void;
   onRxresumeSelfHostedChange: (next: boolean) => void;
   onRxresumeUrlChange: (value: string) => void;
   onResumeSetupModeChange: (mode: ResumeSetupMode) => void;
-  onSearchTermDraftChange: (value: string) => void;
-  onSearchTermsChange: (values: string[]) => void;
   onTemplateResumeChange: (value: string | null) => void;
 }> = (props) => {
-  if (props.currentStep === "llm") {
+  if (props.currentStep === "model") {
     return (
       <LlmConnectionStep
         apiKey={props.llmApiKey}
@@ -77,18 +60,25 @@ export const OnboardingStepContent: React.FC<{
         validation={props.llmValidation}
         onApiKeyChange={props.onLlmApiKeyChange}
         onBaseUrlChange={props.onLlmBaseUrlChange}
+        onCodexAuthStatusChange={props.onCodexAuthStatusChange}
         onModelChange={props.onLlmModelChange}
         onProviderChange={props.onLlmProviderChange}
       />
     );
   }
 
-  if (props.currentStep === "baseresume") {
+  if (props.currentStep === "resume") {
+    const hasSavedRxResumeAccess = Boolean(props.rxresumeApiKeyHint);
+    const hasRxResumeAccess =
+      props.rxresumeValidation.valid || hasSavedRxResumeAccess;
+
     return (
       <BaseResumeStep
+        allowReactiveResume={props.allowReactiveResume}
         baseResumeValidation={props.baseResumeValidation}
         baseResumeValue={props.baseResumeValue}
-        hasRxResumeAccess={props.rxresumeValidation.valid}
+        hasRxResumeAccess={hasRxResumeAccess}
+        importingResumeFileName={props.importingResumeFileName}
         isBusy={props.isBusy}
         isImportingResume={props.isImportingResume}
         isResumeReady={props.isResumeReady}
@@ -98,6 +88,7 @@ export const OnboardingStepContent: React.FC<{
         rxresumeApiKeyHint={props.rxresumeApiKeyHint}
         rxresumeUrl={props.rxresumeUrl}
         rxresumeValidation={props.rxresumeValidation}
+        selectedProvider={props.selectedProvider}
         onImportResumeFile={props.onImportResumeFile}
         onResumeSetupModeChange={props.onResumeSetupModeChange}
         onRxresumeApiKeyChange={props.onRxresumeApiKeyChange}
@@ -108,32 +99,5 @@ export const OnboardingStepContent: React.FC<{
     );
   }
 
-  if (props.currentStep === "searchterms") {
-    return (
-      <SearchTermsStep
-        hasSavedSearchTermsInSession={props.hasSavedSearchTermsInSession}
-        isBusy={props.isBusy}
-        isGeneratingSearchTerms={props.isGeneratingSearchTerms}
-        searchTermDraft={props.searchTermDraft}
-        searchTerms={props.searchTerms}
-        searchTermsSource={props.searchTermsSource}
-        searchTermsStale={props.searchTermsStale}
-        onRegenerate={props.onRegenerateSearchTerms}
-        onSearchTermDraftChange={props.onSearchTermDraftChange}
-        onSearchTermsChange={props.onSearchTermsChange}
-      />
-    );
-  }
-
-  return (
-    <BasicAuthStep
-      basicAuthChoice={props.basicAuthChoice}
-      basicAuthPassword={props.basicAuthPassword}
-      basicAuthUser={props.basicAuthUser}
-      isBusy={props.isBusy}
-      onBasicAuthChoiceChange={props.onBasicAuthChoiceChange}
-      onBasicAuthPasswordChange={props.onBasicAuthPasswordChange}
-      onBasicAuthUserChange={props.onBasicAuthUserChange}
-    />
-  );
+  return null;
 };

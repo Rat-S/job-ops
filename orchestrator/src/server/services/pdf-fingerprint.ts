@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 import * as settingsRepo from "@server/repositories/settings";
 import { settingsRegistry } from "@shared/settings-registry";
-import type { Job, JobPdfFreshness, PdfRenderer } from "@shared/types";
+import type {
+  Job,
+  JobPdfFreshness,
+  PdfRenderer,
+  TypstTheme,
+} from "@shared/types";
 import {
   getResumeGenerationBackend,
   getResumeOpsConfig,
@@ -30,20 +35,26 @@ export interface PdfFingerprintContext {
   designResumeRevision: number | null;
   designResumeUpdatedAt: string | null;
   pdfRenderer: PdfRenderer;
+  typstTheme: TypstTheme;
   rxresumeBaseResumeId: string | null;
   resumeGenerationBackend: "native" | "resume_ops";
   resumeOpsTheme: string | null;
 }
 
 export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintContext> {
-  const [designResume, rawRenderer, configuredBaseResume] = await Promise.all([
-    getCurrentDesignResumeOrNullOnLegacy(),
-    settingsRepo.getSetting("pdfRenderer"),
-    getConfiguredRxResumeBaseResumeId(),
-  ]);
+  const [designResume, rawRenderer, rawTypstTheme, configuredBaseResume] =
+    await Promise.all([
+      getCurrentDesignResumeOrNullOnLegacy(),
+      settingsRepo.getSetting("pdfRenderer"),
+      settingsRepo.getSetting("typstTheme"),
+      getConfiguredRxResumeBaseResumeId(),
+    ]);
 
   const parsedRenderer = settingsRegistry.pdfRenderer.parse(
     rawRenderer ?? undefined,
+  );
+  const parsedTypstTheme = settingsRegistry.typstTheme.parse(
+    rawTypstTheme ?? undefined,
   );
 
   return {
@@ -52,6 +63,7 @@ export async function resolvePdfFingerprintContext(): Promise<PdfFingerprintCont
     designResumeRevision: designResume?.revision ?? null,
     designResumeUpdatedAt: designResume?.updatedAt ?? null,
     pdfRenderer: parsedRenderer ?? settingsRegistry.pdfRenderer.default(),
+    typstTheme: parsedTypstTheme ?? settingsRegistry.typstTheme.default(),
     rxresumeBaseResumeId: configuredBaseResume.resumeId ?? null,
     resumeGenerationBackend: getResumeGenerationBackend(),
     resumeOpsTheme: getResumeOpsConfig()?.theme ?? null,
@@ -65,6 +77,9 @@ export function createJobPdfFingerprint(
   const payload = {
     version: context.version,
     renderer: context.pdfRenderer,
+    ...(context.pdfRenderer === "typst"
+      ? { typstTheme: context.typstTheme }
+      : {}),
     rxresumeBaseResumeId: context.rxresumeBaseResumeId,
     designResumeDocumentId: context.designResumeDocumentId,
     designResumeRevision: context.designResumeRevision,

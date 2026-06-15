@@ -1,6 +1,13 @@
 import type { ManualImportResult } from "@client/components/ManualImportFlow";
 import { ManualImportFlow } from "@client/components/ManualImportFlow";
-import type { AppSettings, JobSource } from "@shared/types";
+import type {
+  AppSettings,
+  CreatePipelineSearchPresetInput,
+  JobSource,
+  PipelineSearchPreset,
+  UpdatePipelineSearchPresetInput,
+  WatchlistSelectedSource,
+} from "@shared/types";
 import type React from "react";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -23,11 +30,27 @@ interface RunModeModalProps {
   pipelineSources: JobSource[];
   onToggleSource: (source: JobSource, checked: boolean) => void;
   onSetPipelineSources: (sources: JobSource[]) => void;
+  watchlistSources?: WatchlistSelectedSource[];
+  selectedWatchlistSourceIds?: string[];
+  onToggleWatchlistSource?: (sourceId: string, checked: boolean) => void;
+  onSetSelectedWatchlistSourceIds?: (ids: string[]) => void;
+  isWatchlistSourcesLoading?: boolean;
   isPipelineRunning: boolean;
   onOpenChange: (open: boolean) => void;
   onModeChange: (mode: RunMode) => void;
   onSaveAndRunAutomatic: (values: AutomaticRunValues) => Promise<void>;
   onManualImported: (result: ManualImportResult) => Promise<void>;
+  savedSearches?: PipelineSearchPreset[];
+  isSavedSearchesLoading?: boolean;
+  onCreateSavedSearch?: (
+    input: CreatePipelineSearchPresetInput,
+  ) => Promise<PipelineSearchPreset>;
+  onUpdateSavedSearch?: (
+    id: string,
+    input: UpdatePipelineSearchPresetInput,
+  ) => Promise<PipelineSearchPreset>;
+  onDeleteSavedSearch?: (id: string) => Promise<void>;
+  onApplySavedSearch?: (preset: PipelineSearchPreset) => Promise<void>;
 }
 
 export const RunModeModal: React.FC<RunModeModalProps> = ({
@@ -38,11 +61,22 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
   pipelineSources,
   onToggleSource,
   onSetPipelineSources,
+  watchlistSources,
+  selectedWatchlistSourceIds,
+  onToggleWatchlistSource,
+  onSetSelectedWatchlistSourceIds,
+  isWatchlistSourcesLoading,
   isPipelineRunning,
   onOpenChange,
   onModeChange,
   onSaveAndRunAutomatic,
   onManualImported,
+  savedSearches,
+  isSavedSearchesLoading,
+  onCreateSavedSearch,
+  onUpdateSavedSearch,
+  onDeleteSavedSearch,
+  onApplySavedSearch,
 }) => {
   const isManualMode = mode === "manual";
 
@@ -81,8 +115,21 @@ export const RunModeModal: React.FC<RunModeModalProps> = ({
                 pipelineSources={pipelineSources}
                 onToggleSource={onToggleSource}
                 onSetPipelineSources={onSetPipelineSources}
+                watchlistSources={watchlistSources}
+                selectedWatchlistSourceIds={selectedWatchlistSourceIds}
+                onToggleWatchlistSource={onToggleWatchlistSource}
+                onSetSelectedWatchlistSourceIds={
+                  onSetSelectedWatchlistSourceIds
+                }
+                isWatchlistSourcesLoading={isWatchlistSourcesLoading}
                 isPipelineRunning={isPipelineRunning}
                 onSaveAndRun={onSaveAndRunAutomatic}
+                savedSearches={savedSearches}
+                isSavedSearchesLoading={isSavedSearchesLoading}
+                onCreateSavedSearch={onCreateSavedSearch}
+                onUpdateSavedSearch={onUpdateSavedSearch}
+                onDeleteSavedSearch={onDeleteSavedSearch}
+                onApplySavedSearch={onApplySavedSearch}
               />
             </TabsContent>
 

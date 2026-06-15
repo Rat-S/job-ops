@@ -1,3 +1,4 @@
+import type * as api from "@client/api";
 import { LlmModelConfiguration } from "@client/components/llmmodelconfiguration/LlmModelConfiguration";
 import {
   getLlmProviderConfig,
@@ -21,6 +22,9 @@ export const LlmConnectionStep: React.FC<{
   validation: ValidationState;
   onApiKeyChange: (value: string) => void;
   onBaseUrlChange: (value: string) => void;
+  onCodexAuthStatusChange?: (
+    status: Awaited<ReturnType<typeof api.getCodexAuthStatus>>,
+  ) => void;
   onModelChange: (value: string) => void;
   onProviderChange: (value: string) => void;
 }> = ({
@@ -37,43 +41,47 @@ export const LlmConnectionStep: React.FC<{
   validation,
   onApiKeyChange,
   onBaseUrlChange,
+  onCodexAuthStatusChange,
   onModelChange,
   onProviderChange,
 }) => {
   const providerConfig = getLlmProviderConfig(selectedProvider);
 
   return (
-    <LlmModelConfiguration
-      mode="compact"
-      disabled={isBusy}
-      selectedProvider={selectedProvider}
-      savedProvider={savedProvider}
-      savedBaseUrl={savedBaseUrl}
-      apiKeyHint={llmKeyHint}
-      effectiveModel={effectiveModel}
-      defaultModel={defaultModel}
-      provider={{
-        value: selectedProvider,
-        onChange: onProviderChange,
-      }}
-      baseUrl={{
-        value: baseUrl,
-        onChange: onBaseUrlChange,
-      }}
-      apiKey={{
-        value: apiKey,
-        onChange: onApiKeyChange,
-      }}
-      model={{
-        value: model,
-        onChange: onModelChange,
-      }}
-      validationSlot={
-        <InlineValidation
-          state={validation}
-          successMessage={`${providerConfig.label} connection verified.`}
-        />
-      }
-    />
+    <div data-onboarding-target="model-form">
+      <LlmModelConfiguration
+        mode="compact"
+        disabled={isBusy}
+        selectedProvider={selectedProvider}
+        savedProvider={savedProvider}
+        savedBaseUrl={savedBaseUrl}
+        apiKeyHint={llmKeyHint}
+        effectiveModel={effectiveModel}
+        defaultModel={defaultModel}
+        provider={{
+          value: selectedProvider,
+          onChange: onProviderChange,
+        }}
+        baseUrl={{
+          value: baseUrl,
+          onChange: onBaseUrlChange,
+        }}
+        apiKey={{
+          value: apiKey,
+          onChange: onApiKeyChange,
+        }}
+        model={{
+          value: model,
+          onChange: onModelChange,
+        }}
+        validationSlot={
+          <InlineValidation
+            state={validation}
+            successMessage={`${providerConfig.label} connection verified.`}
+          />
+        }
+        onCodexAuthStatusChange={onCodexAuthStatusChange}
+      />
+    </div>
   );
 };

@@ -17,6 +17,12 @@ export interface PipelineConfig {
   enableScoring?: boolean;
   enableImporting?: boolean;
   enableAutoTailoring?: boolean;
+  // Per-run filter over the current user's saved Watchlist sources.
+  // undefined/null = include every Watchlist source the user has saved
+  // (legacy behavior pre-#621). [] = explicitly exclude all Watchlist
+  // sources. Non-empty = include only those source IDs that still belong
+  // to the current user; unknown IDs are dropped server-side.
+  watchlistSelectedSourceIds?: string[] | null;
 }
 
 export interface PipelineRunConfigSnapshot {
@@ -55,6 +61,10 @@ export interface PipelineRunRequestedConfig {
   enableScoring: boolean;
   enableImporting: boolean;
   enableAutoTailoring: boolean;
+  // null = run did not constrain Watchlist (legacy / pre-#621 behavior);
+  // [] = explicitly disabled all Watchlist sources;
+  // non-empty = subset of the user's saved Watchlist source IDs.
+  watchlistSelectedSourceIds: string[] | null;
 }
 
 export interface PipelineRunSourceLimitSnapshot {
@@ -121,6 +131,52 @@ export interface PipelineStatusResponse {
   nextScheduledRun: string | null;
 }
 
+export type PipelineSearchPresetMode =
+  | "fast"
+  | "balanced"
+  | "detailed"
+  | "custom";
+
+export interface PipelineSearchPresetConfig {
+  searchTerms: string[];
+  sources: ExtractorSourceId[];
+  country: string;
+  cityLocations: string[];
+  workplaceTypes: Array<"remote" | "hybrid" | "onsite">;
+  searchScope: LocationSearchScope;
+  matchStrictness: LocationMatchStrictness;
+  topN: number;
+  minSuitabilityScore: number;
+  runBudget: number;
+  automaticPresetId?: PipelineSearchPresetMode;
+  // Optional per-run Watchlist source selection. Omitted = legacy behavior
+  // (include every Watchlist source the user has saved). See issue #621.
+  watchlistSelectedSourceIds?: string[];
+}
+
+export interface PipelineSearchPreset {
+  id: string;
+  name: string;
+  config: PipelineSearchPresetConfig;
+  createdAt: string;
+  updatedAt: string;
+  lastUsedAt: string | null;
+}
+
+export interface PipelineSearchPresetsResponse {
+  searches: PipelineSearchPreset[];
+}
+
+export interface CreatePipelineSearchPresetInput {
+  name: string;
+  config: PipelineSearchPresetConfig;
+}
+
+export interface UpdatePipelineSearchPresetInput {
+  name?: string;
+  config?: PipelineSearchPresetConfig;
+}
+
 export type PipelineProgressStep =
   | "idle"
   | "crawling"
@@ -130,7 +186,8 @@ export type PipelineProgressStep =
   | "processing"
   | "completed"
   | "cancelled"
-  | "failed";
+  | "failed"
+  | "configuration_required";
 
 export interface PipelineProgressCurrentJob {
   id: string;

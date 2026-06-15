@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
     updateThreadContext: vi.fn(),
   },
   jobsRepo: {
+    getJobById: vi.fn(),
     listJobNotesByIds: vi.fn(),
   },
   jobDocumentsRepo: {
@@ -86,6 +87,7 @@ vi.mock("../repositories/ghostwriter", () => ({
 }));
 
 vi.mock("../repositories/jobs", () => ({
+  getJobById: mocks.jobsRepo.getJobById,
   listJobNotesByIds: mocks.jobsRepo.listJobNotesByIds,
 }));
 
@@ -194,6 +196,7 @@ describe("ghostwriter service", () => {
     });
 
     mocks.jobsRepo.listJobNotesByIds.mockResolvedValue([]);
+    mocks.jobsRepo.getJobById.mockResolvedValue({ id: "job-1" });
     mocks.jobDocumentsRepo.listJobDocumentsByIds.mockResolvedValue([]);
     mocks.jobEmails.listJobPostApplicationEmailsByIds.mockResolvedValue([]);
     mocks.repo.getOrCreateThreadForJob.mockResolvedValue(thread);
@@ -845,6 +848,50 @@ describe("ghostwriter service", () => {
     ).rejects.toMatchObject({
       code: "INVALID_REQUEST",
       status: 400,
+    });
+  });
+
+  it("rejects LLM responses with invalid JSON shape", async () => {
+    const assistantPartial: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-1",
+      content: "",
+      status: "partial",
+    };
+    const assistantFailed: JobChatMessage = {
+      ...baseAssistantMessage,
+      id: "assistant-1",
+      content: "",
+      status: "failed",
+    };
+
+    mocks.repo.createMessage
+      .mockResolvedValueOnce(baseUserMessage)
+      .mockResolvedValueOnce(assistantPartial);
+    mocks.repo.updateMessage.mockResolvedValue(assistantFailed);
+    mocks.repo.getMessageById.mockResolvedValue(assistantFailed);
+
+    mocks.llmCallJson.mockResolvedValue({
+      success: true,
+      data: { coverLetter: "Dear hiring committee..." },
+    });
+
+    await expect(
+      sendMessageForJob({
+        jobId: "job-1",
+        content: "Tell me about this role",
+      }),
+    ).rejects.toMatchObject({
+      code: "UPSTREAM_ERROR",
+      message:
+        "LLM response structure was invalid: missing 'response' property",
+    });
+
+    expect(mocks.repo.completeRun).toHaveBeenCalledWith("run-1", {
+      status: "failed",
+      errorCode: "UPSTREAM_ERROR",
+      errorMessage:
+        "LLM response structure was invalid: missing 'response' property",
     });
   });
 

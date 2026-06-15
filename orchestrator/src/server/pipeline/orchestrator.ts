@@ -14,7 +14,7 @@ import type { AppErrorCode } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { trackServerProductEvent } from "@infra/product-analytics";
 import { runWithRequestContext } from "@infra/request-context";
-import { getActiveTenantId } from "@server/tenancy/context";
+import { getPrivateDataScope } from "@server/tenancy/private-scope";
 import { createLocationIntentFromLegacyInputs } from "@shared/location-domain.js";
 import type {
   JobStatus,
@@ -42,6 +42,7 @@ import {
   extractProjectsFromProfile,
   resolveResumeProjectsSettings,
 } from "../services/resumeProjects";
+import { LlmNotConfiguredError } from "../services/scorer";
 import { generateTailoring } from "../services/summary";
 import {
   type PendingChallenge,
@@ -75,31 +76,55 @@ const DEFAULT_CONFIG: PipelineConfig = {
   enableAutoTailoring: true,
 };
 
+function parseProjectIdsCsv(value: string | null | undefined): string[] {
+  if (!value) return [];
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const rawId of value.split(",")) {
+    const id = rawId.trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
 type TenantPipelineState = {
   isRunning: boolean;
   activePipelineRunId: string | null;
   cancelRequestedAt: string | null;
   activeChallengeState: ChallengeState | null;
+  activeLlmConfigState: LlmConfigState | null;
 };
 
 type ChallengeState = {
   challenges: Map<string, PendingChallenge>;
-  /** Resolves the Promise that blocks the pipeline in `runPipeline`. */
+  resolve: () => void;
+};
+
+type LlmConfigState = {
   resolve: () => void;
 };
 
 const pipelineStateByTenant = new Map<string, TenantPipelineState>();
 
-function getPipelineState(tenantId = getActiveTenantId()): TenantPipelineState {
-  let state = pipelineStateByTenant.get(tenantId);
+function getPipelineScopeKey(): string {
+  return getPrivateDataScope().scopeKey;
+}
+
+function getPipelineState(
+  scopeKey = getPipelineScopeKey(),
+): TenantPipelineState {
+  let state = pipelineStateByTenant.get(scopeKey);
   if (!state) {
     state = {
       isRunning: false,
       activePipelineRunId: null,
       cancelRequestedAt: null,
       activeChallengeState: null,
+      activeLlmConfigState: null,
     };
-    pipelineStateByTenant.set(tenantId, state);
+    pipelineStateByTenant.set(scopeKey, state);
   }
   return state;
 }
@@ -182,6 +207,19 @@ export function resolvePipelineChallenge(extractorId: string): {
   return { resolved: deleted, remaining };
 }
 
+/**
+ * Resume a pipeline that paused because the LLM was not configured.
+ * Called by the POST /api/pipeline/resume-scoring endpoint after the user
+ * configures an API key in Settings.
+ */
+export function resumePipelineScoring(): { resolved: boolean } {
+  const state = getPipelineState();
+  if (!state.activeLlmConfigState) return { resolved: false };
+  state.activeLlmConfigState.resolve();
+  state.activeLlmConfigState = null;
+  return { resolved: true };
+}
+
 // ---------- Cancellation ----------
 
 class PipelineCancelledError extends Error {
@@ -191,10 +229,27 @@ class PipelineCancelledError extends Error {
   }
 }
 
-function ensureNotCancelled(tenantId = getActiveTenantId()): void {
-  if (getPipelineState(tenantId).cancelRequestedAt) {
+function ensureNotCancelled(scopeKey = getPipelineScopeKey()): void {
+  if (getPipelineState(scopeKey).cancelRequestedAt) {
     throw new PipelineCancelledError();
   }
+}
+
+function buildRepeatedChallengeMessage(args: {
+  challenges: PendingChallenge[];
+  sourceErrors: string[];
+}): string {
+  const extractorNames =
+    args.challenges
+      .map((challenge) => challenge.extractorName || challenge.extractorId)
+      .filter(Boolean)
+      .join(", ") || "One or more extractors";
+  const sourceDetails =
+    args.sourceErrors.length > 0
+      ? ` Details: ${args.sourceErrors.join("; ")}`
+      : "";
+
+  return `${extractorNames} still returned a Cloudflare challenge after the solve step, so the pipeline stopped instead of completing with zero jobs.${sourceDetails}`;
 }
 
 /**
@@ -208,8 +263,8 @@ export async function runPipeline(
   jobsProcessed: number;
   error?: string;
 }> {
-  const tenantId = getActiveTenantId();
-  const tenantState = getPipelineState(tenantId);
+  const scopeKey = getPipelineScopeKey();
+  const tenantState = getPipelineState(scopeKey);
   if (tenantState.isRunning) {
     return {
       success: false,
@@ -267,18 +322,19 @@ export async function runPipeline(
     });
 
     try {
-      ensureNotCancelled(tenantId);
+      ensureNotCancelled(scopeKey);
       await persistResultSummary({ stage: "started" });
       const profile = await loadProfileStep();
       await persistResultSummary({ stage: "profile_loaded" });
 
-      ensureNotCancelled(tenantId);
+      ensureNotCancelled(scopeKey);
       await persistResultSummary({ stage: "discovery" });
       let { discoveredJobs, sourceErrors, pendingChallenges } =
         await discoverJobsStep({
           mergedConfig,
+          watchlistSelectedSourceIds: mergedConfig.watchlistSelectedSourceIds,
           shouldCancel: () =>
-            getPipelineState(tenantId).cancelRequestedAt !== null,
+            getPipelineState(scopeKey).cancelRequestedAt !== null,
         });
       await persistResultSummary({
         stage: "discovery",
@@ -313,7 +369,7 @@ export async function runPipeline(
         });
         tenantState.activeChallengeState = null;
 
-        ensureNotCancelled(tenantId);
+        ensureNotCancelled(scopeKey);
 
         // Re-run only the extractors that had challenges
         pipelineLogger.info("Challenges resolved, re-running extractors", {
@@ -323,54 +379,92 @@ export async function runPipeline(
         const retryConfig = { ...mergedConfig, sources: challengedSources };
         const retryResult = await discoverJobsStep({
           mergedConfig: retryConfig,
+          includeWatchlist: false,
           shouldCancel: () =>
-            getPipelineState(tenantId).cancelRequestedAt !== null,
+            getPipelineState(scopeKey).cancelRequestedAt !== null,
         });
 
         discoveredJobs = [...discoveredJobs, ...retryResult.discoveredJobs];
         sourceErrors = [...sourceErrors, ...retryResult.sourceErrors];
         pendingChallenges = retryResult.pendingChallenges;
 
-        // If the retry itself hits challenges again (e.g. cookie expired
-        // between solve and retry), we don't loop — just continue with whatever
-        // the first run discovered.  The user will see partial results and can
-        // re-run the pipeline.
+        // If the retry itself hits challenges again (e.g. no reusable cookie was
+        // persisted, or the cookie was rejected), keep partial results only when
+        // something useful was discovered. Otherwise stop loudly instead of
+        // presenting a successful zero-job run.
         if (retryResult.pendingChallenges.length > 0) {
-          pipelineLogger.warn(
-            "Retry after challenge still has challenges — continuing with partial results",
-            {
-              retryPendingChallenges: retryResult.pendingChallenges.map(
-                (c) => c.extractorId,
-              ),
-            },
-          );
+          const message = buildRepeatedChallengeMessage({
+            challenges: retryResult.pendingChallenges,
+            sourceErrors: retryResult.sourceErrors,
+          });
+
+          if (discoveredJobs.length === 0) {
+            throw new Error(message);
+          }
+
+          pipelineLogger.warn(message, {
+            retryPendingChallenges: retryResult.pendingChallenges.map(
+              (c) => c.extractorId,
+            ),
+            retrySourceErrors: retryResult.sourceErrors,
+          });
         }
 
         progressHelpers.crawlingComplete(discoveredJobs.length);
       }
 
-      ensureNotCancelled(tenantId);
-      const { created } = await importJobsStep({ discoveredJobs });
-      jobsDiscovered = created;
+      ensureNotCancelled(scopeKey);
+      jobsDiscovered = discoveredJobs.length;
+      const { created, skipped, fuzzyMerged } = await importJobsStep({
+        discoveredJobs,
+      });
 
       await persistResultSummary({ stage: "import" });
       await pipelineRepo.updatePipelineRun(pipelineRun.id, {
-        jobsDiscovered: created,
+        jobsDiscovered,
       });
 
-      ensureNotCancelled(tenantId);
+      let unprocessedJobs: import("@shared/types").Job[] = [];
+      let scoredJobs: import("./steps/types").ScoredJob[] = [];
+
+      ensureNotCancelled(scopeKey);
       await persistResultSummary({ stage: "scoring" });
-      const { unprocessedJobs, scoredJobs } = await scoreJobsStep({
-        profile,
-        shouldCancel: () =>
-          getPipelineState(tenantId).cancelRequestedAt !== null,
-      });
+      try {
+        ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
+          profile,
+          shouldCancel: () =>
+            getPipelineState(scopeKey).cancelRequestedAt !== null,
+        }));
+      } catch (error) {
+        if (error instanceof LlmNotConfiguredError) {
+          const message = error.message;
+          progressHelpers.configurationRequired(message);
+          pipelineLogger.warn("Pipeline paused — LLM not configured", error);
+
+          await new Promise<void>((resolve) => {
+            tenantState.activeLlmConfigState = { resolve };
+          });
+          tenantState.activeLlmConfigState = null;
+
+          ensureNotCancelled(scopeKey);
+
+          pipelineLogger.info("LLM configured, resuming scoring");
+
+          ({ unprocessedJobs, scoredJobs } = await scoreJobsStep({
+            profile,
+            shouldCancel: () =>
+              getPipelineState(scopeKey).cancelRequestedAt !== null,
+          }));
+        } else {
+          throw error;
+        }
+      }
       await persistResultSummary({
         stage: "scoring",
         jobsScored: scoredJobs.length,
       });
 
-      ensureNotCancelled(tenantId);
+      ensureNotCancelled(scopeKey);
       await persistResultSummary({ stage: "selection" });
       const jobsToProcess = await selectJobsStep({
         scoredJobs,
@@ -395,7 +489,7 @@ export async function runPipeline(
         jobsToProcess,
         processJob,
         shouldCancel: () =>
-          getPipelineState(tenantId).cancelRequestedAt !== null,
+          getPipelineState(scopeKey).cancelRequestedAt !== null,
       });
       jobsProcessed = processedCount;
 
@@ -411,22 +505,25 @@ export async function runPipeline(
         resultSummary,
       });
 
-      progressHelpers.complete(created, processedCount);
+      progressHelpers.complete(jobsDiscovered, processedCount);
       pipelineLogger.info("Pipeline run completed", {
-        jobsDiscovered: created,
+        jobsDiscovered,
+        jobsFuzzyMerged: fuzzyMerged,
+        jobsImported: created,
+        jobsSkipped: skipped,
         jobsProcessed: processedCount,
       });
 
       await notifyPipelineWebhookStep("pipeline.completed", {
         pipelineRunId: pipelineRun.id,
-        jobsDiscovered: created,
+        jobsDiscovered,
         jobsScored: unprocessedJobs.length,
         jobsProcessed: processedCount,
       });
 
       return {
         success: true,
-        jobsDiscovered: created,
+        jobsDiscovered,
         jobsProcessed: processedCount,
       };
     } catch (error) {
@@ -481,6 +578,7 @@ export async function runPipeline(
       tenantState.activePipelineRunId = null;
       tenantState.cancelRequestedAt = null;
       tenantState.activeChallengeState = null;
+      tenantState.activeLlmConfigState = null;
     }
   });
 }
@@ -572,9 +670,10 @@ export async function summarizeJob(
 
       // 2. Suggest Projects
       let selectedProjectIds = job.selectedProjectIds;
-      if (shouldUpdateAllTailoring && (!selectedProjectIds || options?.force)) {
-        jobLogger.info("Selecting projects");
+      if (shouldUpdateAllTailoring) {
         try {
+          const existingSelectedProjectIds =
+            parseProjectIdsCsv(selectedProjectIds);
           const { catalog, selectionItems } =
             extractProjectsFromProfile(profile);
           const overrideResumeProjectsRaw =
@@ -593,16 +692,38 @@ export async function summarizeJob(
           const eligibleProjects = selectionItems.filter((p) =>
             eligibleSet.has(p.id),
           );
+          const allowedProjectIds = new Set([
+            ...locked,
+            ...eligibleProjects.map((project) => project.id),
+          ]);
+          const missingLockedProjectIds = locked.filter(
+            (id) => !existingSelectedProjectIds.includes(id),
+          );
+          const disallowedExistingProjectIds =
+            existingSelectedProjectIds.filter(
+              (id) => !allowedProjectIds.has(id),
+            );
+          const existingSelectionExceedsMax =
+            existingSelectedProjectIds.length > resumeProjects.maxProjects;
+          const existingSelectionValid =
+            existingSelectedProjectIds.length > 0 &&
+            disallowedExistingProjectIds.length === 0 &&
+            missingLockedProjectIds.length === 0 &&
+            !existingSelectionExceedsMax;
 
-          const picked = await pickProjectIdsForJob({
-            jobDescription: job.jobDescription || "",
-            eligibleProjects,
-            desiredCount,
-          });
+          if (existingSelectionValid && !options?.force) {
+            selectedProjectIds = existingSelectedProjectIds.join(",");
+          } else {
+            const picked = await pickProjectIdsForJob({
+              jobDescription: job.jobDescription || "",
+              eligibleProjects,
+              desiredCount,
+            });
 
-          selectedProjectIds = [...locked, ...picked].join(",");
+            selectedProjectIds = [...locked, ...picked].join(",");
+          }
         } catch (error) {
-          jobLogger.warn("Failed to suggest projects", error);
+          jobLogger.warn("Failed to suggest projects", { error });
         }
       }
 
@@ -797,6 +918,11 @@ export async function generateFinalPdf(
         {
           origin: analyticsOrigin,
           generation_kind: generationKind,
+          renderer: fingerprintContext.pdfRenderer,
+          theme:
+            fingerprintContext.pdfRenderer === "typst"
+              ? fingerprintContext.typstTheme
+              : null,
           tracer_links_enabled: job.tracerLinksEnabled,
           has_tailored_summary: Boolean(job.tailoredSummary),
           has_tailored_skills: Boolean(job.tailoredSkills),
@@ -906,13 +1032,16 @@ export function requestPipelineCancel(): {
 
   state.cancelRequestedAt = new Date().toISOString();
 
-  // Unblock the challenge pause if the pipeline is waiting for human solving.
-  // Without this, cancellation during challenge_required would leave the
-  // pipeline stuck until challenges are solved or the server restarts.
+  // Unblock any pause so cancellation can proceed. Without this the pipeline
+  // would stay stuck in memory until the pause resolves or the server restarts.
   // ensureNotCancelled() runs immediately after the paused Promise resolves.
   if (state.activeChallengeState) {
     state.activeChallengeState.resolve();
     state.activeChallengeState = null;
+  }
+  if (state.activeLlmConfigState) {
+    state.activeLlmConfigState.resolve();
+    state.activeLlmConfigState = null;
   }
 
   return {

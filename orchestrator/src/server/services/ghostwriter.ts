@@ -275,7 +275,11 @@ async function imageInputCapabilityReason(
       : `The selected Gemini model (${input.model}) is not recognized as image-capable.`;
   }
 
-  if (provider === "openrouter" || provider === "openai_compatible") {
+  if (
+    provider === "openrouter" ||
+    provider === "openai_compatible" ||
+    provider === "glm"
+  ) {
     if (provider === "openrouter") {
       const metadataReason = await getOpenRouterImageCapabilityReason(input);
       if (metadataReason !== undefined) return metadataReason;
@@ -290,6 +294,10 @@ async function imageInputCapabilityReason(
       "llava",
       "pixtral",
       "gemini",
+      "glm-4v",
+      "glm-4.6v",
+      "glm-4.7v",
+      "glm-5v",
       "gpt-4o",
       "gpt-4.1",
       "gpt-4.5",
@@ -347,6 +355,11 @@ async function resolveAndValidateImageInput(
 }
 
 async function ensureJobThread(jobId: string) {
+  const job = await jobsRepo.getJobById(jobId);
+  if (!job) {
+    throw notFound("Job not found");
+  }
+
   return jobChatRepo.getOrCreateThreadForJob({
     jobId,
     title: null,
@@ -748,12 +761,21 @@ async function runAssistantReply(
       if (controller.signal.aborted) {
         throw requestTimeout("Chat generation was cancelled");
       }
-      throw upstreamError("LLM generation failed", {
+      throw upstreamError(`LLM generation failed: ${llmResult.error}`, {
         reason: llmResult.error,
       });
     }
 
-    const finalText = (llmResult.data.response || "").trim();
+    if (!llmResult.data || typeof llmResult.data.response !== "string") {
+      throw upstreamError(
+        "LLM response structure was invalid: missing 'response' property",
+        {
+          received: llmResult.data,
+        },
+      );
+    }
+
+    const finalText = llmResult.data.response.trim();
     const chunks = chunkText(finalText);
 
     for (const chunk of chunks) {
@@ -818,6 +840,15 @@ async function runAssistantReply(
     const message = isCancelled
       ? "Generation cancelled by user"
       : appError.message || "Generation failed";
+
+    if (!isCancelled) {
+      logger.error("Job chat generation failed", {
+        jobId: options.jobId,
+        threadId: options.threadId,
+        runId: run.id,
+        error: appError,
+      });
+    }
 
     const failedMessage = await jobChatRepo.updateMessage(assistantMessage.id, {
       content: accumulated,

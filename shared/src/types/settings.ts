@@ -1,7 +1,13 @@
+import {
+  TYPST_THEME_LABELS,
+  TYPST_THEME_VALUES,
+} from "../generated/typst-themes";
 import type {
   LocationMatchStrictness,
   LocationSearchScope,
 } from "../location-preferences";
+
+export { TYPST_THEME_LABELS, TYPST_THEME_VALUES };
 
 export interface ResumeProjectCatalogItem {
   id: string;
@@ -23,6 +29,7 @@ export const LLM_PROVIDER_VALUES = [
   "ollama",
   "openai",
   "openai_compatible",
+  "glm",
   "gemini",
   "gemini_cli",
   "codex",
@@ -49,12 +56,15 @@ export type LlmPurposeOverrides = Partial<
 export type LlmPurposeApiKeys = Partial<Record<LlmPurpose, string | null>>;
 export type LlmPurposeApiKeyHints = Partial<Record<LlmPurpose, string | null>>;
 
-export const PDF_RENDERER_VALUES = ["rxresume", "latex"] as const;
+export const PDF_RENDERER_VALUES = ["rxresume", "latex", "typst"] as const;
 export type PdfRenderer = (typeof PDF_RENDERER_VALUES)[number];
 export const PDF_RENDERER_LABELS: Record<PdfRenderer, string> = {
   rxresume: "RxResume export",
   latex: "Local LaTeX (Jake template)",
+  typst: "Local Typst",
 };
+
+export type TypstTheme = (typeof TYPST_THEME_VALUES)[number];
 
 export const CHAT_STYLE_LANGUAGE_MODE_VALUES = [
   "manual",
@@ -177,6 +187,37 @@ export interface SearchTermsSuggestionResponse {
   source: "ai" | "fallback";
 }
 
+export type OnboardingRequirementId = "model" | "resume";
+
+export type OnboardingRequirementStatus =
+  | "ready"
+  | "needs_action"
+  | "invalid"
+  | "checking_unavailable";
+
+export type OnboardingRequirementPrimaryAction =
+  | "connect_model"
+  | "upload_resume"
+  | "connect_rxresume"
+  | "select_rxresume_template"
+  | "recheck"
+  | "none";
+
+export type OnboardingRequirement = {
+  id: OnboardingRequirementId;
+  status: OnboardingRequirementStatus;
+  title: string;
+  message: string;
+  primaryAction: OnboardingRequirementPrimaryAction;
+  details?: Record<string, unknown>;
+};
+
+export type OnboardingStatusResponse = {
+  complete: boolean;
+  nextRequirementId: OnboardingRequirementId | null;
+  requirements: OnboardingRequirement[];
+};
+
 export interface DemoInfoResponse {
   demoMode: boolean;
   resetCadenceHours: number;
@@ -199,6 +240,7 @@ export interface AppSettings {
   jobCompleteWebhookUrl: Resolved<string>;
   resumeProjects: Resolved<ResumeProjectsSettings>;
   pdfRenderer: Resolved<PdfRenderer>;
+  typstTheme: Resolved<TypstTheme>;
   ukvisajobsMaxJobs: Resolved<number>;
   adzunaMaxJobsPerTerm: Resolved<number>;
   gradcrackerMaxJobsPerTerm: Resolved<number>;
@@ -221,6 +263,7 @@ export interface AppSettings {
   jobspyCountryIndeed: Resolved<string>;
   showSponsorInfo: Resolved<boolean>;
   renderMarkdownInJobDescriptions: Resolved<boolean>;
+  autoTailorOnManualImport: Resolved<boolean>;
   chatStyleTone: Resolved<string>;
   chatStyleFormality: Resolved<string>;
   chatStyleConstraints: Resolved<string>;
@@ -243,12 +286,9 @@ export interface AppSettings {
 
   // Simple strings:
   rxresumeBaseResumeId: string | null;
-  onboardingBasicAuthDecision: "enabled" | "skipped" | null;
   rxresumeUrl: string | null;
   ukvisajobsEmail: string | null;
   adzunaAppId: string | null;
-  basicAuthUser: string | null;
-  basicAuthPassword: string | null;
 
   // Secret hints:
   llmApiKeyHint: string | null;
@@ -257,11 +297,9 @@ export interface AppSettings {
   ukvisajobsPasswordHint: string | null;
   adzunaAppKeyHint: string | null;
   apifyTokenHint: string | null;
-  basicAuthPasswordHint: string | null;
   webhookSecretHint: string | null;
 
   // Computed:
-  basicAuthActive: boolean;
   profileProjects: ResumeProjectCatalogItem[];
   resumeGenerationBackend: "native" | "resume_ops";
 }

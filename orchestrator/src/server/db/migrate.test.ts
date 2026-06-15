@@ -191,7 +191,7 @@ describe.sequential("database migrations", () => {
 
       const migratedDb = new Database(dbPath, { readonly: true });
       const indexes = migratedDb.prepare("PRAGMA index_list(tracer_links)").all();
-      const uniqueIndex = indexes.find((index) => index.name === "idx_tracer_links_tenant_job_source_destination_unique");
+      const uniqueIndex = indexes.find((index) => index.name === "idx_tracer_links_tenant_user_job_source_destination_unique");
       if (!uniqueIndex || !uniqueIndex.unique) {
         throw new Error("tracer_links composite unique index missing after migration");
       }
@@ -204,6 +204,58 @@ describe.sequential("database migrations", () => {
       const click = migratedDb.prepare("SELECT tracer_link_id FROM tracer_click_events WHERE id = ?").get("click-1");
       if (click?.tracer_link_id !== "link-1") {
         throw new Error(\`Expected duplicate click to be reassigned to link-1, got \${click?.tracer_link_id}\`);
+      }
+
+      migratedDb.close();
+    `;
+
+    execFileSync(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", script],
+      {
+        env: {
+          ...process.env,
+          DATA_DIR: tempDir,
+        },
+        stdio: "pipe",
+      },
+    );
+  });
+
+  it("enforces private unique indexes when user_id is null", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "job-ops-migrate-"));
+    const script = `
+      import { join } from "node:path";
+      import { pathToFileURL } from "node:url";
+      import Database from "better-sqlite3";
+
+      const dbPath = join(process.env.DATA_DIR, "jobs.db");
+      await import(pathToFileURL(join(process.cwd(), "src/server/db/migrate.ts")).href);
+
+      const migratedDb = new Database(dbPath);
+      migratedDb.prepare("INSERT INTO jobs(id, tenant_id, user_id, title, employer, job_url) VALUES (?, ?, NULL, ?, ?, ?)").run(
+        "job-null-owner-1",
+        "tenant_default",
+        "Role",
+        "Acme",
+        "https://example.com/null-owner",
+      );
+
+      let duplicateFailed = false;
+      try {
+        migratedDb.prepare("INSERT INTO jobs(id, tenant_id, user_id, title, employer, job_url) VALUES (?, ?, NULL, ?, ?, ?)").run(
+          "job-null-owner-2",
+          "tenant_default",
+          "Role",
+          "Acme",
+          "https://example.com/null-owner",
+        );
+      } catch {
+        duplicateFailed = true;
+      }
+
+      if (!duplicateFailed) {
+        throw new Error("jobs unique index allowed duplicate NULL user_id rows");
       }
 
       migratedDb.close();

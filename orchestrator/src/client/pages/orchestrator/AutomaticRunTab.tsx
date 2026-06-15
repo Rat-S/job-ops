@@ -1,4 +1,7 @@
-import { EXTRACTOR_SOURCE_METADATA } from "@shared/extractors";
+import {
+  EXTRACTOR_SOURCE_METADATA,
+  type ExtractorSourceId,
+} from "@shared/extractors";
 import {
   createLocationIntent,
   type LocationSourcePlan,
@@ -13,9 +16,25 @@ import {
   normalizeCountryKey,
   SUPPORTED_COUNTRY_KEYS,
 } from "@shared/location-support.js";
-import type { AppSettings, JobSource } from "@shared/types";
+import type {
+  AppSettings,
+  CreatePipelineSearchPresetInput,
+  JobSource,
+  PipelineSearchPreset,
+  PipelineSearchPresetConfig,
+  UpdatePipelineSearchPresetInput,
+  WatchlistSelectedSource,
+} from "@shared/types";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Info, Loader2, Sparkles } from "lucide-react";
+import {
+  BookmarkPlus,
+  Check,
+  Info,
+  Loader2,
+  Save,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import {
@@ -29,10 +48,25 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { getDetectedCountryKey } from "@/lib/user-location";
 import { sourceLabel } from "@/lib/utils";
@@ -63,8 +97,24 @@ interface AutomaticRunTabProps {
   pipelineSources: JobSource[];
   onToggleSource: (source: JobSource, checked: boolean) => void;
   onSetPipelineSources: (sources: JobSource[]) => void;
+  watchlistSources?: WatchlistSelectedSource[];
+  selectedWatchlistSourceIds?: string[];
+  onToggleWatchlistSource?: (sourceId: string, checked: boolean) => void;
+  onSetSelectedWatchlistSourceIds?: (ids: string[]) => void;
+  isWatchlistSourcesLoading?: boolean;
   isPipelineRunning: boolean;
   onSaveAndRun: (values: AutomaticRunValues) => Promise<void>;
+  savedSearches?: PipelineSearchPreset[];
+  isSavedSearchesLoading?: boolean;
+  onCreateSavedSearch?: (
+    input: CreatePipelineSearchPresetInput,
+  ) => Promise<PipelineSearchPreset>;
+  onUpdateSavedSearch?: (
+    id: string,
+    input: UpdatePipelineSearchPresetInput,
+  ) => Promise<PipelineSearchPreset>;
+  onDeleteSavedSearch?: (id: string) => Promise<void>;
+  onApplySavedSearch?: (preset: PipelineSearchPreset) => Promise<void>;
 }
 
 const DEFAULT_VALUES: AutomaticRunValues = {
@@ -125,8 +175,10 @@ function formatWorkplaceTypeLabel(workplaceType: WorkplaceType): string {
 
 function getKnownJobSource(
   source: LocationSourcePlan["source"],
-): JobSource | null {
-  return source in EXTRACTOR_SOURCE_METADATA ? (source as JobSource) : null;
+): ExtractorSourceId | null {
+  return source in EXTRACTOR_SOURCE_METADATA
+    ? (source as ExtractorSourceId)
+    : null;
 }
 
 function getSourceStatus(args: {
@@ -240,11 +292,31 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
   pipelineSources,
   onToggleSource,
   onSetPipelineSources,
+  watchlistSources = [],
+  selectedWatchlistSourceIds = [],
+  onToggleWatchlistSource,
+  onSetSelectedWatchlistSourceIds,
+  isWatchlistSourcesLoading = false,
   isPipelineRunning,
   onSaveAndRun,
+  savedSearches = [],
+  isSavedSearchesLoading = false,
+  onCreateSavedSearch,
+  onUpdateSavedSearch,
+  onDeleteSavedSearch,
+  onApplySavedSearch,
 }) => {
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingSearch, setIsSavingSearch] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveDialogMode, setSaveDialogMode] = useState<"create" | "update">(
+    "create",
+  );
+  const [saveName, setSaveName] = useState("");
+  const [selectedSavedSearchId, setSelectedSavedSearchId] = useState<
+    string | null
+  >(null);
   const prefersReducedMotion = useReducedMotion();
   const [sourceDisplayOrder, setSourceDisplayOrder] =
     useState<JobSource[]>(enabledSources);
@@ -551,6 +623,39 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
     () => summarizeLocationPreferences(values),
     [values],
   );
+  const selectedSavedSearch = useMemo(
+    () =>
+      selectedSavedSearchId
+        ? (savedSearches.find(
+            (search) => search.id === selectedSavedSearchId,
+          ) ?? null)
+        : null,
+    [savedSearches, selectedSavedSearchId],
+  );
+  const savedSearchSupportEnabled = Boolean(
+    onCreateSavedSearch ||
+      onUpdateSavedSearch ||
+      onDeleteSavedSearch ||
+      onApplySavedSearch ||
+      savedSearches.length > 0,
+  );
+  const currentSavedSearchConfig = useMemo<PipelineSearchPresetConfig>(
+    () => ({
+      searchTerms: values.searchTerms,
+      sources: pipelineSources as PipelineSearchPresetConfig["sources"],
+      country: values.country,
+      cityLocations: values.cityLocations,
+      workplaceTypes: values.workplaceTypes,
+      searchScope: values.searchScope,
+      matchStrictness: values.matchStrictness,
+      topN: values.topN,
+      minSuitabilityScore: values.minSuitabilityScore,
+      runBudget: values.runBudget,
+      automaticPresetId: selectedPreset,
+      watchlistSelectedSourceIds: [...selectedWatchlistSourceIds],
+    }),
+    [pipelineSources, selectedPreset, selectedWatchlistSourceIds, values],
+  );
 
   const runDisabled =
     isPipelineRunning ||
@@ -601,11 +706,104 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
         runBudget: values.runBudget,
         presetId: selectedPreset,
       });
-      await onSaveAndRun(values);
+      await onSaveAndRun({
+        ...values,
+        watchlistSelectedSourceIds: [...selectedWatchlistSourceIds],
+      });
     } finally {
       setIsSaving(false);
     }
   };
+
+  const applySavedSearch = async (preset: PipelineSearchPreset) => {
+    const config = preset.config;
+    setSelectedSavedSearchId(preset.id);
+    setSelectedPreset(config.automaticPresetId ?? "custom");
+    setValue("topN", String(config.topN), { shouldDirty: true });
+    setValue("minSuitabilityScore", String(config.minSuitabilityScore), {
+      shouldDirty: true,
+    });
+    setValue("runBudget", String(config.runBudget), { shouldDirty: true });
+    setValue("country", normalizeUiCountryKey(config.country), {
+      shouldDirty: true,
+    });
+    setValue("cityLocations", config.cityLocations, { shouldDirty: true });
+    setValue("cityLocationDraft", "");
+    setValue("workplaceTypes", normalizeWorkplaceTypes(config.workplaceTypes), {
+      shouldDirty: true,
+    });
+    setValue("searchScope", config.searchScope, { shouldDirty: true });
+    setValue("matchStrictness", config.matchStrictness, { shouldDirty: true });
+    setValue("searchTerms", config.searchTerms, { shouldDirty: true });
+    setValue("searchTermDraft", "");
+
+    const nextSources = config.sources.filter((source) =>
+      enabledSources.includes(source),
+    );
+    if (nextSources.length > 0) {
+      onSetPipelineSources(nextSources);
+    }
+
+    // Restore Watchlist selection if the saved preset captured it (#621).
+    // Filter against the user's currently-saved Watchlist sources so stale
+    // IDs (deleted on the Watchlist page after the preset was saved) don't
+    // resurrect.
+    if (Array.isArray(config.watchlistSelectedSourceIds)) {
+      const availableIds = new Set(watchlistSources.map((source) => source.id));
+      const restored = config.watchlistSelectedSourceIds.filter((id) =>
+        availableIds.has(id),
+      );
+      onSetSelectedWatchlistSourceIds?.(restored);
+    }
+
+    await onApplySavedSearch?.(preset);
+  };
+
+  const openSaveDialog = (mode: "create" | "update") => {
+    setSaveDialogMode(mode);
+    setSaveName(mode === "update" ? (selectedSavedSearch?.name ?? "") : "");
+    setSaveDialogOpen(true);
+  };
+
+  const handleSaveSearch = async () => {
+    const name = saveName.trim();
+    if (!name) return;
+
+    setIsSavingSearch(true);
+    try {
+      if (saveDialogMode === "update" && selectedSavedSearch) {
+        await onUpdateSavedSearch?.(selectedSavedSearch.id, {
+          name,
+          config: currentSavedSearchConfig,
+        });
+        setSelectedSavedSearchId(selectedSavedSearch.id);
+      } else if (onCreateSavedSearch) {
+        const created = await onCreateSavedSearch({
+          name,
+          config: currentSavedSearchConfig,
+        });
+        setSelectedSavedSearchId(created.id);
+      }
+      setSaveDialogOpen(false);
+    } finally {
+      setIsSavingSearch(false);
+    }
+  };
+
+  const handleDeleteSelectedSearch = async () => {
+    if (!selectedSavedSearch || !onDeleteSavedSearch) return;
+    const id = selectedSavedSearch.id;
+    await onDeleteSavedSearch(id);
+    setSelectedSavedSearchId(null);
+  };
+
+  useEffect(() => {
+    if (!selectedSavedSearchId) return;
+    if (savedSearches.some((search) => search.id === selectedSavedSearchId)) {
+      return;
+    }
+    setSelectedSavedSearchId(null);
+  }, [savedSearches, selectedSavedSearchId]);
 
   const countryOptions = useMemo(
     () =>
@@ -620,7 +818,142 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {saveDialogMode === "update"
+                ? "Update saved search"
+                : "Save search"}
+            </DialogTitle>
+            <DialogDescription>
+              Save the current pipeline search setup.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="saved-search-name">Name</Label>
+            <Input
+              id="saved-search-name"
+              value={saveName}
+              onChange={(event) => setSaveName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleSaveSearch();
+                }
+              }}
+              placeholder="e.g. London platform roles"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSaveDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={isSavingSearch || saveName.trim().length === 0}
+              onClick={() => void handleSaveSearch()}
+            >
+              {isSavingSearch ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="min-h-0 space-y-4 overflow-y-auto pr-1">
+        {savedSearchSupportEnabled ? (
+          <Card>
+            <CardContent className="space-y-4 pt-6">
+              <div className="grid gap-3 md:grid-cols-[120px_1fr] md:items-center">
+                <Label className="text-base font-semibold">
+                  Saved searches
+                </Label>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <Select
+                    value={selectedSavedSearchId ?? ""}
+                    onValueChange={(id) => {
+                      const preset = savedSearches.find(
+                        (search) => search.id === id,
+                      );
+                      if (preset) void applySavedSearch(preset);
+                    }}
+                    disabled={savedSearches.length === 0}
+                  >
+                    <SelectTrigger
+                      aria-label="Saved searches"
+                      className="h-9 min-w-0 flex-1"
+                    >
+                      <SelectValue
+                        placeholder={
+                          isSavedSearchesLoading
+                            ? "Loading..."
+                            : "Select saved search"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {savedSearches.map((search) => (
+                        <SelectItem key={search.id} value={search.id}>
+                          {search.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {onCreateSavedSearch ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => openSaveDialog("create")}
+                      >
+                        <BookmarkPlus className="h-4 w-4" />
+                        Save as
+                      </Button>
+                    ) : null}
+                    {onUpdateSavedSearch && selectedSavedSearch ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => openSaveDialog("update")}
+                      >
+                        <Save className="h-4 w-4" />
+                        Update
+                      </Button>
+                    ) : null}
+                    {onDeleteSavedSearch && selectedSavedSearch ? (
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Delete saved search"
+                        title="Delete saved search"
+                        onClick={() => void handleDeleteSelectedSearch()}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
         <Card>
           <CardContent className="space-y-6 pt-6">
             <div className="grid items-center gap-3 md:grid-cols-[120px_1fr]">
@@ -1004,9 +1337,11 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                       className="min-w-0 space-y-1"
                     >
                       <p className="text-sm font-semibold text-foreground">
-                        {selectedSourceRows.length === 0
+                        {selectedSourceRows.length +
+                          selectedWatchlistSourceIds.length ===
+                        0
                           ? "Choose sources for this run"
-                          : `${selectedSourceRows.length} source${selectedSourceRows.length === 1 ? "" : "s"} selected`}
+                          : `${selectedSourceRows.length + selectedWatchlistSourceIds.length} source${selectedSourceRows.length + selectedWatchlistSourceIds.length === 1 ? "" : "s"} selected`}
                       </p>
                     </motion.div>
                     <motion.div
@@ -1015,13 +1350,13 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                       className="flex shrink-0 flex-wrap gap-2"
                     >
                       <Badge variant="outline" className="rounded-full">
-                        {selectedSourceRows.length} selected
+                        {selectedSourceRows.length +
+                          selectedWatchlistSourceIds.length}{" "}
+                        selected
                       </Badge>
                       <Badge variant="outline" className="rounded-full">
-                        {
-                          sourceRows.filter((row) => row.status.available)
-                            .length
-                        }{" "}
+                        {sourceRows.filter((row) => row.status.available)
+                          .length + watchlistSources.length}{" "}
                         available
                       </Badge>
                       {unavailableSourceRows.length > 0 ? (
@@ -1200,6 +1535,111 @@ export const AutomaticRunTab: React.FC<AutomaticRunTabProps> = ({
                         </motion.div>
                       </motion.div>
                     ) : null}
+
+                    <motion.div
+                      layout
+                      transition={sourceMotionTransition}
+                      className="space-y-2"
+                    >
+                      <motion.div
+                        layout
+                        transition={sourceMotionTransition}
+                        className="flex items-center justify-between"
+                      >
+                        <motion.p
+                          layout
+                          transition={sourceMotionTransition}
+                          className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+                        >
+                          Watchlist
+                        </motion.p>
+                        {watchlistSources.length > 0 ? (
+                          <Badge
+                            variant="outline"
+                            className="rounded-full text-[10px] font-semibold uppercase tracking-[0.18em]"
+                          >
+                            {selectedWatchlistSourceIds.length} of{" "}
+                            {watchlistSources.length} selected
+                          </Badge>
+                        ) : null}
+                      </motion.div>
+                      {isWatchlistSourcesLoading ? (
+                        <p className="text-xs text-muted-foreground">
+                          Loading Watchlist sources…
+                        </p>
+                      ) : watchlistSources.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">
+                          No Watchlist sources saved yet. Add company career
+                          pages on the{" "}
+                          <a
+                            href="/watchlist"
+                            className="font-medium text-foreground underline underline-offset-2 hover:text-primary"
+                          >
+                            Watchlist page
+                          </a>{" "}
+                          to include them in pipeline runs.
+                        </p>
+                      ) : (
+                        <motion.div
+                          layout
+                          transition={sourceMotionTransition}
+                          className="grid gap-2 md:grid-cols-2"
+                        >
+                          {watchlistSources.map((source) => {
+                            const isSelected =
+                              selectedWatchlistSourceIds.includes(source.id);
+                            return (
+                              <motion.div
+                                key={source.id}
+                                layout
+                                initial={sourceRowInitial}
+                                animate={sourceSectionAnimate}
+                                exit={sourceRowExit}
+                                transition={sourceMotionTransition}
+                              >
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  aria-label={`Watchlist: ${source.label}`}
+                                  aria-pressed={isSelected}
+                                  title={
+                                    isSelected
+                                      ? "Included in this run. Click to exclude."
+                                      : "Click to include in this run."
+                                  }
+                                  onClick={() =>
+                                    onToggleWatchlistSource?.(
+                                      source.id,
+                                      !isSelected,
+                                    )
+                                  }
+                                  className={
+                                    isSelected
+                                      ? "flex h-auto w-full items-start justify-between gap-3 rounded-xl border border-primary/20 bg-primary/10 px-3 py-3 text-left text-foreground transition-colors duration-200 hover:bg-primary/15"
+                                      : "flex h-auto w-full items-start justify-between gap-3 rounded-xl border border-border/60 bg-background/60 px-3 py-3 text-left text-foreground transition-colors duration-200 hover:bg-muted/40"
+                                  }
+                                >
+                                  <span className="min-w-0 space-y-1">
+                                    <span className="block truncate text-sm font-semibold">
+                                      {source.label}
+                                    </span>
+                                    <span className="block text-xs text-muted-foreground">
+                                      {source.sourceType}
+                                    </span>
+                                  </span>
+                                  <Badge
+                                    variant="outline"
+                                    className="shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em]"
+                                  >
+                                    Watchlist
+                                  </Badge>
+                                </Button>
+                              </motion.div>
+                            );
+                          })}
+                        </motion.div>
+                      )}
+                    </motion.div>
                   </motion.div>
                 </AccordionContent>
               </AccordionItem>

@@ -42,7 +42,8 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 
 ![Model settings section](/img/features/settings-model-section.png)
 
-- Choose provider (`openrouter`, `lmstudio`, `ollama`, `openai`, `gemini`, `gemini_cli`, `codex`)
+- In hosted deployments with platform-managed LLM enabled, this section is hidden because provider, API key, and model selection are managed by the hosted platform.
+- Choose provider (`openrouter`, `lmstudio`, `ollama`, `openai`, `glm`, `gemini`, `gemini_cli`, `codex`)
 - Set provider-specific base URL/API key when required
 - Configure the default model/runtime, plus purpose-specific overrides for:
   - Scoring
@@ -52,13 +53,17 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 - Purpose API keys are stored as secrets. The settings response shows only redacted hints.
 - Provider defaults are applied automatically when the model fields are left blank:
   - `openai` defaults to `gpt-5.4-mini`
+  - `codex` defaults to `gpt-5.4-mini`
+  - `glm` defaults to `glm-5.1`
   - `gemini` and `gemini_cli` default to `google/gemini-3-flash-preview`
 - The settings page shows provider-aware model pickers for:
   - `openai`: available text-generation models only
+  - `glm`: available GLM text-generation models from the configured BigModel-compatible endpoint
   - `gemini`: available Gemini text-generation models only
   - `gemini_cli`: a curated list of Gemini model ids the CLI typically supports (install [Gemini CLI](https://www.npmjs.com/package/@google/gemini-cli), run `gemini` and complete Google sign-in, or set `GEMINI_API_KEY` for the CLI; JobOps spawns headless `gemini -p ...` with `--approval-mode plan` and no JobOps API key field). **Resume import** uses the CLI with extracted text: DOCX is parsed locally; PDF uses local text extraction then JSON extraction via the CLI (scanned PDFs without a text layer may not import well).
   - `ollama`: locally installed Ollama models
 - `openrouter`, `lmstudio`, and `openai_compatible` stay manual-entry because JobOps cannot safely infer the exact model catalog from those providers
+- For GLM, JobOps uses `https://api.z.ai/api/paas/v4` by default. Override the base URL only when using another Z.AI-compatible endpoint such as a coding-plan endpoint.
 - Changing the provider clears stale model overrides in the form, so inherited fields follow the new provider default unless you explicitly choose a new override
 - The preview under each field and the **Resolved config** block reflect the model currently selected in the form, even before you save
 
@@ -77,6 +82,8 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 - Toggle visa sponsor badge visibility in job lists/details
 - Toggle `Render Markdown in job descriptions` to control whether expanded job descriptions show formatted headings, lists, bold text, and code blocks
 - Default: Markdown rendering is enabled
+- Toggle `Auto-tailor manually imported jobs` to control whether jobs created through Manual Import immediately run tailoring + suitability scoring + PDF generation, or land in Discovered so you can tailor them later
+- Default: Auto-tailor on import is enabled. The per-import "Tailor automatically after import" checkbox in the Manual Import review step defaults to this setting and can override it for a single import
 
 ### Writing Style & Language
 
@@ -100,6 +107,7 @@ Settings gives you runtime overrides for the key parts of discovery, scoring, ta
 - If language detection is unclear or there is not enough resume/profile text, JobOps falls back to English
 - Resume tailoring keeps the exact source wording for ATS-sensitive resume headlines and job titles, even when the rest of the tailored content is generated in the selected language
 - When using the local LaTeX PDF renderer, fixed resume section titles follow the resolved output language
+- Downloaded resume filenames are ASCII-transliterated using the resolved language. For German, umlauts use `ä -> ae`, `ö -> oe`, `ü -> ue`, and `ß -> ss`.
 - Summary max words: optional cap on AI-generated summary length (empty = no limit)
 - Max keywords per skill: optional cap on keywords per skill category in tailoring (empty = no limit)
 - These numeric limits override any similar constraints written in the Constraints text field
@@ -153,10 +161,14 @@ Defaults and constraints:
 - Choose the PDF renderer:
   - RxResume export
   - Local LaTeX renderer
-- JobOps uses the selected RxResume resume as the source of truth in both modes
+  - Local Typst renderer
+- When Typst is selected, choose a Typst theme:
+  - Classic
+  - Compact
+- JobOps uses the selected RxResume resume as the source of truth for import and project data
 - Invalid Reactive Resume credentials or other `4xx` config failures block the save and stay visible as an inline error
 - Temporary Reactive Resume downtime shows an inline warning, but the save still succeeds
-- Changing PDF-affecting settings (`pdfRenderer`, `rxresumeBaseResumeId`, RxResume URL/key) auto-queues regeneration for ready jobs that currently use system-generated PDFs
+- Changing PDF-affecting settings (`pdfRenderer`, `typstTheme`, `rxresumeBaseResumeId`, RxResume URL/key) auto-queues regeneration for ready jobs that currently use system-generated PDFs
 - Select a template/base resume
 - Configure project selection behavior:
   - Max projects
@@ -278,7 +290,7 @@ curl -X POST "http://localhost:3001/api/backups"
 
 - Open **Settings -> Model** and confirm the provider and model belong together.
 - If you switch providers, leave the model fields blank to use the provider default, or pick a new provider-compatible model from the dropdown.
-- JobOps ignores stale Gemini-style overrides under `openai`, and ignores stale OpenAI-style overrides under `gemini`, but you still need to save the current form selection for future runs.
+- JobOps ignores stale Gemini-style overrides under `openai`, stale OpenAI-style overrides under `gemini`, and non-GLM-looking overrides under `glm`, but you still need to save the current form selection for future runs.
 
 ### Resume tailoring used English instead of my resume language
 

@@ -24,6 +24,11 @@ Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
 vi.mock("../api", () => ({
   updateSettings: vi.fn().mockResolvedValue({}),
   runPipeline: vi.fn().mockResolvedValue({ message: "ok" }),
+  getPipelineSearchPresets: vi.fn().mockResolvedValue({ searches: [] }),
+  createPipelineSearchPreset: vi.fn().mockResolvedValue({}),
+  updatePipelineSearchPreset: vi.fn().mockResolvedValue({}),
+  markPipelineSearchPresetUsed: vi.fn().mockResolvedValue({}),
+  deletePipelineSearchPreset: vi.fn().mockResolvedValue({ deleted: true }),
   cancelPipeline: vi.fn().mockResolvedValue({
     message: "Pipeline cancellation requested",
     pipelineRunId: "run-1",
@@ -38,6 +43,11 @@ vi.mock("../api", () => ({
   skipJob: vi.fn().mockResolvedValue({}),
   markAsApplied: vi.fn().mockResolvedValue({}),
   processJob: vi.fn().mockResolvedValue({}),
+  getWatchlistSources: vi.fn().mockResolvedValue({
+    catalogSources: [],
+    selectedSources: [],
+    availableSourceTypes: [],
+  }),
 }));
 
 vi.mock("sonner", () => ({
@@ -964,6 +974,7 @@ describe("OrchestratorPage", () => {
       workplaceTypes: ["remote", "hybrid", "onsite"],
       searchScope: "selected_only",
       matchStrictness: "exact_only",
+      watchlistSelectedSourceIds: [],
     });
     expect(setIntervalSpy).not.toHaveBeenCalledWith(expect.any(Function), 5000);
 

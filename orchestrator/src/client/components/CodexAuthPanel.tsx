@@ -6,15 +6,27 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 type CodexAuthPanelProps = {
+  authApi?: CodexAuthApi;
   isBusy: boolean;
+  onStatusChange?: (status: CodexAuthStatus) => void;
 };
 
 type CodexAuthStatus = Awaited<ReturnType<typeof api.getCodexAuthStatus>>;
 type AsyncCodexAction = () => Promise<CodexAuthStatus>;
+type CodexAuthApi = {
+  disconnect: AsyncCodexAction;
+  getStatus: AsyncCodexAction;
+  start: (input?: { forceRestart?: boolean }) => Promise<CodexAuthStatus>;
+};
 
 const TWO_MINUTES_MS = 2 * 60 * 1000;
 const COPY_FEEDBACK_MS = 1800;
 const POLL_INTERVAL_MS = 4_000;
+const defaultCodexAuthApi: CodexAuthApi = {
+  disconnect: api.disconnectCodexAuth,
+  getStatus: api.getCodexAuthStatus,
+  start: api.startCodexAuth,
+};
 
 function formatRemaining(ms: number): string {
   const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
@@ -82,7 +94,11 @@ function StepRow({
   );
 }
 
-export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
+export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({
+  authApi = defaultCodexAuthApi,
+  isBusy,
+  onStatusChange,
+}) => {
   const [codexAuthStatus, setCodexAuthStatus] =
     useState<CodexAuthStatus | null>(null);
   const [isLoadingCodexAuthStatus, setIsLoadingCodexAuthStatus] =
@@ -94,6 +110,14 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
   const [hasCopiedCode, setHasCopiedCode] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
 
+  const publishCodexAuthStatus = useCallback(
+    (status: CodexAuthStatus) => {
+      setCodexAuthStatus(status);
+      onStatusChange?.(status);
+    },
+    [onStatusChange],
+  );
+
   const runCodexAuthAction = useCallback(
     async (
       action: AsyncCodexAction,
@@ -104,14 +128,14 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
       setCodexAuthError(null);
       try {
         const status = await action();
-        setCodexAuthStatus(status);
+        publishCodexAuthStatus(status);
       } catch (error) {
         setCodexAuthError(getErrorMessage(error, fallbackErrorMessage));
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [publishCodexAuthStatus],
   );
 
   const refreshCodexAuthStatus = useCallback(
@@ -119,8 +143,8 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
       if (!showLoading) {
         setCodexAuthError(null);
         try {
-          const status = await api.getCodexAuthStatus();
-          setCodexAuthStatus(status);
+          const status = await authApi.getStatus();
+          publishCodexAuthStatus(status);
         } catch (error) {
           setCodexAuthError(
             getErrorMessage(error, "Failed to load Codex sign-in status."),
@@ -130,24 +154,24 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
       }
 
       await runCodexAuthAction(
-        api.getCodexAuthStatus,
+        authApi.getStatus,
         "Failed to load Codex sign-in status.",
         setIsLoadingCodexAuthStatus,
       );
     },
-    [runCodexAuthAction],
+    [authApi, publishCodexAuthStatus, runCodexAuthAction],
   );
 
   const startCodexAuth = useCallback(
     async (forceRestart = false) => {
       setHasCopiedCode(false);
       await runCodexAuthAction(
-        () => api.startCodexAuth({ forceRestart }),
+        () => authApi.start({ forceRestart }),
         "Failed to start Codex sign-in.",
         setIsStartingCodexAuth,
       );
     },
-    [runCodexAuthAction],
+    [authApi, runCodexAuthAction],
   );
 
   const copyCode = useCallback(async () => {
@@ -171,11 +195,11 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
   const disconnectCodex = useCallback(async () => {
     setHasCopiedCode(false);
     await runCodexAuthAction(
-      api.disconnectCodexAuth,
+      authApi.disconnect,
       "Failed to disconnect Codex.",
       setIsDisconnectingCodexAuth,
     );
-  }, [runCodexAuthAction]);
+  }, [authApi, runCodexAuthAction]);
 
   useEffect(() => {
     void refreshCodexAuthStatus();
@@ -380,7 +404,11 @@ export const CodexAuthPanel: React.FC<CodexAuthPanelProps> = ({ isBusy }) => {
       </div>
 
       <CodexAuthError message={codexAuthError} />
-      {codexAuthStatus?.flowMessage && !isAuthenticated ? (
+      {codexAuthStatus?.validationMessage && !isAuthenticated ? (
+        <p className="text-xs text-destructive">
+          {codexAuthStatus.validationMessage}
+        </p>
+      ) : codexAuthStatus?.flowMessage && !isAuthenticated ? (
         <p className="text-xs text-muted-foreground">
           {codexAuthStatus.flowMessage}
         </p>

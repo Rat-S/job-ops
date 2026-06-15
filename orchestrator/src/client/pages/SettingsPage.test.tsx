@@ -15,6 +15,7 @@ const render = (ui: Parameters<typeof renderWithQueryClient>[0]) =>
   renderWithQueryClient(ui);
 
 vi.mock("../api", () => ({
+  getAppStatus: vi.fn(),
   getSettings: vi.fn(),
   getLlmModels: vi.fn().mockResolvedValue([]),
   getCodexAuthStatus: vi.fn().mockResolvedValue({
@@ -98,6 +99,28 @@ const baseSettings = createAppSettings({
   ],
 });
 
+const localAppStatus = {
+  appMode: "local" as const,
+  capabilities: {
+    hostedSignups: false,
+    platformLlm: false,
+    quotas: false,
+    userEditableLlmSettings: true,
+  },
+  hostedTenantConfigured: false,
+};
+
+const hostedPlatformLlmStatus = {
+  appMode: "hosted" as const,
+  capabilities: {
+    hostedSignups: true,
+    platformLlm: true,
+    quotas: true,
+    userEditableLlmSettings: false,
+  },
+  hostedTenantConfigured: true,
+};
+
 const renderPage = () => {
   return render(
     <MemoryRouter initialEntries={["/settings"]}>
@@ -169,6 +192,7 @@ describe("SettingsPage", () => {
       value: vi.fn(),
     });
     _resetTracerReadinessCache();
+    vi.mocked(api.getAppStatus).mockResolvedValue(localAppStatus);
     vi.mocked(api.getTracerReadiness).mockResolvedValue({
       status: "ready",
       isPubliclyAvailable: true,
@@ -285,8 +309,13 @@ describe("SettingsPage", () => {
     await openModelSection();
 
     expect(
-      await screen.findByText("Codex login completed."),
+      await screen.findByText(
+        "Codex is not authenticated in this container. Run `codex login` and try again.",
+      ),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Codex login completed."),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/ABCD-EFGH/)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /check status/i }),
@@ -568,6 +597,24 @@ describe("SettingsPage", () => {
 
     const saveButton = getSaveButton();
     await waitFor(() => expect(saveButton).toBeDisabled());
+  });
+
+  it("hides model settings and defaults to writing style for hosted platform LLM", async () => {
+    vi.mocked(api.getAppStatus).mockResolvedValue(hostedPlatformLlmStatus);
+    vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
+
+    render(
+      <MemoryRouter initialEntries={["/settings#model"]}>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+
+    await openNavGroup(/^ai$/i);
+
+    expect(screen.queryByRole("button", { name: /models/i })).toBeNull();
+    expect(
+      await screen.findByRole("heading", { name: /writing style/i }),
+    ).toBeInTheDocument();
   });
 
   it("does not mark Reactive Resume settings dirty when project catalog hydration finishes", async () => {
@@ -961,50 +1008,13 @@ describe("SettingsPage", () => {
     );
   });
 
-  it("enables save button when the authentication toggle is changed", async () => {
+  it("does not render legacy Basic Auth controls in environment settings", async () => {
     vi.mocked(api.getSettings).mockResolvedValue(baseSettings);
     renderPage();
-    const saveButton = getSaveButton();
 
     await openEnvironmentSection();
-    const authCheckbox = screen.getByLabelText(/enable authentication/i);
-    fireEvent.click(authCheckbox);
-    expect(saveButton).toBeEnabled();
-  });
-
-  it("wipes auth credentials when the toggle is disabled and saved", async () => {
-    // Initial state: authentication is active
-    const activeSettings = {
-      ...baseSettings,
-      basicAuthActive: true,
-      basicAuthUser: "admin",
-      basicAuthPasswordHint: "pass",
-    };
-    vi.mocked(api.getSettings).mockResolvedValue(activeSettings);
-    vi.mocked(api.updateSettings).mockResolvedValue(baseSettings);
-
-    renderPage();
-
-    await openEnvironmentSection();
-
-    const authCheckbox = screen.getByLabelText(/enable authentication/i);
-    expect(authCheckbox).toBeChecked();
-
-    // Disable it
-    fireEvent.click(authCheckbox);
-    expect(authCheckbox).not.toBeChecked();
-
-    const saveButton = getSaveButton();
-    expect(saveButton).toBeEnabled();
-    fireEvent.click(saveButton);
-
-    await waitFor(() => expect(api.updateSettings).toHaveBeenCalled());
-    expect(api.updateSettings).toHaveBeenCalledWith(
-      expect.objectContaining({
-        basicAuthUser: null,
-        basicAuthPassword: null,
-      }),
-    );
+    expect(screen.queryByLabelText(/enable authentication/i)).toBeNull();
+    expect(screen.queryByPlaceholderText("username")).toBeNull();
   });
 
   it("saves blocked company keywords from scoring settings", async () => {

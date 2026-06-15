@@ -9,6 +9,7 @@ import { AppError, type AppErrorCode, notFound } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { getSetting } from "@server/repositories/settings";
 import { getJobOpsPublicAvailability } from "@server/services/tracer-links";
+import { safePdfFileName } from "@shared/filename-sanitizer";
 import { settingsRegistry } from "@shared/settings-registry";
 import type { DesignResumePdfResponse, PdfRenderer } from "@shared/types";
 import { getCurrentDesignResume } from "./design-resume";
@@ -62,15 +63,6 @@ async function ensureOutputDir(): Promise<void> {
   }
 }
 
-function sanitizePdfFileName(value: string): string {
-  const base = value
-    .trim()
-    .replace(/\.pdf$/i, "")
-    .replace(/[^a-z0-9._-]+/gi, "_")
-    .replace(/^_+|_+$/g, "");
-  return `${base || "Design_Resume"}.pdf`;
-}
-
 async function resolvePdfRenderer(): Promise<PdfRenderer> {
   const storedValue = await getSetting("pdfRenderer");
   return (
@@ -79,7 +71,15 @@ async function resolvePdfRenderer(): Promise<PdfRenderer> {
   );
 }
 
-async function resolveLatexResumeLanguage(resumeJson: Record<string, unknown>) {
+async function resolveTypstTheme() {
+  const storedValue = await getSetting("typstTheme");
+  return (
+    settingsRegistry.typstTheme.parse(storedValue ?? undefined) ??
+    settingsRegistry.typstTheme.default()
+  );
+}
+
+async function resolveLocalResumeLanguage(resumeJson: Record<string, unknown>) {
   const writingStyle = await getWritingStyle();
   return resolveWritingOutputLanguageForResumeJson({
     style: writingStyle,
@@ -213,7 +213,7 @@ async function resolveDesignResumeForRenderer(args: {
 }> {
   const designResume = await getCurrentDesignResume();
   if (!designResume?.resumeJson) {
-    throw notFound("Design Resume has not been imported yet.");
+    throw notFound("Resume Studio has not been imported yet.");
   }
 
   const localDocument = parseV5ResumeData(
@@ -303,7 +303,7 @@ async function loadBaseResumeSource(args: {
   const { resumeId: baseResumeId } = await getConfiguredRxResumeBaseResumeId();
   if (!baseResumeId) {
     throw new Error(
-      "No Design Resume found, and no Reactive Resume base resume is configured. Import a Design Resume or select a base resume in Settings.",
+      "No Resume Studio document found, and no Reactive Resume base resume is configured. Import a resume into Resume Studio or select a base resume in Settings.",
     );
   }
 
@@ -373,13 +373,18 @@ export async function generatePdf(
     }
 
     const outputPath = getTenantJobPdfPath(jobId);
-    if (renderer === "latex") {
-      const language = await resolveLatexResumeLanguage(preparedResume.data);
+    if (renderer !== "rxresume") {
+      const [language, typstTheme] = await Promise.all([
+        resolveLocalResumeLanguage(preparedResume.data),
+        renderer === "typst" ? resolveTypstTheme() : Promise.resolve(undefined),
+      ]);
       await renderResumePdf({
         resumeJson: preparedResume.data,
         outputPath,
         jobId,
         language,
+        renderer,
+        typstTheme,
       });
     } else {
       await renderRxResumePdf({
@@ -436,19 +441,23 @@ export async function generateDesignResumePdf(options?: {
   };
 
   await ensureOutputDir();
+  const language = await resolveLocalResumeLanguage(designResume.data);
 
   logger.info("Generating Design Resume PDF", {
     renderer,
     documentId: designResume.documentId,
   });
 
-  if (renderer === "latex") {
-    const language = await resolveLatexResumeLanguage(designResume.data);
+  if (renderer !== "rxresume") {
+    const typstTheme =
+      renderer === "typst" ? await resolveTypstTheme() : undefined;
     await renderResumePdf({
       resumeJson: designResume.data,
       outputPath,
       jobId: "design-resume",
       language,
+      renderer,
+      typstTheme,
     });
   } else {
     await renderRxResumePdf({
@@ -461,7 +470,10 @@ export async function generateDesignResumePdf(options?: {
   }
 
   return {
-    fileName: sanitizePdfFileName(designResume.title),
+    fileName: safePdfFileName(designResume.title, {
+      fallbackBase: "Design_Resume",
+      language,
+    }),
     pdfUrl: `/api/design-resume/pdf?v=${encodeURIComponent(generatedAt)}`,
     generatedAt,
   };

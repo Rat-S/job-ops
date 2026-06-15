@@ -17,6 +17,8 @@ import {
   PDF_RENDERER_VALUES,
   type PdfRenderer,
   type ResumeProjectsSettings,
+  TYPST_THEME_VALUES,
+  type TypstTheme,
 } from "./types/settings";
 
 function parseNonEmptyStringOrNull(raw: string | undefined): string | null {
@@ -46,15 +48,34 @@ function parseBitBoolOrNull(raw: string | undefined): boolean | null {
   return null;
 }
 
+const GLM_PROVIDER_ALIASES = new Set([
+  "zhipu",
+  "zhipu_ai",
+  "zhipuai",
+  "bigmodel",
+  "zai",
+  "z_ai",
+]);
+
+/**
+ * Map known GLM provider aliases to "glm".
+ * `normalized` should already be lowercased with separators (-, .) replaced by underscores.
+ */
+export function mapGlmProviderAlias(normalized: string): string {
+  return GLM_PROVIDER_ALIASES.has(normalized) ? "glm" : normalized;
+}
+
 function normalizeLlmProviderOrNull(raw: string | undefined): string | null {
   if (raw === undefined) return null;
-  const normalized = raw.trim().toLowerCase().replace(/-/g, "_");
-  return normalized ? normalized : null;
+  const normalized = raw.trim().toLowerCase().replace(/[-.]/g, "_");
+  const mapped = mapGlmProviderAlias(normalized);
+  return mapped || null;
 }
 
 export const DEFAULT_GEMINI_MODEL = "google/gemini-3-flash-preview";
 export const DEFAULT_OPENAI_MODEL = "gpt-5.4-mini";
-export const DEFAULT_CODEX_MODEL = "";
+export const DEFAULT_GLM_MODEL = "glm-5.1";
+export const DEFAULT_CODEX_MODEL = "gpt-5.4-mini";
 
 export function getDefaultModelForProvider(
   provider: string | null | undefined,
@@ -73,6 +94,10 @@ export function getDefaultModelForProvider(
 
   if (normalizedProvider === "gemini" || normalizedProvider === "gemini_cli") {
     return DEFAULT_GEMINI_MODEL;
+  }
+
+  if (normalizedProvider === "glm") {
+    return DEFAULT_GLM_MODEL;
   }
 
   if (normalizedProvider === "codex") {
@@ -146,6 +171,7 @@ const parseChatStyleManualLanguageOrNull = createEnumParser(
   CHAT_STYLE_MANUAL_LANGUAGE_VALUES,
 );
 const parsePdfRendererOrNull = createEnumParser(PDF_RENDERER_VALUES);
+const parseTypstThemeOrNull = createEnumParser(TYPST_THEME_VALUES);
 
 const llmPurposeOverrideSchema = z.object({
   provider: z.preprocess(
@@ -381,6 +407,14 @@ export const settingsRegistry = {
     serialize: (value: PdfRenderer | null | undefined): string | null =>
       value ?? null,
   },
+  typstTheme: {
+    kind: "typed" as const,
+    schema: z.enum(TYPST_THEME_VALUES),
+    default: (): TypstTheme => "classic",
+    parse: parseTypstThemeOrNull,
+    serialize: (value: TypstTheme | null | undefined): string | null =>
+      value ?? null,
+  },
   ukvisajobsMaxJobs: {
     kind: "typed" as const,
     schema: z.number().int().min(1).max(1000),
@@ -597,6 +631,13 @@ export const settingsRegistry = {
     parse: parseBitBoolOrNull,
     serialize: serializeBitBool,
   },
+  autoTailorOnManualImport: {
+    kind: "typed" as const,
+    schema: z.boolean(),
+    default: (): boolean => true,
+    parse: parseBitBoolOrNull,
+    serialize: serializeBitBool,
+  },
   chatStyleTone: {
     kind: "typed" as const,
     schema: z.string().trim().max(100),
@@ -772,10 +813,6 @@ export const settingsRegistry = {
     kind: "string" as const,
     schema: z.string().trim().max(200),
   },
-  onboardingBasicAuthDecision: {
-    kind: "string" as const,
-    schema: z.enum(["enabled", "skipped"]),
-  },
   rxresumeUrl: {
     kind: "string" as const,
     envKey: "RXRESUME_URL",
@@ -792,11 +829,6 @@ export const settingsRegistry = {
   adzunaAppId: {
     kind: "string" as const,
     envKey: "ADZUNA_APP_ID",
-    schema: z.string().trim().max(200),
-  },
-  basicAuthUser: {
-    kind: "string" as const,
-    envKey: "BASIC_AUTH_USER",
     schema: z.string().trim().max(200),
   },
 
@@ -836,11 +868,6 @@ export const settingsRegistry = {
     envKey: "APIFY_TOKEN",
     schema: z.string().trim().max(2000),
   },
-  basicAuthPassword: {
-    kind: "secret" as const,
-    envKey: "BASIC_AUTH_PASSWORD",
-    schema: z.string().trim().max(2000),
-  },
   webhookSecret: {
     kind: "secret" as const,
     envKey: "WEBHOOK_SECRET",
@@ -852,12 +879,6 @@ export const settingsRegistry = {
     kind: "alias" as const,
     schema: z.string().trim().max(100),
     target: "searchCities" as const,
-  },
-
-  // --- Virtual ---
-  enableBasicAuth: {
-    kind: "virtual" as const,
-    schema: z.boolean(),
   },
 } as const;
 

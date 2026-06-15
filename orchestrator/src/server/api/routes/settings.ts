@@ -19,6 +19,7 @@ import {
   getCodexDeviceAuthSnapshot,
   startCodexDeviceAuth,
 } from "@server/services/llm/codex/login";
+import { resolveLlmApiKey } from "@server/services/llm/credentials";
 import { LlmService } from "@server/services/llm/service";
 import { clearProfileCache } from "@server/services/profile";
 import {
@@ -33,7 +34,10 @@ import {
 } from "@server/services/rxresume";
 import { getEffectiveSettings } from "@server/services/settings";
 import { applySettingsUpdates } from "@server/services/settings-update";
-import { settingsRegistry } from "@shared/settings-registry";
+import {
+  mapGlmProviderAlias,
+  settingsRegistry,
+} from "@shared/settings-registry";
 import {
   type UpdateSettingsInput,
   updateSettingsSchema,
@@ -104,7 +108,8 @@ function normalizeLlmProviderValue(
   provider: string | null | undefined,
 ): string | undefined {
   if (!provider) return undefined;
-  return provider.trim().toLowerCase().replace(/-/g, "_");
+  const normalized = provider.trim().toLowerCase().replace(/[-.]/g, "_");
+  return mapGlmProviderAlias(normalized);
 }
 
 function getDefaultValidationBaseUrl(
@@ -113,6 +118,7 @@ function getDefaultValidationBaseUrl(
   if (provider === "lmstudio") return "http://localhost:1234";
   if (provider === "ollama") return "http://localhost:11434";
   if (provider === "openai_compatible") return "https://api.openai.com";
+  if (provider === "glm") return "https://api.z.ai/api/paas/v4";
   return undefined;
 }
 
@@ -201,6 +207,7 @@ async function resolveLlmConfig(input: {
   const usesBaseUrl =
     provider === "lmstudio" ||
     provider === "ollama" ||
+    provider === "glm" ||
     provider === "openai_compatible";
   const hasExplicitBaseUrlOverride =
     input.baseUrl !== undefined && input.baseUrl !== null;
@@ -216,12 +223,11 @@ async function resolveLlmConfig(input: {
 
   return {
     provider,
-    apiKey:
-      input.apiKey?.trim() ||
-      storedPurposeApiKey ||
-      storedApiKey?.trim() ||
-      getOriginalEnvValue("LLM_API_KEY")?.trim() ||
-      null,
+    apiKey: resolveLlmApiKey({
+      storedApiKey: input.apiKey ?? storedApiKey,
+      purposeApiKey: storedPurposeApiKey,
+      provider,
+    }),
     baseUrl,
   };
 }

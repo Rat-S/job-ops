@@ -3,7 +3,7 @@
 # ============================================================================
 # SHARED BASE IMAGES
 # ============================================================================
-FROM node:22-slim AS runtime-base
+FROM --platform=$TARGETPLATFORM node:22-slim AS runtime-base
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV NODE_ENV=production
@@ -30,9 +30,24 @@ RUN npm install -g @openai/codex@${CODEX_CLI_VERSION}
 
 WORKDIR /app
 
-FROM runtime-base AS build-base
+FROM --platform=$BUILDPLATFORM node:22-slim AS build-base
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV NODE_ENV=production
+
+WORKDIR /app
 
 # Install compiler toolchain only for build-oriented stages.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    python3 python3-minimal libpython3.11-minimal \
+    build-essential pkg-config \
+    curl && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+
+FROM runtime-base AS target-build-base
+
+# Install compiler toolchain for target-platform dependency stages only.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential pkg-config && \
     rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
@@ -40,10 +55,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ============================================================================
 # BUILD INPUT STAGES
 # ============================================================================
-FROM build-base AS python-deps
+FROM target-build-base AS python-deps
+
+ARG TARGETARCH
 
 # Install Python dependencies with pip cache.
-RUN --mount=type=cache,target=/root/.cache/pip \
+RUN --mount=type=cache,id=pip-${TARGETARCH},target=/root/.cache/pip \
     pip3 install --break-system-packages playwright python-jobspy
 
 # Install Firefox for Python Playwright.
@@ -51,12 +68,15 @@ RUN python3 -m playwright install firefox
 
 FROM build-base AS node-deps
 
+ARG BUILDARCH
+
 # Copy package files for dependency installation.
 COPY package*.json ./
-COPY scripts/camoufox-fetch.mjs ./scripts/camoufox-fetch.mjs
 COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
+COPY career-boards/bamboohr/package*.json ./career-boards/bamboohr/
+COPY career-boards/workday/package*.json ./career-boards/workday/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
@@ -67,22 +87,23 @@ COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 COPY extractors/seek/package*.json ./extractors/seek/
+COPY extractors/fiveamsat/package*.json ./extractors/fiveamsat/
+COPY extractors/wazzuf/package*.json ./extractors/wazzuf/
 COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 
-# Install Node dependencies with npm cache (dev deps needed for build).
-RUN --mount=type=cache,target=/root/.npm \
+# Install build-time Node dependencies on the native builder platform. The
+# resulting client/docs assets are architecture-neutral static files.
+RUN --mount=type=cache,id=npm-build-${BUILDARCH},target=/root/.npm \
     npm install --workspaces --include-workspace-root --include=dev \
     --no-audit --no-fund --progress=false
-
-# Fetch Camoufox binaries before copying source to keep the download cached.
-RUN --mount=type=secret,id=github_token,required=false \
-    sh -c 'GITHUB_TOKEN="$([ -f /run/secrets/github_token ] && cat /run/secrets/github_token || true)" node ./scripts/camoufox-fetch.mjs'
 
 FROM node-deps AS build-sources
 
 COPY shared ./shared
 COPY docs-site ./docs-site
 COPY orchestrator ./orchestrator
+COPY career-boards/bamboohr ./career-boards/bamboohr
+COPY career-boards/workday ./career-boards/workday
 COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
 COPY extractors/hiringcafe ./extractors/hiringcafe
@@ -95,6 +116,8 @@ COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/golangjobs ./extractors/golangjobs
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
 COPY extractors/seek ./extractors/seek
+COPY extractors/fiveamsat ./extractors/fiveamsat
+COPY extractors/wazzuf ./extractors/wazzuf
 COPY extractors/browser-utils ./extractors/browser-utils
 
 # ============================================================================
@@ -115,6 +138,8 @@ RUN npm run build:client
 # ============================================================================
 FROM runtime-base AS runtime-node-deps
 
+ARG TARGETARCH
+
 # Install virtual display dependencies for the headed Cloudflare challenge solver.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     xvfb x11vnc novnc websockify && \
@@ -125,6 +150,8 @@ COPY package*.json ./
 COPY docs-site/package*.json ./docs-site/
 COPY shared/package*.json ./shared/
 COPY orchestrator/package*.json ./orchestrator/
+COPY career-boards/bamboohr/package*.json ./career-boards/bamboohr/
+COPY career-boards/workday/package*.json ./career-boards/workday/
 COPY extractors/adzuna/package*.json ./extractors/adzuna/
 COPY extractors/hiringcafe/package*.json ./extractors/hiringcafe/
 COPY extractors/gradcracker/package*.json ./extractors/gradcracker/
@@ -135,12 +162,23 @@ COPY extractors/workingnomads/package*.json ./extractors/workingnomads/
 COPY extractors/golangjobs/package*.json ./extractors/golangjobs/
 COPY extractors/ukvisajobs/package*.json ./extractors/ukvisajobs/
 COPY extractors/seek/package*.json ./extractors/seek/
+COPY extractors/fiveamsat/package*.json ./extractors/fiveamsat/
+COPY extractors/wazzuf/package*.json ./extractors/wazzuf/
 COPY extractors/browser-utils/package*.json ./extractors/browser-utils/
 
 # Install production Node dependencies only.
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,id=npm-runtime-${TARGETARCH},target=/root/.npm \
     npm install --workspaces --include-workspace-root --omit=dev \
     --no-audit --no-fund --progress=false
+
+
+FROM runtime-node-deps AS camoufox-cache
+
+# Fetch target-platform Camoufox binaries after production dependencies are
+# installed so arm64 images do not inherit x64 browser assets from build stages.
+COPY scripts/camoufox-fetch.mjs ./scripts/camoufox-fetch.mjs
+RUN --mount=type=secret,id=github_token,required=false \
+    sh -c 'GITHUB_TOKEN="$([ -f /run/secrets/github_token ] && cat /run/secrets/github_token || true)" node ./scripts/camoufox-fetch.mjs'
 
 FROM runtime-base AS tectonic
 
@@ -164,6 +202,29 @@ RUN set -eux; \
     install -m 0755 "/tmp/tectonic" /usr/local/bin/tectonic; \
     rm -f /tmp/tectonic.tar.gz /tmp/tectonic
 
+FROM runtime-base AS typst
+
+ARG TARGETARCH
+ENV TYPST_VERSION=0.14.2
+
+# Install Typst for local themeable resume rendering.
+RUN apt-get update && apt-get install -y --no-install-recommends xz-utils && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+RUN set -eux; \
+    case "${TARGETARCH}" in \
+        amd64) typst_arch="x86_64-unknown-linux-musl" ;; \
+        arm64) typst_arch="aarch64-unknown-linux-musl" ;; \
+        *) echo "Unsupported TARGETARCH for Typst: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac; \
+    typst_asset="typst-${typst_arch}.tar.xz"; \
+    curl --proto '=https' --tlsv1.2 -fsSL \
+        "https://github.com/typst/typst/releases/download/v${TYPST_VERSION}/${typst_asset}" \
+        -o /tmp/typst.tar.xz; \
+    mkdir -p /tmp/typst; \
+    tar -xJf /tmp/typst.tar.xz -C /tmp/typst --strip-components=1; \
+    install -m 0755 "/tmp/typst/typst" /usr/local/bin/typst; \
+    rm -rf /tmp/typst.tar.xz /tmp/typst
+
 # ============================================================================
 # PRODUCTION STAGE
 # ============================================================================
@@ -171,15 +232,18 @@ FROM runtime-node-deps AS production
 
 # Copy production-only runtime assets from sibling stages.
 COPY --from=tectonic /usr/local/bin/tectonic /usr/local/bin/tectonic
+COPY --from=typst /usr/local/bin/typst /usr/local/bin/typst
 COPY --from=python-deps /usr/local/lib/python3.11/dist-packages /usr/local/lib/python3.11/dist-packages
 COPY --from=python-deps /ms-playwright /ms-playwright
-COPY --from=node-deps /root/.cache/camoufox /root/.cache/camoufox
+COPY --from=camoufox-cache /root/.cache/camoufox /root/.cache/camoufox
 
 # Copy built assets and runtime source code.
 COPY --from=client-build /app/orchestrator/dist ./orchestrator/dist
 COPY --from=docs-build /app/docs-site/build ./orchestrator/dist/docs
 COPY shared ./shared
 COPY orchestrator ./orchestrator
+COPY career-boards/bamboohr ./career-boards/bamboohr
+COPY career-boards/workday ./career-boards/workday
 COPY visa-sponsor-providers ./visa-sponsor-providers
 COPY extractors/adzuna ./extractors/adzuna
 COPY extractors/hiringcafe ./extractors/hiringcafe
@@ -192,6 +256,8 @@ COPY extractors/workingnomads ./extractors/workingnomads
 COPY extractors/golangjobs ./extractors/golangjobs
 COPY extractors/ukvisajobs ./extractors/ukvisajobs
 COPY extractors/seek ./extractors/seek
+COPY extractors/fiveamsat ./extractors/fiveamsat
+COPY extractors/wazzuf ./extractors/wazzuf
 COPY extractors/browser-utils ./extractors/browser-utils
 
 # Create runtime directories.

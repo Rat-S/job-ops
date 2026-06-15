@@ -77,6 +77,9 @@ type LlmModelConfigurationProps = {
   modelProjectSelection?: TextFieldBinding;
   purposeOverrides?: PurposeOverrideBinding;
   validationSlot?: React.ReactNode;
+  onCodexAuthStatusChange?: React.ComponentProps<
+    typeof CodexAuthPanel
+  >["onStatusChange"];
 };
 
 export function LlmModelConfiguration({
@@ -97,6 +100,7 @@ export function LlmModelConfiguration({
   modelProjectSelection,
   purposeOverrides,
   validationSlot,
+  onCodexAuthStatusChange,
 }: LlmModelConfigurationProps) {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
@@ -206,17 +210,35 @@ export function LlmModelConfiguration({
   const tailoringModel = selectedTailoringModel || previewDefaultModel;
   const projectSelectionModel =
     selectedProjectSelectionModel || previewDefaultModel;
-  const modelHelper = supportsModelSuggestions
-    ? !hasAvailableApiKey
-      ? `Add or save a ${providerConfig.label} API key to load available models.`
-      : isLoadingModels
-        ? "Loading available models..."
-        : modelsError
-          ? modelsError
-          : availableModels.length > 0
-            ? "Choose from the available text-generation models."
-            : "No text-generation models were returned."
-    : `Type the exact model name manually, or leave blank to use the ${providerConfig.label} default model.`;
+  const modelHelper: React.ReactNode = supportsModelSuggestions ? (
+    !hasAvailableApiKey ? (
+      `Add or save a ${providerConfig.label} API key to load available models.`
+    ) : isLoadingModels ? (
+      "Loading available models..."
+    ) : modelsError ? (
+      modelsError
+    ) : availableModels.length > 0 ? (
+      "Choose from the available text-generation models."
+    ) : (
+      "No text-generation models were returned."
+    )
+  ) : isCodexProvider ? (
+    <>
+      Type the exact model name manually, or leave blank to use the{" "}
+      {providerConfig.label} default model.{" "}
+      <a
+        href="https://developers.openai.com/codex/models"
+        target="_blank"
+        rel="noreferrer"
+        className="text-foreground underline underline-offset-2"
+      >
+        find out what model name to use
+      </a>
+      .
+    </>
+  ) : (
+    `Type the exact model name manually, or leave blank to use the ${providerConfig.label} default model.`
+  );
   const defaultModelOptions = buildModelOptions({
     models: availableModels,
     emptyLabel: `Use ${providerConfig.label} default`,
@@ -286,12 +308,18 @@ export function LlmModelConfiguration({
               ) : null}
               {mode === "settings" ? (
                 <p className="text-xs text-muted-foreground">
-                  Used for scoring, tailoring, and extraction.
+                  Used for scoring, tailoring, ghostwriting, and email
+                  classification.
                 </p>
               ) : null}
               <p className={providerHintClass}>{providerConfig.providerHint}</p>
             </div>
-            {isCodexProvider ? <CodexAuthPanel isBusy={disabled} /> : null}
+            {isCodexProvider ? (
+              <CodexAuthPanel
+                isBusy={disabled}
+                onStatusChange={onCodexAuthStatusChange}
+              />
+            ) : null}
             {isGeminiCliProvider ? <GeminiCliSetupHint /> : null}
             {showBaseUrl ? (
               <SettingsInput
@@ -329,7 +357,7 @@ export function LlmModelConfiguration({
                 )}
                 current={mode === "settings" ? formattedKeyHint : undefined}
               />
-            ) : mode === "compact" ? (
+            ) : mode === "compact" && !isCodexProvider ? (
               <div className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
                 No API key is required for this provider.
               </div>

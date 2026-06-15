@@ -12,6 +12,8 @@ export const DEFAULT_PIPELINE_SOURCES: JobSource[] = [
   "ukvisajobs",
 ];
 export const PIPELINE_SOURCES_STORAGE_KEY = "jobops.pipeline.sources";
+export const PIPELINE_WATCHLIST_SOURCES_STORAGE_KEY =
+  "jobops.pipeline.watchlist-sources";
 
 export const orderedSources: JobSource[] = [
   ...PIPELINE_EXTRACTOR_SOURCE_IDS,
@@ -83,7 +85,7 @@ export type DateFilterPreset = "7" | "14" | "30" | "90" | "custom";
 export type DateFilterDimension = "ready" | "applied" | "closed" | "discovered";
 
 export type SortKey =
-  | "date"
+  | "datePosted"
   | "discoveredAt"
   | "score"
   | "salary"
@@ -107,7 +109,6 @@ export interface SalaryFilter {
 export interface JobSort {
   key: SortKey;
   direction: SortDirection;
-  datePriority?: DateFilterDimension[];
 }
 
 export interface JobDateFilter {
@@ -126,7 +127,7 @@ export const DEFAULT_DATE_FILTER: JobDateFilter = {
 };
 
 export const sortLabels: Record<JobSort["key"], string> = {
-  date: "Date",
+  datePosted: "Posted",
   discoveredAt: "Discovered",
   score: "Score",
   salary: "Salary",
@@ -135,7 +136,7 @@ export const sortLabels: Record<JobSort["key"], string> = {
 };
 
 export const defaultSortDirection: Record<JobSort["key"], SortDirection> = {
-  date: "desc",
+  datePosted: "desc",
   discoveredAt: "desc",
   score: "desc",
   salary: "desc",
@@ -148,7 +149,7 @@ export const tabs: Array<{
   label: string;
   statuses: JobStatus[];
 }> = [
-  { id: "ready", label: "Ready", statuses: ["ready"] },
+  { id: "ready", label: "Ready", statuses: ["ready", "processing"] },
   {
     id: "discovered",
     label: "Discovered",
