@@ -6,6 +6,7 @@ import {
 } from "@infra/errors";
 import { logger } from "@infra/logger";
 import { sanitizeUnknown } from "@infra/sanitize";
+import { getResumeGenerationBackend } from "@server/config/resume-ops";
 import { getRequestId } from "@server/infra/request-context";
 import {
   DocxTextExtractionError,
@@ -18,7 +19,6 @@ import { GeminiCliClient } from "@server/services/llm/gemini-cli/client";
 import type { JsonSchemaDefinition } from "@server/services/llm/types";
 import { resolveLlmRuntimeSettings } from "@server/services/modelSelection";
 import { normalizeReactiveResumeV5Document } from "@server/services/rxresume/document";
-import { getResumeGenerationBackend } from "../../config/resume-ops";
 import {
   getResumeSchemaValidationMessage,
   safeParseV5ResumeData,
@@ -1072,7 +1072,7 @@ function asReactiveResumeExportObject(input: unknown): RecordLike | null {
   return null;
 }
 
-function parseReactiveResumeJsonFile(content: string): DesignResumeJson {
+function _parseReactiveResumeJsonFile(content: string): DesignResumeJson {
   const parsed = parseImportedResumeJson(content);
   const candidate = asReactiveResumeExportObject(parsed);
   if (!candidate) {
@@ -1808,9 +1808,7 @@ export async function importDesignResumeFromFile(
       }
 
       const message =
-        error instanceof Error
-          ? error.message
-          : "JSON resume import failed.";
+        error instanceof Error ? error.message : "JSON resume import failed.";
       throw badRequest(truncate(message, 400));
     }
   }

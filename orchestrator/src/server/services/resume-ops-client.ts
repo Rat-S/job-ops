@@ -50,7 +50,7 @@ export async function tailorResume(
         if (errorData.detail || errorData.details || errorData.message) {
           errorMessage += ` - ${JSON.stringify(errorData)}`;
         }
-      } catch (e) {
+      } catch (_e) {
         // ignore JSON parse error
       }
       throw new Error(errorMessage);

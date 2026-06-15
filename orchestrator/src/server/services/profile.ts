@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { logger } from "@infra/logger";
-import { getRequestContext, getTenantId } from "@infra/request-context";
+import { getRequestContext } from "@infra/request-context";
 import { getDataDir } from "@server/config/dataDir";
 import { getActiveTenantId } from "@server/tenancy/context";
 import { getPrivateDataScope } from "@server/tenancy/private-scope";
@@ -112,7 +112,7 @@ export async function getProfile(forceRefresh = false): Promise<ResumeProfile> {
   try {
     const res = await getConfiguredRxResumeBaseResumeId();
     rxresumeBaseResumeId = res.resumeId;
-  } catch (error) {
+  } catch (_error) {
     // Ignore error getting rxresume configured ID
   }
 
@@ -277,14 +277,17 @@ export async function getRawMasterResume(): Promise<Record<string, unknown>> {
     if (!isLegacyDesignResumeError(error)) {
       throw error;
     }
-    logger.warn("Ignoring legacy local Design Resume while loading raw profile fallback", { error });
+    logger.warn(
+      "Ignoring legacy local Design Resume while loading raw profile fallback",
+      { error },
+    );
   }
 
   let rxresumeBaseResumeId: string | null = null;
   try {
     const res = await getConfiguredRxResumeBaseResumeId();
     rxresumeBaseResumeId = res.resumeId;
-  } catch (error) {
+  } catch (_error) {
     // Ignore error
   }
 
@@ -316,7 +319,7 @@ export async function getRawMasterResume(): Promise<Record<string, unknown>> {
 function jsonResumeToProfile(jsonResume: any): ResumeProfile {
   const basics = jsonResume.basics || {};
   const work = Array.isArray(jsonResume.work) ? jsonResume.work : [];
-  const education = Array.isArray(jsonResume.education)
+  const _education = Array.isArray(jsonResume.education)
     ? jsonResume.education
     : [];
   const skills = Array.isArray(jsonResume.skills) ? jsonResume.skills : [];
