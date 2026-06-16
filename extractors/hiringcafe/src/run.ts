@@ -13,6 +13,12 @@ import {
   resolveHiringCafeCountryLocation,
 } from "./country-map.js";
 import { createDefaultSearchState } from "./default-search-state.js";
+import { Impit, type Browser } from "impit";
+import {
+  createPersistedFetchCookieJar,
+  getCloudflareCookieStorageDir,
+} from "browser-utils";
+
 
 const BASE_URL = "https://hiring.cafe/";
 const JOB_DETAIL_BASE_URL = "https://hiring.cafe/job/";
@@ -21,6 +27,58 @@ const DEFAULT_SEARCH_TERM = "web developer";
 const DEFAULT_DATE_FETCHED_PAST_N_DAYS = 30;
 const DEFAULT_LOCATION_RADIUS_MILES = 50;
 const PAGE_LIMIT = 50;
+
+const EXTRACTOR_ID = "hiringcafe";
+
+type FetchResponseLike = {
+  ok: boolean;
+  status: number;
+  statusText?: string;
+  url?: string;
+  headers?: Headers;
+  text: () => Promise<string>;
+  json: () => Promise<any>;
+};
+
+type FetchLike = ((
+  input: string | URL,
+  init?: RequestInit,
+) => Promise<FetchResponseLike>) & { isImpit?: boolean };
+
+async function createImpitFetch(): Promise<FetchLike> {
+  const persistedCookies = await createPersistedFetchCookieJar(
+    EXTRACTOR_ID,
+    getCloudflareCookieStorageDir(),
+  );
+  const headers = persistedCookies.userAgent
+    ? { "user-agent": persistedCookies.userAgent }
+    : { "user-agent": "Mozilla/5.0 (compatible; JobOps/1.0)" };
+
+  let browserName: Browser = "firefox";
+  if (persistedCookies.userAgent) {
+    const match = /Firefox\/(\d+)/.exec(persistedCookies.userAgent);
+    if (match && match[1]) {
+      const version = match[1];
+      const allowedVersions: Browser[] = ["firefox128", "firefox133", "firefox135", "firefox144"];
+      const matched = allowedVersions.find((b) => b === `firefox${version}`);
+      if (matched) {
+        browserName = matched;
+      }
+    }
+  }
+
+  const impit = new Impit({
+    browser: browserName,
+    timeout: 30_000,
+    cookieJar: persistedCookies.cookieJar,
+    headers,
+  });
+
+  const f: FetchLike = (input, init) =>
+    impit.fetch(input, init as Parameters<Impit["fetch"]>[1]);
+  f.isImpit = true;
+  return f;
+}
 
 type HiringCafeRawJob = Record<string, unknown>;
 type HiringCafeWorkplaceType = "Remote" | "Hybrid" | "Onsite";
@@ -86,7 +144,7 @@ export interface RunHiringCafeOptions {
   workplaceTypes?: Array<"remote" | "hybrid" | "onsite">;
   locationRadiusMiles?: number;
   maxJobsPerTerm?: number;
-  fetchImpl?: typeof fetch;
+  fetchImpl?: FetchLike;
   shouldCancel?: () => boolean;
   onProgress?: (event: HiringCafeProgressEvent) => void;
 }
@@ -387,18 +445,27 @@ export function buildHiringCafeSearchUrl(args: {
 async function fetchHiringCafeSearchPage(args: {
   searchState: unknown;
   pageNo: number;
-  fetchImpl: typeof fetch;
+  fetchImpl: FetchLike;
 }): Promise<HiringCafeSsrPage> {
   const url = buildHiringCafeSearchUrl({
     searchState: args.searchState,
     pageNo: args.pageNo,
   });
+  const headers: Record<string, string> = {
+    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "accept-language": "en-US,en;q=0.5",
+  };
+  if (args.fetchImpl.isImpit) {
+    headers["upgrade-insecure-requests"] = "1";
+    headers["sec-fetch-dest"] = "document";
+    headers["sec-fetch-mode"] = "navigate";
+    headers["sec-fetch-site"] = "none";
+    headers["sec-fetch-user"] = "?1";
+  } else {
+    headers["user-agent"] = "Mozilla/5.0 (compatible; JobOps/1.0)";
+  }
   const response = await args.fetchImpl(url, {
-    headers: {
-      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "accept-language": "en-US,en;q=0.9",
-      "user-agent": "Mozilla/5.0 (compatible; JobOps/1.0)",
-    },
+    headers,
     signal: AbortSignal.timeout(20_000),
   });
 
@@ -425,18 +492,27 @@ async function fetchHiringCafeSearchPage(args: {
 
 async function fetchHiringCafeJobDetail(args: {
   requisitionId: string;
-  fetchImpl: typeof fetch;
+  fetchImpl: FetchLike;
 }): Promise<HiringCafeRawJob | null> {
   const url = new URL(
     encodeURIComponent(args.requisitionId),
     JOB_DETAIL_BASE_URL,
   );
+  const headers: Record<string, string> = {
+    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "accept-language": "en-US,en;q=0.5",
+  };
+  if (args.fetchImpl.isImpit) {
+    headers["upgrade-insecure-requests"] = "1";
+    headers["sec-fetch-dest"] = "document";
+    headers["sec-fetch-mode"] = "navigate";
+    headers["sec-fetch-site"] = "none";
+    headers["sec-fetch-user"] = "?1";
+  } else {
+    headers["user-agent"] = "Mozilla/5.0 (compatible; JobOps/1.0)";
+  }
   const response = await args.fetchImpl(url.toString(), {
-    headers: {
-      accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "accept-language": "en-US,en;q=0.9",
-      "user-agent": "Mozilla/5.0 (compatible; JobOps/1.0)",
-    },
+    headers,
     signal: AbortSignal.timeout(20_000),
   });
 
@@ -458,7 +534,7 @@ async function fetchHiringCafeJobDetail(args: {
 
 async function enrichHiringCafeJobWithDetail(args: {
   rawJob: HiringCafeRawJob;
-  fetchImpl: typeof fetch;
+  fetchImpl: FetchLike;
 }): Promise<HiringCafeRawJob> {
   if (hasJobDescription(args.rawJob)) return args.rawJob;
 
@@ -499,7 +575,7 @@ async function resolveCityLocationContext(args: {
   countryLong: string;
   countryShort: string;
   radiusMiles: number;
-  fetchImpl: typeof fetch;
+  fetchImpl: FetchLike;
 }): Promise<CityLocationContext | null> {
   if (!args.countryLong || !args.countryShort) return null;
 
@@ -613,7 +689,7 @@ async function resolveSearchStateLocation(args: {
   countryLocation: HiringCafeCountryLocation | null;
   countryKey: string;
   radiusMiles: number;
-  fetchImpl: typeof fetch;
+  fetchImpl: FetchLike;
 }): Promise<CityLocationContext | null> {
   if (!args.location || !args.countryLocation) return null;
   if (!shouldApplyStrictCityFilter(args.location, args.countryKey)) return null;
@@ -675,7 +751,7 @@ export async function runHiringCafe(
   const runLocations = locations.length > 0 ? locations : [null];
   const termTotal = searchTerms.length * runLocations.length;
   const workplaceTypes = parseWorkplaceTypes(options.workplaceTypes);
-  const fetchImpl = options.fetchImpl ?? fetch;
+  const fetchImpl = options.fetchImpl ?? (await createImpitFetch());
   const jobs: CreateJobInput[] = [];
   const seen = new Set<string>();
 

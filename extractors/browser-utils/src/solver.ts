@@ -70,7 +70,16 @@ export async function solveChallenge(
     // and click through it. The solved cf_clearance cookie is tied to this
     // browser's UA + TLS fingerprint, so extractors must reuse the same UA
     // (persisted in the cookie jar) when creating their headless context.
-    const { launchOptions } = await createLaunchOptions({ headless: false });
+    const { launchOptions } = await createLaunchOptions({
+      headless: false,
+      // geoip: false — the solver opens a headed browser for a human to click
+      // through a Cloudflare challenge; geolocation spoofing is pointless here.
+      // More critically, geoip: true causes camoufox to call external IP-lookup
+      // APIs (ipify, icanhazip, etc.) BEFORE the browser opens. If those APIs
+      // are unreachable from the server, the entire solve fails before the user
+      // even sees the browser window.
+      geoip: false,
+    });
     browser = await firefox.launch(launchOptions);
     context = await browser.newContext();
     const page = await context.newPage();

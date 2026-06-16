@@ -9,7 +9,7 @@ import {
 } from "browser-utils";
 import * as cheerio from "cheerio";
 import type { Element } from "domhandler";
-import { Impit } from "impit";
+import { Impit, type Browser } from "impit";
 
 type CreateJobInput = {
   source: "gradcracker";
@@ -125,10 +125,10 @@ type FetchResponseLike = {
   text: () => Promise<string>;
 };
 
-type FetchLike = (
+type FetchLike = ((
   input: string | URL,
   init?: RequestInit,
-) => Promise<FetchResponseLike>;
+) => Promise<FetchResponseLike>) & { isImpit?: boolean };
 
 class ChallengeRequiredError extends Error {
   constructor(readonly url: string) {
@@ -504,15 +504,31 @@ async function createImpitFetch(): Promise<FetchLike> {
   const headers = persistedCookies.userAgent
     ? { "user-agent": persistedCookies.userAgent }
     : undefined;
+
+  let browserName: Browser = "firefox";
+  if (persistedCookies.userAgent) {
+    const match = /Firefox\/(\d+)/.exec(persistedCookies.userAgent);
+    if (match && match[1]) {
+      const version = match[1];
+      const allowedVersions: Browser[] = ["firefox128", "firefox133", "firefox135", "firefox144"];
+      const matched = allowedVersions.find((b) => b === `firefox${version}`);
+      if (matched) {
+        browserName = matched;
+      }
+    }
+  }
+
   const impit = new Impit({
-    browser: "firefox",
+    browser: browserName,
     timeout: 30_000,
     cookieJar: persistedCookies.cookieJar,
     ...(headers ? { headers } : {}),
   });
 
-  return (input, init) =>
+  const f: FetchLike = (input, init) =>
     impit.fetch(input, init as Parameters<Impit["fetch"]>[1]);
+  f.isImpit = true;
+  return f;
 }
 
 async function fetchHtml(args: {
