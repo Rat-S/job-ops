@@ -9,16 +9,15 @@ import {
   toStringOrNull,
 } from "@shared/utils/type-conversion.js";
 import {
+  createPersistedFetchCookieJar,
+  getCloudflareCookieStorageDir,
+} from "browser-utils";
+import { type Browser, Impit } from "impit";
+import {
   type HiringCafeCountryLocation,
   resolveHiringCafeCountryLocation,
 } from "./country-map.js";
 import { createDefaultSearchState } from "./default-search-state.js";
-import { Impit, type Browser } from "impit";
-import {
-  createPersistedFetchCookieJar,
-  getCloudflareCookieStorageDir,
-} from "browser-utils";
-
 
 const BASE_URL = "https://hiring.cafe/";
 const JOB_DETAIL_BASE_URL = "https://hiring.cafe/job/";
@@ -59,7 +58,12 @@ async function createImpitFetch(): Promise<FetchLike> {
     const match = /Firefox\/(\d+)/.exec(persistedCookies.userAgent);
     if (match && match[1]) {
       const version = match[1];
-      const allowedVersions: Browser[] = ["firefox128", "firefox133", "firefox135", "firefox144"];
+      const allowedVersions: Browser[] = [
+        "firefox128",
+        "firefox133",
+        "firefox135",
+        "firefox144",
+      ];
       const matched = allowedVersions.find((b) => b === `firefox${version}`);
       if (matched) {
         browserName = matched;
@@ -452,7 +456,8 @@ async function fetchHiringCafeSearchPage(args: {
     pageNo: args.pageNo,
   });
   const headers: Record<string, string> = {
-    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    accept:
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
     "accept-language": "en-US,en;q=0.5",
   };
   if (args.fetchImpl.isImpit) {
@@ -499,7 +504,8 @@ async function fetchHiringCafeJobDetail(args: {
     JOB_DETAIL_BASE_URL,
   );
   const headers: Record<string, string> = {
-    accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    accept:
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
     "accept-language": "en-US,en;q=0.5",
   };
   if (args.fetchImpl.isImpit) {

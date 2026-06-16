@@ -9,7 +9,7 @@ import {
 } from "browser-utils";
 import * as cheerio from "cheerio";
 import type { Element } from "domhandler";
-import { Impit, type Browser } from "impit";
+import { type Browser, Impit } from "impit";
 
 type CreateJobInput = {
   source: "gradcracker";
@@ -510,7 +510,12 @@ async function createImpitFetch(): Promise<FetchLike> {
     const match = /Firefox\/(\d+)/.exec(persistedCookies.userAgent);
     if (match && match[1]) {
       const version = match[1];
-      const allowedVersions: Browser[] = ["firefox128", "firefox133", "firefox135", "firefox144"];
+      const allowedVersions: Browser[] = [
+        "firefox128",
+        "firefox133",
+        "firefox135",
+        "firefox144",
+      ];
       const matched = allowedVersions.find((b) => b === `firefox${version}`);
       if (matched) {
         browserName = matched;
