@@ -280,7 +280,7 @@ describe("getProfile", () => {
 
     const profile = await getProfile();
 
-    expect(profile.basics.name).toBe("John Doe");
-    expect(profile.sections.experience?.items?.[0]?.company).toBe("Acme Corp");
+    expect(profile.basics?.name).toBe("John Doe");
+    expect(profile.sections?.experience?.items?.[0]?.company).toBe("Acme Corp");
   });
 });
