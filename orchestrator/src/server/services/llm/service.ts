@@ -1,8 +1,10 @@
+import { randomUUID } from "node:crypto";
 import { logger } from "@infra/logger";
 import { getOriginalEnvValue } from "@server/services/envSettings";
 import { resolveLlmApiKey } from "@server/services/llm/credentials";
 import { mapGlmProviderAlias } from "@shared/settings-registry";
 import { toStringOrNull } from "@shared/utils/type-conversion";
+import { Client } from "langsmith";
 import { CodexClient } from "./codex/client";
 import { GeminiCliClient } from "./gemini-cli/client";
 import {
@@ -42,6 +44,7 @@ export class LlmService {
   private readonly strategy: (typeof strategies)[LlmProvider];
   private readonly codexClient: CodexClient;
   private readonly geminiCliClient: GeminiCliClient;
+  private readonly langsmithClient: Client | null;
 
   constructor(options: LlmServiceOptions = {}) {
     const normalizedBaseUrl =
@@ -79,9 +82,85 @@ export class LlmService {
     this.strategy = strategy;
     this.codexClient = new CodexClient();
     this.geminiCliClient = new GeminiCliClient();
+
+    const tracingEnabled =
+      getOriginalEnvValue("LANGSMITH_TRACING") === "true" ||
+      getOriginalEnvValue("LANGCHAIN_TRACING_V2") === "true";
+    const langsmithApiKey =
+      getOriginalEnvValue("LANGSMITH_API_KEY") ||
+      getOriginalEnvValue("LANGCHAIN_API_KEY");
+
+    if (tracingEnabled && langsmithApiKey) {
+      try {
+        this.langsmithClient = new Client({
+          apiKey: langsmithApiKey,
+          apiUrl:
+            getOriginalEnvValue("LANGSMITH_ENDPOINT") ||
+            getOriginalEnvValue("LANGCHAIN_ENDPOINT"),
+        });
+      } catch (err) {
+        logger.error("Failed to initialize Langsmith client", { error: err });
+        this.langsmithClient = null;
+      }
+    } else {
+      this.langsmithClient = null;
+    }
   }
 
   async callJson<T>(options: LlmRequestOptions<T>): Promise<LlmResponse<T>> {
+    if (!this.langsmithClient) {
+      return this.executeCallJson(options);
+    }
+
+    const startTime = Date.now();
+    const { model, messages, jobId } = options;
+
+    const runId = randomUUID();
+    try {
+      await this.langsmithClient.createRun({
+        id: runId,
+        name: "LlmService.callJson",
+        run_type: "llm",
+        inputs: { messages, model, jobId },
+        extra: {
+          metadata: {
+            jobId,
+            provider: this.provider,
+          },
+        },
+        start_time: startTime,
+      });
+    } catch (err) {
+      logger.error("Failed to create Langsmith run", { error: err });
+    }
+
+    const result = await this.executeCallJson(options);
+
+    if (runId) {
+      try {
+        const endTime = Date.now();
+        if (result.success) {
+          await this.langsmithClient.updateRun(runId, {
+            outputs: { result: result.data },
+            end_time: endTime,
+          });
+        } else {
+          await this.langsmithClient.updateRun(runId, {
+            error: result.error,
+            end_time: endTime,
+          });
+        }
+      } catch (err) {
+        logger.error("Failed to update Langsmith run", { error: err });
+      }
+    }
+
+    return result;
+  }
+
+  private async executeCallJson<T>(
+    options: LlmRequestOptions<T>,
+  ): Promise<LlmResponse<T>> {
     if (this.provider === "codex") {
       return this.callCodexJson(options);
     }
