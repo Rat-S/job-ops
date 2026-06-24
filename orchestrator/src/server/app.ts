@@ -415,7 +415,7 @@ export function createApp() {
   // keep a larger JSON limit scoped to this endpoint to allow the maximum
   // validated payload through to route-level validation.
   app.use("/api/jobs/:id/chat", express.json({ limit: "12mb" }));
-  app.use(express.json());
+  app.use(express.json({ limit: "10mb" }));
 
   // Logging middleware
   app.use((req, res, next) => {
