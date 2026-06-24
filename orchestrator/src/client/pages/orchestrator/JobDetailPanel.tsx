@@ -29,6 +29,7 @@ import {
 import {
   downloadJobJson,
   downloadJobPdf,
+  downloadJobTxt,
   openJobPdf,
 } from "@client/lib/private-pdf";
 import type {
@@ -285,6 +286,9 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
   const selectedJsonFilename = selectedJob
     ? `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer || "Unknown")}.json`
     : "resume.json";
+  const selectedTxtFilename = selectedJob
+    ? `${safeFilenamePart(personName || "Unknown")}_${safeFilenamePart(selectedJob.employer || "Unknown")}.txt`
+    : "resume.txt";
   const selectedProjectIds = useMemo(
     () => selectedJob?.selectedProjectIds?.split(",").filter(Boolean) ?? [],
     [selectedJob?.selectedProjectIds],
@@ -508,6 +512,14 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
     );
   }, [selectedJob, selectedJsonFilename]);
 
+  const handleDownloadTxt = useCallback(() => {
+    if (!selectedJob || !selectedJob.pdfPath || isPdfRegenerating(selectedJob))
+      return;
+    void downloadJobTxt(selectedJob.id, selectedTxtFilename).catch((error) => {
+      showErrorToast(error, "Could not download plain text resume");
+    });
+  }, [selectedJob, selectedTxtFilename]);
+
   const handleUploadPdf = useCallback(
     async (file: File) => {
       if (!selectedJob) return;
@@ -722,6 +734,13 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                       <Download className="mr-2 h-4 w-4" />
                       Download JSON
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={handleDownloadTxt}
+                      disabled={pdfActionDisabled}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Download Plain Text (ATS)
+                    </DropdownMenuItem>
                   </>
                 )}
                 {canSkip && (
@@ -854,7 +873,7 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 </div>
               </div>
             </div>
-            <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
+            <div className="grid gap-2 grid-cols-3 sm:grid-cols-5">
               <TooltipWhenDisabled
                 reason={pdfRegeneratingReason}
                 className="w-full"
@@ -884,6 +903,21 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
                 >
                   <Download className="size-3.5" />
                   JSON
+                </Button>
+              </TooltipWhenDisabled>
+              <TooltipWhenDisabled
+                reason={pdfRegeneratingReason}
+                className="w-full"
+              >
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleDownloadTxt}
+                  disabled={pdfActionDisabled}
+                  className="w-full"
+                >
+                  <Download className="size-3.5" />
+                  TXT
                 </Button>
               </TooltipWhenDisabled>
               <OpenJobListingButton

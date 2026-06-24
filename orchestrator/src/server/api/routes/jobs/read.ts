@@ -6,8 +6,10 @@ import { attachAppliedDuplicateMatches } from "@server/services/applied-duplicat
 import {
   getJsonPath,
   getPdfPath,
+  getTxtPath,
   jsonExists,
   pdfExists,
+  txtExists,
 } from "@server/services/pdf";
 import {
   applyJobsPdfFreshness,
@@ -264,6 +266,23 @@ jobsReadRouter.get("/:id/json", async (req: Request, res: Response) => {
   res.sendFile(jsonPath, (error) => {
     if (error) {
       fail(res, notFound("JSON resume not found"));
+    }
+  });
+});
+
+jobsReadRouter.get("/:id/txt", async (req: Request, res: Response) => {
+  const currentJob = await jobsRepo.getJobById(req.params.id);
+  if (!currentJob || !(await txtExists(req.params.id))) {
+    fail(res, notFound("Plain-text resume not found"));
+    return;
+  }
+
+  const txtPath = getTxtPath(req.params.id);
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.sendFile(txtPath, (error) => {
+    if (error) {
+      fail(res, notFound("Plain-text resume not found"));
     }
   });
 });

@@ -532,3 +532,30 @@ export function getJsonPath(jobId: string): string {
   if (existsSync(jsonPath)) return jsonPath;
   return getLegacyJobPdfPath(jobId).replace(/\.pdf$/, ".json");
 }
+
+/**
+ * Check if a plain-text (ATS) resume exists for a job.
+ */
+export async function txtExists(jobId: string): Promise<boolean> {
+  const txtPath = getTenantJobPdfPath(jobId).replace(/\.pdf$/, ".txt");
+  try {
+    await access(txtPath);
+    return true;
+  } catch {
+    try {
+      await access(getLegacyJobPdfPath(jobId).replace(/\.pdf$/, ".txt"));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/**
+ * Get the path to a job's plain-text (ATS) resume.
+ */
+export function getTxtPath(jobId: string): string {
+  const txtPath = getTenantJobPdfPath(jobId).replace(/\.pdf$/, ".txt");
+  if (existsSync(txtPath)) return txtPath;
+  return getLegacyJobPdfPath(jobId).replace(/\.pdf$/, ".txt");
+}

@@ -10,6 +10,7 @@ interface TailorResponse {
   resume: Record<string, unknown>;
   pdf_base64: string;
   theme: string;
+  plain_text: string;
 }
 
 interface MasterResumeStatus {

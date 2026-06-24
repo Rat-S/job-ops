@@ -823,6 +823,12 @@ export async function generateFinalPdf(
             "utf8",
           );
 
+          // Save the ATS plain-text resume alongside the PDF and JSON
+          if (tailorResult.plain_text) {
+            const txtOutputPath = outputPath.replace(/\.pdf$/, ".txt");
+            await fs.writeFile(txtOutputPath, tailorResult.plain_text, "utf8");
+          }
+
           pdfResultPath = outputPath;
         } catch (error) {
           const message =

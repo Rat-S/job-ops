@@ -41,6 +41,13 @@ export async function downloadJobJson(
   openBlob(await api.getJobJsonBlob(jobId), filename);
 }
 
+export async function downloadJobTxt(
+  jobId: string,
+  filename: string,
+): Promise<void> {
+  openBlob(await api.getJobTxtBlob(jobId), filename);
+}
+
 export async function createJobPdfObjectUrl(jobId: string): Promise<string> {
   return createObjectUrlFromBlob(() => api.getJobPdfBlob(jobId));
 }
