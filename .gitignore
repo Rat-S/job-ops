@@ -31,3 +31,4 @@ tmp/
 .venv 
 
 master-resume.json
+.env*
